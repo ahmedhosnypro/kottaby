@@ -1,0 +1,549 @@
+Project Draft_Academy {
+  database_type: 'PostgreSQL'
+  Note: 'Draft Academy - ER Diagram'
+}
+
+// ==================== ENUMS ====================
+
+Enum user_role {
+  admin
+  teacher
+  student
+  parent
+}
+
+Enum gender {
+  male
+  female
+  other
+}
+
+Enum session_status {
+  scheduled
+  started
+  completed
+  cancelled
+  disputed
+}
+
+Enum session_type {
+  student_session
+  teacher_evaluation
+  re_evaluation
+}
+
+Enum session_intent {
+  hifz
+  tajweed
+  evaluation
+}
+
+Enum payment_status {
+  pending
+  paid
+  failed
+  refunded
+}
+
+Enum transaction_type {
+  earning
+  withdrawal
+  bonus
+}
+
+Enum transaction_status {
+  pending
+  completed
+  failed
+}
+
+Enum payment_gateway {
+  stripe
+  paypal
+  paymob
+  fawry
+  offline_cash
+  bank_transfer
+  scholarship
+  other
+}
+
+Enum subscription_status {
+  active
+  pending
+  expired
+  cancelled
+  suspended
+}
+
+Enum link_status {
+  pending
+  confirmed
+  rejected
+  expired
+}
+
+Enum notification_type {
+  session_request
+  session_completion
+  session_cancellation
+  parent_link_request
+  system_broadcast
+  payment_confirmation
+  evaluation_result
+}
+
+Enum audit_action_type {
+  create
+  update
+  delete
+  override
+  adjust
+  suspend
+  reactivate
+}
+
+Enum surah_juz_ref {
+  surah_al_fatihah
+  surah_al_baqarah
+  surah_aal_imran
+  surah_an_nisa
+  surah_al_maidah
+  juz_1
+  juz_2
+  juz_3
+  juz_4
+  juz_5
+  juz_6
+  juz_7
+  juz_8
+  juz_9
+  juz_10
+  juz_11
+  juz_12
+  juz_13
+  juz_14
+  juz_15
+  juz_16
+  juz_17
+  juz_18
+  juz_19
+  juz_20
+  juz_21
+  juz_22
+  juz_23
+  juz_24
+  juz_25
+  juz_26
+  juz_27
+  juz_28
+  juz_29
+  juz_30
+}
+
+Enum teacher_request_preference {
+  queue
+  reject
+  offer_alternatives
+}
+
+// ==================== TABLES ====================
+
+Table users {
+  id                integer       [pk, increment]
+  full_name         varchar(255)  [not null]
+  email             varchar(255)  [not null, unique]
+  phone             varchar(20)
+  password_hash     varchar(255)  [not null]
+  role              user_role     [not null]
+  date_of_birth     date
+  gender            gender
+  country           varchar(100)
+  is_deleted        boolean       [default: false]
+  deleted_at        timestamp
+  suspended         boolean       [default: false]
+  suspended_at      timestamp
+  suspended_period_days integer
+  is_blocked        boolean       [default: false]
+  blocked_at        timestamp
+  last_active_at    timestamp
+  created_at        timestamp     [default: `now()`]
+  updated_at        timestamp     [default: `now()`]
+
+  Note: 'Central user table. Governance fields (is_deleted, suspended, is_blocked) apply to all roles. Role-specific data lives in admin/teacher/students/parents child tables via shared PK.'
+}
+
+// --- Role child tables (shared PK = FK to users.id, no auto-increment) ---
+
+Table admin {
+  id          integer [pk]
+  created_at  timestamp [default: `now()`]
+  updated_at  timestamp [default: `now()`]
+}
+
+Table parents {
+  id          integer [pk]
+  created_at  timestamp [default: `now()`]
+  updated_at  timestamp [default: `now()`]
+
+  Note: 'A.1: Parent role — shared PK with users. Can link to multiple children (B.13).'
+}
+
+Table applicants {
+  id              integer   [pk]
+  verification_attempts integer [default: 0]
+  last_attempt_at timestamp
+  cooldown_until  timestamp
+  status          varchar(50) [default: 'pending', note: 'pending, in_evaluation, failed, passed']
+  created_at      timestamp [default: `now()`]
+  updated_at      timestamp [default: `now()`]
+
+  Note: 'B.6: Failed teacher applicants are moved here. Teacher record is created only after passing (B.7).'
+}
+
+Table teacher {
+  id              integer       [pk]
+  is_approved     boolean       [default: false]
+  is_evaluator    boolean       [default: false]
+  average_rating  decimal(3,2)  [check: `average_rating >= 0 AND average_rating <= 5`]
+  is_online       boolean       [default: false]
+  subjects        varchar(255)  [note: 'JSON array of subjects: quran, tajweed, tafsir, etc.']
+  request_preference teacher_request_preference [default: 'queue', note: 'B.16: How teacher handles concurrent requests']
+  created_at      timestamp     [default: `now()`]
+  updated_at      timestamp     [default: `now()`]
+
+  Note: 'Teacher record created only after passing verification (B.7). Failed applicants are in applicants table (B.6).'
+}
+
+Table students {
+  id                  integer      [pk]
+  balance_hifz        integer      [default: 0, note: 'الحفظ والتسميع']
+  balance_reviews     integer      [default: 0, note: 'المراجعات']
+  balance_tajweed     integer      [default: 0, note: 'التجويد']
+  primary_language    varchar(100)
+  another_language    varchar(100)
+  handshake_code      varchar(50)  [unique, not null, note: 'A.3: Unique code for parent linking']
+  parent_id           integer      [note: 'A.2/B.12: FK to users.id — one parent per student']
+  created_at           timestamp    [default: `now()`]
+  updated_at           timestamp    [default: `now()`]
+
+  Note: 'Governance fields (is_deleted, suspended, is_blocked) moved to users table (A.7). One parent per student (B.12).'
+}
+
+Table teacher_verification {
+  id            integer      [pk, increment]
+  teacher_id    integer      [not null]
+  tajweed_level varchar(50)
+  hifz_level    varchar(50)
+  created_at    timestamp    [default: `now()`]
+  updated_at    timestamp    [default: `now()`]
+
+  indexes {
+    teacher_id
+  }
+}
+
+Table subscriptions {
+  id              integer   [pk, increment]
+  user_id         integer   [not null, note: 'B.8/C.2: Generic user reference (was teacher_id)']
+  plan_id         integer   [not null]
+  status          subscription_status [not null, default: 'pending', note: 'A.9: Subscription lifecycle']
+  start_date      timestamp
+  end_date        timestamp
+  payment_method  payment_gateway [note: 'B.9: Offline payment tracking']
+  payment_reference varchar(255) [note: 'B.9: Reference number for offline payments']
+  payment_verified_at timestamp [note: 'B.9: When admin verified offline payment']
+  created_at      timestamp [default: `now()`]
+  updated_at      timestamp [default: `now()`]
+
+  indexes {
+    user_id
+    plan_id
+  }
+}
+
+// Junction table for students M:M subscriptions
+Table student_subscriptions {
+  student_id       integer [not null]
+  subscription_id  integer [not null]
+  enrolled_at      timestamp [default: `now()`]
+
+  indexes {
+    (student_id, subscription_id) [pk]
+    subscription_id
+  }
+}
+
+Table plans {
+  id            integer       [pk, increment]
+  title         varchar(255)  [not null]
+  session_count integer       [not null, check: `session_count > 0`]
+  price         decimal(10,2) [not null, check: `price >= 0`]
+  currency      char(3)       [not null, default: 'EGP']
+  interval_days integer       [not null, check: `interval_days > 0`]
+  created_at    timestamp     [default: `now()`]
+  updated_at    timestamp     [default: `now()`]
+}
+
+Table wallet {
+  id            integer       [pk, increment]
+  teacher_id    integer       [not null, unique]
+  balance       decimal(10,2) [not null, default: 0, check: `balance >= 0`]
+  total_earning decimal(10,2) [not null, default: 0, check: `total_earning >= 0`]
+  created_at    timestamp     [default: `now()`]
+  updated_at    timestamp     [default: `now()`]
+}
+
+Table session {
+  id            integer        [pk, increment]
+  teacher_id    integer        [not null]
+  student_id    integer        [not null]
+  status        session_status [not null, default: 'scheduled']
+  session_type  session_type   [not null, default: 'student_session', note: 'A.8: Distinguishes regular vs evaluation sessions']
+  intent        session_intent [note: 'A.10: What the session is for (hifz, tajweed, evaluation)']
+  fee           decimal(10,2)  [note: 'B.3: Platform-set session fee']
+  fee_held      boolean        [default: false, note: 'B.4: Escrow — held at request, decremented at completion']
+  started_at    timestamp
+  ended_at      timestamp
+  confirmed_by_student_at timestamp [note: 'B.2: Dual confirmation tracking']
+  confirmed_by_teacher_at timestamp
+  confirmation_deadline timestamp [note: 'B.2: 24h from request']
+  created_at    timestamp      [default: `now()`]
+  updated_at    timestamp      [default: `now()`]
+
+  indexes {
+    teacher_id
+    student_id
+    (teacher_id, student_id)
+  }
+}
+
+Table reports {
+  id                        integer [pk, increment]
+  session_id                integer [not null]
+  teacher_notes             text
+  student_rating_by_teacher integer [check: `student_rating_by_teacher >= 0 AND student_rating_by_teacher <= 5`]
+  created_at                timestamp [default: `now()`]
+  updated_at                timestamp [default: `now()`]
+
+  Note: 'C.4: teacher_id removed — redundant with session.teacher_id. Access via session FK.'
+
+  indexes {
+    session_id
+  }
+}
+
+Table evaluations {
+  id            integer   [pk, increment]
+  evaluated_id  integer   [not null, note: 'C.3: The person being evaluated (was user_id)']
+  evaluator_id  integer   [not null, note: 'C.3: The certified sheikh submitting the evaluation']
+  session_id    integer
+  score         integer   [check: `score >= 0 AND score <= 100`, note: 'B.1: 80% pass threshold']
+  notes         text
+  is_deleted    boolean   [default: false]
+  deleted_at    timestamp
+  created_at    timestamp [default: `now()`]
+  updated_at    timestamp [default: `now()`]
+
+  indexes {
+    evaluated_id
+    evaluator_id
+    session_id
+  }
+}
+
+Table teacher_transaction {
+  id          integer             [pk, increment]
+  wallet_id   integer             [not null]
+  session_id  integer
+  description varchar(255)
+  amount      decimal(10,2)       [not null, check: `amount >= 0`]
+  type        transaction_type    [not null]
+  status      transaction_status  [not null, default: 'pending']
+  created_at  timestamp           [default: `now()`]
+  updated_at  timestamp           [default: `now()`]
+
+  indexes {
+    wallet_id
+    session_id
+  }
+}
+
+Table recitation {
+  id          integer      [pk, increment]
+  session_id  integer      [not null, unique, note: 'C.5: One recitation record per session (was user_id)']
+  name        varchar(255) [not null]
+  description text
+  created_at  timestamp    [default: `now()`]
+  updated_at  timestamp    [default: `now()`]
+
+  indexes {
+    session_id
+  }
+}
+
+Table student_payments {
+  id              integer         [pk, increment]
+  student_id      integer         [not null]
+  subscription_id integer
+  amount          decimal(10,2)   [not null, check: `amount >= 0`]
+  currency        char(3)         [not null, default: 'EGP']
+  payment_gateway payment_gateway [not null]
+  status          payment_status  [not null, default: 'pending']
+  created_at      timestamp       [default: `now()`]
+  updated_at      timestamp       [default: `now()`]
+
+  indexes {
+    student_id
+    subscription_id
+  }
+}
+
+Table home_work {
+  id                  integer [pk, increment]
+  session_id          integer [not null]
+  current_from_ayah   integer
+  current_to_ayah     integer
+  current_grade       integer [check: `current_grade >= 0 AND current_grade <= 100`]
+  current_surah_juz   surah_juz_ref [note: 'B.11: Surah/Juz for current assignment']
+  revision_from_ayah  integer
+  revision_to_ayah    integer
+  revision_grade      integer [check: `revision_grade >= 0 AND revision_grade <= 100`]
+  revision_surah_juz  surah_juz_ref [note: 'B.11: Surah/Juz for revision (Madi) assignment']
+  created_at          timestamp [default: `now()`]
+  updated_at          timestamp [default: `now()`]
+
+  indexes {
+    session_id
+  }
+}
+
+Table progress {
+  id          integer [pk, increment]
+  student_id  integer [not null]
+  lesson_id   integer
+  created_at  timestamp [default: `now()`]
+  updated_at  timestamp [default: `now()`]
+
+  indexes {
+    student_id
+    lesson_id
+  }
+}
+
+Table lessons {
+  id          integer [pk, increment]
+  plan_id     integer
+  title       varchar(255)
+  created_at  timestamp [default: `now()`]
+  updated_at  timestamp [default: `now()`]
+
+  indexes {
+    plan_id
+  }
+}
+
+Table notifications {
+  id                  integer           [pk, increment]
+  user_id             integer           [not null]
+  type                notification_type [not null]
+  title               varchar(255)      [not null]
+  body                text
+  is_read             boolean           [default: false]
+  related_entity_type varchar(100)      [note: 'Polymorphic: session, subscription, parent_link, etc.']
+  related_entity_id   integer
+  created_at          timestamp         [default: `now()`]
+
+  Note: 'A.4: Persisted notifications for session requests, completions, broadcasts, etc.'
+
+  indexes {
+    user_id
+    (user_id, is_read)
+  }
+}
+
+Table audit_logs {
+  id          integer           [pk, increment]
+  actor_id    integer           [not null, note: 'FK to users — admin who performed the action']
+  action_type audit_action_type [not null]
+  entity_type varchar(100)      [not null, note: 'session, user, subscription, etc.']
+  entity_id   integer
+  details     varchar(2000)    [note: 'JSON details of the action']
+  created_at  timestamp         [default: `now()`]
+
+  Note: 'A.5: Immutable audit trail for all admin actions. Append-only.'
+
+  indexes {
+    actor_id
+    (entity_type, entity_id)
+  }
+}
+
+// ==================== RELATIONSHIPS ====================
+
+// --- Inheritance: admin/teacher/students/parents ARE users (shared PK) ---
+Ref: admin.id - users.id [delete: cascade]
+Ref: teacher.id - users.id [delete: cascade]
+Ref: students.id - users.id [delete: cascade]
+Ref: parents.id - users.id [delete: cascade]
+
+// --- Applicants (B.6: failed teacher applicants) ---
+Ref: applicants.id - users.id [delete: cascade]
+
+// --- Parent-child link (A.2: parent_id FK on students, B.12: one parent per student) ---
+Ref: students.parent_id > users.id [delete: set null]
+
+// --- Teacher relationships ---
+Ref: teacher_verification.teacher_id > teacher.id [delete: cascade]
+
+// Wallet 1:1 teacher (teacher_id is FK + unique)
+Ref: wallet.teacher_id - teacher.id [delete: cascade]
+
+// Subscriptions belong to a user (B.8/C.2: was teacher_id, now user_id)
+Ref: subscriptions.user_id > users.id [delete: restrict]
+
+// Subscriptions belong to a plan
+Ref: subscriptions.plan_id > plans.id [delete: restrict]
+
+// Student M:M subscriptions (junction table)
+Ref: student_subscriptions.student_id > students.id [delete: cascade]
+Ref: student_subscriptions.subscription_id > subscriptions.id [delete: cascade]
+
+// --- Session relationships ---
+Ref: session.teacher_id > teacher.id [delete: restrict]
+Ref: session.student_id > students.id [delete: restrict]
+
+// --- Reports (C.4: teacher_id removed, access via session) ---
+Ref: reports.session_id > session.id [delete: cascade]
+
+// --- Evaluations (C.3: user_id split into evaluated_id and evaluator_id) ---
+Ref: evaluations.evaluated_id > users.id [delete: cascade]
+Ref: evaluations.evaluator_id > users.id [delete: restrict]
+Ref: evaluations.session_id > session.id [delete: set null]
+
+// --- Teacher transactions ---
+Ref: teacher_transaction.wallet_id > wallet.id [delete: restrict]
+Ref: teacher_transaction.session_id > session.id [delete: set null]
+
+// --- Student payments ---
+Ref: student_payments.student_id > students.id [delete: restrict]
+Ref: student_payments.subscription_id > subscriptions.id [delete: set null]
+
+// --- Recitation (C.5: one per session, was user_id) ---
+Ref: recitation.session_id > session.id [delete: cascade]
+
+// --- Home work ---
+Ref: home_work.session_id > session.id [delete: cascade]
+
+// --- Progress ---
+Ref: progress.student_id > students.id [delete: cascade]
+Ref: progress.lesson_id > lessons.id [delete: set null]
+
+// --- Lessons ---
+Ref: lessons.plan_id > plans.id [delete: set null]
+
+// --- Notifications (A.4) ---
+Ref: notifications.user_id > users.id [delete: cascade]
+
+// --- Audit logs (A.5) ---
+Ref: audit_logs.actor_id > users.id [delete: restrict]

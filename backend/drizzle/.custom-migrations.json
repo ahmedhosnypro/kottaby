@@ -1,0 +1,14 @@
+{
+  "manifestHash": "324015e4e3db6cca874c804ba7d8d204b63aad61b5d7f0a2437dcf89a50ef459",
+  "manifest": [
+    {
+      "file": "2-functions.sql",
+      "sha256": "4aa3869c64856ad4e8b7e996fc67360bf3d3f440abc182bb6b0f5f422b546aef"
+    },
+    {
+      "file": "3-immutability-triggers.sql",
+      "sha256": "692a81c6e4aebaa05bf681840a1d5d9c1a628bd5ef11900673cccc524daf42a5"
+    }
+  ],
+  "appliedFolders": ["20260825222700_custom_2-functions", "20260825222701_custom_3-immutability-triggers"]
+}

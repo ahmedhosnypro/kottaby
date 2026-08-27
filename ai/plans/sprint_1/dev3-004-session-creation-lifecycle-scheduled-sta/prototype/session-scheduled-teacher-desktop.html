@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Siraj Teacher Dashboard - Session Details</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#bec9c8",
+                        "surface": "#f7f9ff",
+                        "tertiary-container": "#585d5d",
+                        "primary-container": "#006766",
+                        "surface-variant": "#dfe3e8",
+                        "surface-bright": "#f7f9ff",
+                        "inverse-on-surface": "#eef1f7",
+                        "secondary-fixed-dim": "#71d7cd",
+                        "on-secondary-container": "#006f67",
+                        "on-secondary": "#ffffff",
+                        "surface-dim": "#d7dae0",
+                        "on-error": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-high": "#e5e8ee",
+                        "on-surface": "#181c20",
+                        "surface-container": "#ebeef4",
+                        "on-tertiary-fixed": "#181c1d",
+                        "inverse-primary": "#86d4d2",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#6f7978",
+                        "on-primary-fixed": "#00201f",
+                        "surface-container-low": "#f1f4fa",
+                        "on-surface-variant": "#3e4948",
+                        "on-secondary-fixed-variant": "#00504a",
+                        "secondary-container": "#8bf1e6",
+                        "primary": "#004d4c",
+                        "on-primary-container": "#94e2e0",
+                        "on-primary-fixed-variant": "#00504f",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed-dim": "#c3c7c7",
+                        "error": "#ba1a1a",
+                        "primary-fixed": "#a2f0ee",
+                        "surface-tint": "#076968",
+                        "on-background": "#181c20",
+                        "secondary": "#006a63",
+                        "on-secondary-fixed": "#00201d",
+                        "surface-container-highest": "#dfe3e8",
+                        "inverse-surface": "#2d3135",
+                        "tertiary-fixed": "#dfe3e3",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#8ef4e9",
+                        "tertiary": "#414546",
+                        "primary-fixed-dim": "#86d4d2",
+                        "on-tertiary-fixed-variant": "#434848",
+                        "on-tertiary-container": "#d1d6d6",
+                        "background": "#f7f9ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "16px",
+                        "stack-lg": "32px",
+                        "gutter": "24px",
+                        "stack-sm": "8px",
+                        "margin-mobile": "16px",
+                        "container-max": "1200px",
+                        "unit": "8px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "display": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "label-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "display": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex">
+<!-- Shared Component: SideNavBar -->
+<nav class="hidden md:flex h-screen w-64 fixed left-0 top-0 bg-surface dark:bg-inverse-surface shadow-sm bg-surface-container-low dark:bg-inverse-surface flex-col py-stack-lg z-50">
+<!-- Brand / Header -->
+<div class="px-gutter mb-stack-lg flex items-center gap-stack-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of an older male Islamic teacher named Sheikh, wearing traditional attire with a serene and scholarly expression. The background is a minimal, soft white studio setting, conveying a premium and trusted educational environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6eTmuBxkJHSx7g85cj3IdIpmJ07LdzITpxU38lNE2x0oaqHCxwAzei6joTA4FluQ7lF5UUVOkmEscEU7IpNLCr1tJ54mMsEPjaRaIYW_aM0NKci6FXHclCTW_Vmz0bEQQuFEMHzN7DtbmPF5dktPpmNWDS61A6TrF4ax5PMZJjxb2DBTH-v_X5QlJZ8Go1sDeWy4HVfK9L0EmiuZm6tAHkvc73cL8LyOC1lkSOS01mqfX9jPdtD9IFQ7O6_AcIu-2dsBv83XD1Suz"/>
+</div>
+<div>
+<h2 class="font-label-md text-label-md font-bold text-on-surface">Siraj Teacher</h2>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Senior Instructor</p>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex flex-col gap-unit px-unit">
+<a class="flex items-center gap-stack-md px-stack-md py-3 rounded-lg text-on-surface-variant hover:bg-primary-container dark:hover:bg-secondary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-stack-md px-stack-md py-3 rounded-lg text-primary dark:text-inverse-primary font-bold border-r-4 border-primary bg-surface-container transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined fill" data-icon="calendar_month">calendar_month</span>
+<span class="font-label-md text-label-md">My Sessions</span>
+</a>
+<a class="flex items-center gap-stack-md px-stack-md py-3 rounded-lg text-on-surface-variant hover:bg-primary-container dark:hover:bg-secondary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-md text-label-md">Students</span>
+</a>
+<a class="flex items-center gap-stack-md px-stack-md py-3 rounded-lg text-on-surface-variant hover:bg-primary-container dark:hover:bg-secondary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+<span class="font-label-md text-label-md">Availability</span>
+</a>
+<a class="flex items-center gap-stack-md px-stack-md py-3 rounded-lg text-on-surface-variant hover:bg-primary-container dark:hover:bg-secondary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-label-md text-label-md">Payouts</span>
+</a>
+<a class="flex items-center gap-stack-md px-stack-md py-3 rounded-lg text-on-surface-variant hover:bg-primary-container dark:hover:bg-secondary-container hover:text-on-primary-container transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 ml-0 md:ml-64 flex flex-col min-h-screen relative">
+<!-- Shared Component: TopNavBar -->
+<header class="flex justify-between items-center h-16 px-gutter bg-surface dark:bg-inverse-surface shadow-sm sticky top-0 z-40">
+<!-- Left: Search -->
+<div class="flex-1 max-w-md">
+<div class="relative flex items-center w-full h-10 rounded-full bg-surface-container-low px-4 focus-within:ring-2 focus-within:ring-primary transition-shadow">
+<span class="material-symbols-outlined text-on-surface-variant mr-2 text-[20px]" data-icon="search">search</span>
+<input class="w-full bg-transparent border-none focus:ring-0 text-body-md font-body-md text-on-surface placeholder:text-on-surface-variant p-0 h-full" placeholder="Search sessions, students..." type="text"/>
+</div>
+</div>
+<!-- Right: Actions -->
+<div class="flex items-center gap-stack-md ml-auto">
+<!-- Online Status Toggle -->
+<div class="hidden sm:flex items-center gap-2 bg-surface-container px-3 py-1.5 rounded-full border border-surface-variant">
+<div class="w-2.5 h-2.5 rounded-full bg-secondary"></div>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">You are Online</span>
+</div>
+<!-- Icon Actions -->
+<button aria-label="notifications" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors scale-95 active:scale-90">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button aria-label="account_circle" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors scale-95 active:scale-90">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Page Content Canvas -->
+<main class="flex-1 p-gutter md:p-margin-desktop max-w-container-max mx-auto w-full">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-stack-md mb-stack-lg">
+<div class="flex items-center gap-stack-md">
+<button class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-1">Session Details</h1>
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-sm text-label-sm bg-secondary-container text-on-secondary-container font-bold uppercase tracking-wider">
+                                Scheduled
+                            </span>
+<span class="font-body-md text-body-md text-on-surface-variant">ID: #SRJ-9928</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Main Layout Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Left Column: Core Session Data (Spans 8 cols) -->
+<div class="lg:col-span-8 flex flex-col gap-stack-md">
+<!-- Deadline Banner -->
+<div class="bg-surface-container-low border-l-4 border-secondary p-stack-md rounded-r-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary mt-0.5" data-icon="timer">timer</span>
+<div>
+<h3 class="font-label-md text-label-md font-bold text-on-surface mb-1">Confirmation deadline</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Student has <span class="font-bold text-on-surface">23h 12m</span> to confirm; session auto-cancels otherwise.</p>
+</div>
+</div>
+<!-- Main Student Card (Level 1 Elevation) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_20px_rgba(0,103,102,0.05)] p-stack-lg flex flex-col gap-stack-lg relative overflow-hidden">
+<!-- Subtle decorative background element -->
+<div class="absolute top-0 right-0 w-64 h-64 bg-surface-container-low rounded-bl-full -mr-32 -mt-32 opacity-50 pointer-events-none"></div>
+<!-- Student Profile Block -->
+<div class="flex items-center gap-stack-md relative z-10">
+<div class="w-16 h-16 rounded-full bg-surface-container-high overflow-hidden border-2 border-surface">
+<img class="w-full h-full object-cover" data-alt="A friendly, high-quality headshot of a young male student named Yusuf Omar. He is looking attentively forward, framed against a clean, bright white background typical of a modern e-learning platform profile picture. The lighting is soft and flattering." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEiMEGv7Zy-H6B0I0MjD75ea_rCyJULQC81ADJcb3g5rbF8lJ3ZEKQ4udonDDVsInCbelV9vRuovFFxeEDshecsc3_tShz8gQVtvHMDah0sCyKjgrtpRKq5_Y5FfEf17ise7YH_lf4CoewUCR0sRlR8Kvx6AGC1L5z6aHnbSSivXnB3a7rsx_Zfkkf9b78K60AubYXXSMjHEmH6rF8M6JB8QfLQ1DgGKXgWEUrtFS-8v8aDASfoDtf1FyEqjknXilVLKywMPb7LePK"/>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Yusuf Omar</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-2 mt-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="school">school</span>
+                                    Student
+                                </p>
+</div>
+<button class="ml-auto flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-md text-label-md">
+<span class="material-symbols-outlined text-[18px]" data-icon="chat_bubble">chat_bubble</span>
+                                Message
+                            </button>
+</div>
+<!-- Details Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-y-stack-md gap-x-gutter pt-stack-md border-t border-surface-variant relative z-10">
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Intent</span>
+<span class="font-body-lg text-body-lg text-on-surface font-medium flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="menu_book">menu_book</span>
+                                    Hifz (Memorization)
+                                </span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Session Type</span>
+<span class="font-body-lg text-body-lg text-on-surface font-medium flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="video_camera_front">video_camera_front</span>
+                                    1-on-1 Session
+                                </span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Time</span>
+<span class="font-body-lg text-body-lg text-on-surface font-medium flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="schedule">schedule</span>
+                                    Today, 16:00 (Cairo Time)
+                                </span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Fee Status</span>
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-on-surface font-medium">45.00 EGP</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[14px]" data-icon="lock">lock</span>
+                                        held in escrow (not yet credited)
+                                    </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Row -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_20px_rgba(0,103,102,0.05)] p-stack-lg flex flex-col gap-stack-md mt-4">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Session Controls</h3>
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-stack-md">
+<div class="flex-1 flex flex-col gap-2 w-full">
+<button class="w-full bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md py-4 px-6 rounded-lg transition-colors flex justify-center items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined" data-icon="play_circle">play_circle</span>
+                                    Start Session
+                                </button>
+<p class="font-label-sm text-label-sm text-on-surface-variant text-center px-4">
+                                    Starting sets your status to <span class="font-bold">In Session</span> and hides you from the teachers directory.
+                                </p>
+</div>
+<div class="flex-1 w-full flex items-start h-full pt-1 sm:pt-0">
+<button class="w-full border-2 border-outline hover:border-error hover:text-error hover:bg-error-container text-on-surface font-label-md text-label-md py-3.5 px-6 rounded-lg transition-colors flex justify-center items-center gap-2 bg-transparent">
+<span class="material-symbols-outlined" data-icon="cancel">cancel</span>
+                                    Cancel Session
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Contextual Data (Spans 4 cols) -->
+<div class="lg:col-span-4 flex flex-col gap-stack-md">
+<!-- Lifecycle Card (Level 1 Elevation) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_20px_rgba(0,103,102,0.05)] p-stack-lg">
+<h3 class="font-label-md text-label-md font-bold text-on-surface mb-6 uppercase tracking-wider">Lifecycle</h3>
+<div class="flex flex-col">
+<!-- Step 1: Done -->
+<div class="flex gap-4 relative pb-8">
+<div class="absolute left-[11px] top-7 bottom-0 w-0.5 bg-primary opacity-30"></div>
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0 z-10 ring-4 ring-surface-container-lowest">
+<span class="material-symbols-outlined text-[14px] text-on-primary font-bold" data-icon="check">check</span>
+</div>
+<div class="pt-0.5">
+<p class="font-label-md text-label-md text-on-surface">Request received</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Yesterday, 14:20</p>
+</div>
+</div>
+<!-- Step 2: Current -->
+<div class="flex gap-4 relative pb-8">
+<div class="absolute left-[11px] top-7 bottom-0 w-0.5 bg-surface-variant border-dashed border-l-2 border-surface-variant bg-transparent"></div>
+<div class="w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center shrink-0 z-10 ring-4 ring-surface-container-lowest border-2 border-secondary">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+</div>
+<div class="pt-0.5">
+<p class="font-label-md text-label-md text-on-surface font-bold">Scheduled</p>
+<p class="font-label-sm text-label-sm text-secondary mt-1">Awaiting start</p>
+</div>
+</div>
+<!-- Step 3: Future -->
+<div class="flex gap-4 relative pb-8">
+<div class="absolute left-[11px] top-7 bottom-0 w-0.5 bg-surface-variant"></div>
+<div class="w-6 h-6 rounded-full bg-surface border-2 border-surface-variant flex items-center justify-center shrink-0 z-10 ring-4 ring-surface-container-lowest">
+</div>
+<div class="pt-0.5 opacity-60">
+<p class="font-label-md text-label-md text-on-surface">Started</p>
+</div>
+</div>
+<!-- Step 4: Future End -->
+<div class="flex gap-4 relative">
+<div class="w-6 h-6 rounded-full bg-surface border-2 border-surface-variant flex items-center justify-center shrink-0 z-10 ring-4 ring-surface-container-lowest">
+<span class="material-symbols-outlined text-[12px] text-surface-variant" data-icon="lock">lock</span>
+</div>
+<div class="pt-0.5 opacity-60">
+<p class="font-label-md text-label-md text-on-surface">Completed</p>
+</div>
+</div>
+<!-- Cancelled Branch -->
+<div class="flex gap-4 relative mt-6 pl-10 border-t border-surface-variant pt-6">
+<div class="absolute left-[11px] top-[-24px] bottom-[50%] w-0.5 bg-surface-variant rounded-bl-lg"></div>
+<div class="absolute left-[11px] top-[50%] w-6 h-0.5 bg-surface-variant"></div>
+<div class="w-4 h-4 rounded-full bg-surface border-2 border-outline-variant flex items-center justify-center shrink-0 z-10 relative top-1"></div>
+<div class="pt-0.5 opacity-60">
+<p class="font-label-md text-label-md text-on-surface">Cancelled</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Rules Card (Level 1 Elevation) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_20px_rgba(0,103,102,0.05)] p-stack-lg border border-surface-variant">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-outline" data-icon="info">info</span>
+<h3 class="font-label-md text-label-md font-bold text-on-surface">Rules & Escrow</h3>
+</div>
+<ul class="flex flex-col gap-3 font-body-sm text-label-sm text-on-surface-variant list-disc pl-5">
+<li>Only you can start, complete, or cancel this session.</li>
+<li>Platform fee is visible in detailed breakdown.</li>
+<li>Amount is not credited to your wallet until dual confirmation (Teacher & Student) upon completion.</li>
+</ul>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

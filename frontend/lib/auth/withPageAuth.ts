@@ -1,0 +1,92 @@
+/**
+ * `withPageAuth` — SSR page guard for Server Components.
+ *
+ * Verifies the caller is authenticated (via `getServerUserContext`, which
+ * reads the httpOnly `access_token` cookie — the redirect-loop fix), and
+ * optionally checks the caller's role against a whitelist. Redirects to
+ * `/login?redirect=<currentPath>` for anonymous callers, or `/dashboard`
+ * for role-mismatched callers.
+ *
+ * Usage in a Server Component page:
+ * ```ts
+ * import { withPageAuth } from "@/frontend/lib/auth/withPageAuth";
+ * import { UserRole } from "@/backend/enum/users/user-role.enum";
+ *
+ * export default async function StudentDashboardPage() {
+ *   const { user, role } = await withPageAuth({ roles: [UserRole.Student] });
+ *   return <StudentDashboardView user={user} />;
+ * }
+ * ```
+ *
+ * The redirect target for anonymous callers defaults to the current path
+ * (passed via the `redirectTo` option or auto-detected from the caller).
+ * The login form reads `?redirect=` and navigates there on success.
+ *
+ * @see docs/auth/REDIRECT_LOOP_FIX.md — the redirect-loop root cause + fix.
+ */
+import { redirect } from "next/navigation";
+import type { UserRole } from "@/backend/enum/users/user-role.enum";
+import { getServerUserContext } from "@/backend/lib/auth/server-auth";
+import type { RegistrationReturnType } from "@/backend/types";
+
+/** Options for `withPageAuth`. */
+export interface WithPageAuthOptions {
+  /**
+   * Optional role whitelist — if supplied, the caller's `ctx.role` must be
+   * in the list (OR semantics). A role mismatch redirects to `/dashboard`
+   * (the canonical "wrong role" fallback per `app/AGENTS.md`).
+   */
+  readonly roles?: readonly UserRole[];
+  /**
+   * The path to redirect back to after a successful login. Defaults to the
+   * current path. Pass `""` to omit the `?redirect=` param entirely.
+   */
+  readonly redirectTo?: string;
+}
+
+/** Result of a successful `withPageAuth` check — the verified user context. */
+export interface WithPageAuthResult {
+  /** Verified user id (non-null after a successful check). */
+  readonly userId: number;
+  /** Authenticated user (password-stripped). */
+  readonly user: RegistrationReturnType;
+  /** Verified role. */
+  readonly role: UserRole;
+}
+
+/**
+ * SSR page guard — verifies authentication + optional role fit.
+ *
+ * @returns `{ user, role, userId }` for authenticated callers (or
+ *     role-matched if `roles` is supplied). Redirects to
+ *     `/login?redirect=<path>` for anonymous callers, or `/dashboard` for
+ *     role-mismatched callers.
+ */
+export async function withPageAuth(options?: WithPageAuthOptions): Promise<WithPageAuthResult> {
+  const ctx = await getServerUserContext();
+
+  if (!ctx.user || !ctx.role || !ctx.userId) {
+    // Anonymous — redirect to /login with the return path.
+    const redirectTo = options?.redirectTo ?? "";
+    const loginUrl = new URL(
+      redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login",
+      process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"
+    );
+    redirect(loginUrl.toString());
+  }
+
+  // Role check — OR semantics over the supplied role set.
+  if (options?.roles && ctx.role && !options.roles.includes(ctx.role)) {
+    // Wrong role — bounce to their dashboard (canonical fallback per
+    // `app/AGENTS.md`).
+    redirect("/dashboard");
+  }
+
+  // After the guards above, ctx.user / ctx.role / ctx.userId are all
+  // non-null. The non-null assertions are safe here.
+  return {
+    userId: ctx.userId,
+    user: ctx.user,
+    role: ctx.role,
+  };
+}

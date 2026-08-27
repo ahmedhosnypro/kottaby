@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+
+<html class="dark" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kottaby Teacher Applicant Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-low": "#1c1b1b",
+                      "outline": "#99907c",
+                      "on-primary-container": "#554300",
+                      "surface-variant": "#353534",
+                      "primary-fixed-dim": "#e9c349",
+                      "on-secondary": "#383015",
+                      "tertiary": "#f1c972",
+                      "tertiary-container": "#d3ae5a",
+                      "on-secondary-fixed-variant": "#4f4629",
+                      "error": "#ffb4ab",
+                      "surface-container-high": "#2a2a2a",
+                      "surface-container-lowest": "#0e0e0e",
+                      "on-surface": "#e5e2e1",
+                      "inverse-on-surface": "#313030",
+                      "surface-bright": "#393939",
+                      "surface-dim": "#131313",
+                      "error-container": "#93000a",
+                      "surface": "#131313",
+                      "on-primary": "#3c2f00",
+                      "on-surface-variant": "#d0c5af",
+                      "secondary": "#d4c69f",
+                      "on-tertiary-fixed": "#251a00",
+                      "on-tertiary-container": "#594100",
+                      "surface-tint": "#e9c349",
+                      "on-secondary-container": "#c5b892",
+                      "background": "#131313",
+                      "primary-container": "#d4af37",
+                      "tertiary-fixed-dim": "#e8c26b",
+                      "tertiary-fixed": "#ffdf9c",
+                      "on-error": "#690005",
+                      "on-tertiary-fixed-variant": "#5b4300",
+                      "on-tertiary": "#3f2e00",
+                      "on-error-container": "#ffdad6",
+                      "secondary-fixed-dim": "#d4c69f",
+                      "outline-variant": "#4d4635",
+                      "on-secondary-fixed": "#221b03",
+                      "on-background": "#e5e2e1",
+                      "primary-fixed": "#ffe088",
+                      "primary": "#f2ca50",
+                      "surface-container": "#201f1f",
+                      "on-primary-fixed": "#241a00",
+                      "inverse-primary": "#735c00",
+                      "secondary-container": "#52482b",
+                      "inverse-surface": "#e5e2e1",
+                      "secondary-fixed": "#f0e2ba",
+                      "on-primary-fixed-variant": "#574500",
+                      "surface-container-highest": "#353534"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "container-max": "1280px",
+                      "gutter": "24px",
+                      "unit": "8px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "48px"
+              },
+              "fontFamily": {
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "EB Garamond"
+                      ],
+                      "headline-sm": [
+                              "EB Garamond"
+                      ],
+                      "display-lg-mobile": [
+                              "EB Garamond"
+                      ],
+                      "display-lg": [
+                              "EB Garamond"
+                      ],
+                      "quran-text": [
+                              "EB Garamond"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-sm": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-lg-mobile": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "quran-text": [
+                              "40px",
+                              {
+                                      "lineHeight": "64px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+            }
+          }
+        }
+      </script>
+<style>
+        .gold-border-top {
+            border-top: 1px solid rgba(212, 175, 55, 0.5);
+        }
+        .glow-shadow {
+            box-shadow: 0 8px 32px rgba(212, 175, 55, 0.15);
+        }
+        .text-glow {
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+      </style>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen">
+<!-- TopNavBar -->
+<nav class="flex justify-between items-center w-full px-margin-desktop h-16 fixed top-0 z-40 pr-72 rtl bg-surface/70 dark:bg-surface/70 backdrop-blur-md shadow-sm dark:shadow-none border-b border-outline-variant/10 font-label-md text-label-md transition-all">
+<div class="flex items-center gap-4">
+<span class="font-headline-sm text-headline-sm text-primary dark:text-primary font-bold tracking-tight">سراج التعليمي</span>
+<div class="hidden md:flex gap-6 mr-8">
+<a class="text-on-surface-variant hover:text-on-surface hover:text-primary transition-all opacity-80 hover:opacity-100" href="#">الرئيسية</a>
+<a class="text-on-surface-variant hover:text-on-surface hover:text-primary transition-all opacity-80 hover:opacity-100" href="#">المكتبة</a>
+<a class="text-on-surface-variant hover:text-on-surface hover:text-primary transition-all opacity-80 hover:opacity-100" href="#">الدعم</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-all opacity-80 hover:opacity-100">
+<span class="material-symbols-outlined" data-icon="language">language</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-all opacity-80 hover:opacity-100 relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-all opacity-80 hover:opacity-100">
+<img alt="صورة المعلم الشخصية" class="w-8 h-8 rounded-full border border-primary-container/30 object-cover" data-alt="A detailed headshot portrait of a Middle Eastern male teacher named Ahmed. He has a warm, welcoming smile, a neat beard, and is wearing professional but modest attire suitable for an online Quran academy. The lighting is soft and cinematic against a dark, elegant background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMTWvbfjgeQl5iYxyCwEQATDGdqu6pZKQBypW6cnMzMN0hDrQQ5gmsbWIbU0UHy9p5i1j5yo7YuAam1riipAweAbgupAaMmnlpbd3J7c9heq8WOkwjeHMVd5czwBgIVQmeiRkApra8IgJkErkWdRcLHEFmzxdsgFWOGnVOUP17r4WBnKXQbbeba9ZYQuYh38bdZQS1xmWLaczx-i0BI6DETutSnXmCJPmJVVgpKHeo37IxgjqXngxit9NmG_yvXoNjQ53_0KcQ0lA"/>
+</button>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="bg-surface-container-low dark:bg-surface-container-low h-screen w-64 fixed right-0 top-0 border-l border-outline-variant/20 flex flex-col h-full py-unit-8 rtl z-50">
+<div class="px-6 mb-8 flex flex-col items-center border-b border-outline-variant/10 pb-6">
+<img alt="Kottaby Logo" class="w-16 h-16 mb-4 object-contain opacity-90" src="https://lh3.googleusercontent.com/aida/AEtjO1VZ0Xnpb7k0fI1eQ6oy15WEGgZ1lohWfc_mNRgEhb0KEhMis9ZU2VAJGq4daFtQWwbf9K4Xr7R_jm2ua-r8N0dBY9rC3GKs3B4bgnA5lM6CCEPkEJVedxGRwLsEFb606GPzlziEU3GNJ3ujMp0MVakMAuGxyCctSsYXvpkCfhXit9UjAOMqPNjwRhnRr7ns8fZUFzCaynzJ_IxnswcDGoQRVWoL4gV8Kd3iZeszx2LkdTdGyivFA3-_4uk"/>
+<h2 class="font-headline-md text-headline-md text-primary dark:text-primary font-medium text-center">سراج</h2>
+<p class="text-on-surface-variant text-sm mt-1 text-center">بوابة المعلم</p>
+</div>
+<nav class="flex-1 px-4 flex flex-col gap-2 font-label-md text-label-md">
+<a class="text-primary dark:text-primary bg-primary-container/10 border-r-2 border-primary flex items-center gap-3 px-4 py-3 rounded-l-md scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>لوحة التحكم</span>
+</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 transition-colors duration-200 flex items-center gap-3 px-4 py-3 rounded-l-md scale-95 active:scale-90 transition-transform border-r-2 border-transparent" href="#">
+<span class="material-symbols-outlined" data-icon="assignment">assignment</span>
+<span>حالة الطلب</span>
+</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 transition-colors duration-200 flex items-center gap-3 px-4 py-3 rounded-l-md scale-95 active:scale-90 transition-transform border-r-2 border-transparent" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span>الملف الشخصي</span>
+</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 transition-colors duration-200 flex items-center gap-3 px-4 py-3 rounded-l-md scale-95 active:scale-90 transition-transform border-r-2 border-transparent" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>الإعدادات</span>
+</a>
+</nav>
+<div class="px-4 mt-auto border-t border-outline-variant/10 pt-4">
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30 transition-colors duration-200 flex items-center gap-3 px-4 py-3 rounded-l-md scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>تسجيل الخروج</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="mr-64 pt-24 px-margin-desktop pb-margin-desktop min-h-screen">
+<div class="max-w-container-max mx-auto">
+<!-- Greeting Header -->
+<header class="mb-12">
+<h1 class="font-display-lg text-display-lg text-primary text-glow mb-2">مرحبًا أحمد <span class="text-on-surface-variant text-3xl font-light ml-4">Welcome Ahmed</span></h1>
+<p class="text-on-surface-variant font-body-lg text-body-lg">لوحة متابعة طلب الانضمام كمعلم</p>
+</header>
+<!-- Applicant Status Card -->
+<section class="bg-surface-container-high rounded-xl p-8 mb-12 border border-outline-variant/20 gold-border-top glow-shadow relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-primary-container/5 to-transparent pointer-events-none"></div>
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 relative z-10">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">حالة الطلب <span class="text-on-surface-variant text-xl font-light ml-2">Application Status</span></h2>
+<div class="flex items-center gap-3 mt-4">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-container/20 text-primary border border-primary-container/30 font-label-md text-label-md">
+<span class="material-symbols-outlined text-sm" data-icon="hourglass_empty">hourglass_empty</span>
+                                 قيد المراجعة — Pending Evaluation
+                             </span>
+<span class="inline-flex items-center px-3 py-1 rounded-full bg-surface-variant text-on-surface-variant border border-outline-variant/30 font-label-md text-label-md text-xs">
+                                المحاولة الأولى — Attempt 1 of 3
+                             </span>
+</div>
+</div>
+<div class="mt-6 md:mt-0 text-right">
+<button class="bg-primary-container text-on-primary-container px-6 py-3 rounded-lg font-label-md text-label-md font-semibold hover:bg-primary transition-colors flex items-center gap-2">
+<span>عرض تفاصيل الطلب</span>
+<span class="material-symbols-outlined text-sm" data-icon="arrow_left_alt">arrow_left_alt</span>
+</button>
+</div>
+</div>
+<div class="relative z-10 bg-surface-container-lowest/50 rounded-lg p-6 border border-outline-variant/10">
+<p class="text-on-surface-variant font-body-md text-body-md leading-relaxed mb-4">
+                        طلبك حالياً قيد المراجعة من قبل لجنة التقييم. يرجى الانتظار لحين تحديد موعد المقابلة الأولية. سنقوم بإرسال إشعار لك فور الانتهاء من مراجعة مستنداتك.
+                    </p>
+<div class="flex items-center gap-2 text-primary/80 font-label-md text-label-md text-sm">
+<span class="material-symbols-outlined text-base" data-icon="info">info</span>
+<span>الوقت المتوقع للرد: خلال 3-5 أيام عمل</span>
+</div>
+</div>
+</section>
+<!-- Features Teaser Section -->
+<section class="mb-12">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-6 flex items-center gap-3">
+<span class="w-8 h-px bg-primary-container/50 inline-block"></span>
+                     أقسام المنصة
+                 </h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Subject Card (Locked) -->
+<div class="bg-surface-container-high/40 rounded-xl p-6 border border-outline-variant/10 relative overflow-hidden group">
+<div class="absolute inset-0 bg-surface-container-lowest/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center text-on-surface-variant/70 transition-all group-hover:backdrop-blur-[1px]">
+<span class="material-symbols-outlined text-4xl mb-2 text-outline" data-icon="lock">lock</span>
+<span class="font-label-md text-label-md">متاح بعد الاعتماد</span>
+</div>
+<div class="opacity-30 relative z-0">
+<div class="w-12 h-12 bg-surface-variant rounded-full flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="menu_book">menu_book</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-2">المواد — Subjects</h4>
+<p class="text-on-surface-variant text-sm">إدارة المناهج والدروس التي ستقوم بتدريسها.</p>
+</div>
+</div>
+<!-- Availability Card (Locked) -->
+<div class="bg-surface-container-high/40 rounded-xl p-6 border border-outline-variant/10 relative overflow-hidden group">
+<div class="absolute inset-0 bg-surface-container-lowest/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center text-on-surface-variant/70 transition-all group-hover:backdrop-blur-[1px]">
+<span class="material-symbols-outlined text-4xl mb-2 text-outline" data-icon="lock">lock</span>
+<span class="font-label-md text-label-md">متاح بعد الاعتماد</span>
+</div>
+<div class="opacity-30 relative z-0">
+<div class="w-12 h-12 bg-surface-variant rounded-full flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="schedule">schedule</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-2">أوقات التوفر — Availability</h4>
+<p class="text-on-surface-variant text-sm">تحديد الأوقات المتاحة للطلاب لحجز الجلسات.</p>
+</div>
+</div>
+<!-- Sessions Card (Locked) -->
+<div class="bg-surface-container-high/40 rounded-xl p-6 border border-outline-variant/10 relative overflow-hidden group">
+<div class="absolute inset-0 bg-surface-container-lowest/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center text-on-surface-variant/70 transition-all group-hover:backdrop-blur-[1px]">
+<span class="material-symbols-outlined text-4xl mb-2 text-outline" data-icon="lock">lock</span>
+<span class="font-label-md text-label-md">متاح بعد الاعتماد</span>
+</div>
+<div class="opacity-30 relative z-0">
+<div class="w-12 h-12 bg-surface-variant rounded-full flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="video_camera_front">video_camera_front</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-2">الحصص — Sessions</h4>
+<p class="text-on-surface-variant text-sm">الوصول إلى الفصول الافتراضية وإدارة الجلسات الحية.</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</body></html>

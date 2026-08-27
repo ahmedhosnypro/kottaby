@@ -1,0 +1,22 @@
+import type { ErrorsLabels } from "@/shared/locale/types/errors";
+
+export const errorsEn: ErrorsLabels = {
+  unauthorized: "Authentication required.",
+  forbidden: "You do not have permission to perform this action.",
+  validation: "Invalid input.",
+  conflict: "A conflict occurred with the current state.",
+  duplicateRequest: "This value is already in use.",
+  rateLimitExceeded: "Too many requests. Please try again later.",
+  notFound: "The requested resource was not found.",
+  internalServerError: "An internal server error occurred.",
+  badRequest: "Bad request.",
+  serviceUnavailable: "The service is temporarily unavailable. Please try again later.",
+  invalidLocale: "Invalid locale. Supported locales: en, ar.",
+  invalidOrigin: "Request origin is not allowed.",
+  failedToSetLocale: "Failed to set locale. Please try again.",
+  accountDeleted: "This account has been deleted.",
+  accountBlocked: "This account has been blocked.",
+  accountSuspended: "This account is suspended.",
+  tokenExpired: "Your session has expired. Please sign in again.",
+  forbiddenRole: "You do not have permission to access this page.",
+};

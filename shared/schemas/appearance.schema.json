@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/Kottaby/2020-12/schema",
+  "$id": "https://kottaby.local/shared/schemas/appearance.schema.json",
+  "title": "AppearanceFields",
+  "description": "JSON Schema (Kottaby 2020-12) for the AppearanceFields Kottaby/published projection of the `appearance_settings` entity. Validates the 7 atomic brand inputs (colors per-mode, logoUrl, siteName, siteTitle, siteDescription, defaultColorScheme). Source of truth mirrored from `backend/types/appearance.types.ts`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["colors", "logoUrl", "siteName", "siteTitle", "siteDescription", "defaultColorScheme"],
+  "properties": {
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["light", "dark"],
+      "description": "Per-mode brand colors (decision #12). Each mode stores the two atomic brand primitives; MUI derives light/dark/contrastText via nativeColor + color-mix().",
+      "properties": {
+        "light": { "$ref": "#/$defs/perModeColors" },
+        "dark": { "$ref": "#/$defs/perModeColors" }
+      }
+    },
+    "logoUrl": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "description": "Absolute URL of the uploaded logo. Nullable when no logo is set."
+    },
+    "siteName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "description": "Short brand name used in navbar + <title> template suffix."
+    },
+    "siteTitle": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": "Full title for <title> default + app header."
+    },
+    "siteDescription": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 300,
+      "description": "Meta description / OG description."
+    },
+    "defaultColorScheme": {
+      "type": "string",
+      "enum": ["light", "dark"],
+      "description": "Default mode for new visitors. Drives which mode's colors are copied into the published columns on publish."
+    }
+  },
+  "$defs": {
+    "perModeColors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primaryMain", "secondaryMain"],
+      "properties": {
+        "primaryMain": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "Hex color, e.g. #2DD4BF (6-digit, # prefix)."
+        },
+        "secondaryMain": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "Hex color, e.g. #9333EA."
+        }
+      }
+    }
+  }
+}

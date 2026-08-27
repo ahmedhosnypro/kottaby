@@ -1,0 +1,70 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
+    "skipLibCheck": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "allowJs": true,
+    "types": ["bun"]
+  },
+  "include": [
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx",
+    "next-env.d.ts",
+    "**/*.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    // Dot-directories (except `.storybook`, which is explicitly included above).
+    "**/ai/**",
+    "**/.agents/**",
+    "**/.cursor/**",
+    "**/.git/**",
+    "**/.github/**",
+    "**/.husky/**",
+    "**/.kiro/**",
+    "**/.next/**",
+    "**/.next-dev/**",
+    "**/.next-test*/**",
+    "**/.playwright-mcp/**",
+    "**/.scannerwork/**",
+    "**/.stakpak/**",
+    "**/.vercel/**",
+    "**/.vscode/**",
+    // Build output / dependency dirs that don't start with a dot.
+    "node_modules",
+    "dist",
+    "out",
+    "build",
+    "storybook-static",
+    // Source subtrees deliberately excluded from type-checking.
+    "Kottaby",
+    "frontend/graphql/generated",
+    "**/unRefactored_tests"
+  ]
+}

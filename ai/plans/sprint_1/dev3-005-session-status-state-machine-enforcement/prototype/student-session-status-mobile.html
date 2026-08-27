@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Sessions</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Inter & Courier Prime -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config Injection -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-highest": "#dce2f3",
+                    "primary": "#3525cd",
+                    "secondary-container": "#6cf8bb",
+                    "on-secondary-fixed": "#002113",
+                    "inverse-primary": "#c3c0ff",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed-variant": "#653e00",
+                    "on-primary": "#ffffff",
+                    "surface-variant": "#dce2f3",
+                    "on-tertiary-container": "#ffd4a4",
+                    "inverse-on-surface": "#ebf1ff",
+                    "on-secondary-container": "#00714d",
+                    "on-background": "#151c27",
+                    "outline": "#777587",
+                    "on-primary-container": "#dad7ff",
+                    "primary-fixed": "#e2dfff",
+                    "on-error": "#ffffff",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "secondary-fixed": "#6ffbbe",
+                    "on-surface-variant": "#464555",
+                    "tertiary-fixed": "#ffddb8",
+                    "surface-dim": "#d3daea",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "on-secondary-fixed-variant": "#005236",
+                    "secondary": "#006c49",
+                    "surface": "#f9f9ff",
+                    "on-surface": "#151c27",
+                    "background": "#f9f9ff",
+                    "surface-tint": "#4d44e3",
+                    "tertiary-fixed-dim": "#ffb95f",
+                    "surface-bright": "#f9f9ff",
+                    "on-tertiary-fixed": "#2a1700",
+                    "tertiary-container": "#885500",
+                    "on-secondary": "#ffffff",
+                    "primary-container": "#4f46e5",
+                    "on-primary-fixed": "#0f0069",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-high": "#e2e8f8",
+                    "error-container": "#ffdad6",
+                    "outline-variant": "#c7c4d8",
+                    "secondary-fixed-dim": "#4edea3",
+                    "on-tertiary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "tertiary": "#684000",
+                    "surface-container-low": "#f0f3ff",
+                    "surface-container": "#e7eefe",
+                    "inverse-surface": "#2a313d"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "unit": "4px",
+                    "container-max": "1440px",
+                    "stack-md": "16px",
+                    "margin-mobile": "16px",
+                    "gutter": "24px",
+                    "margin-desktop": "32px",
+                    "stack-sm": "8px",
+                    "stack-lg": "24px",
+                    "safe-bottom": "env(safe-area-inset-bottom, 20px)"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "mono-sm": ["Courier Prime"],
+                    "headline-sm": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-xl": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "mono-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "headline-xl": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .pulse-dot {
+            animation: pulse-animation 2s infinite;
+        }
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+        /* Custom scrollbar hiding for cleaner mobile view */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-[#F9FAFB] text-on-surface font-body-md antialiased md:hidden h-screen flex flex-col relative overflow-hidden">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim w-full top-0 sticky z-40 border-b border-outline-variant dark:border-outline flex items-center justify-between px-margin-mobile h-14">
+<button aria-label="Go back" class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center -ml-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm text-primary dark:text-primary-fixed-dim absolute left-1/2 transform -translate-x-1/2">My Sessions</h1>
+<div class="w-10 h-10"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto no-scrollbar px-margin-mobile pt-stack-md pb-[calc(80px+env(safe-area-inset-bottom,20px))] space-y-stack-md">
+<!-- Card 1 (Upcoming) -->
+<article class="bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl p-4 shadow-sm flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<img class="w-12 h-12 rounded-full object-cover border border-outline-variant" data-alt="A professional studio portrait of a male educator with a neat beard, wearing a modest, formal dark blazer over a light shirt. The background is a soft, neutral studio gray, providing high contrast and a polished, trustworthy appearance suitable for an academic platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8YozSdAVtwj9ko7lYZ0sIaquj8rGcauxBBLW1CHWmdpAlI1pyQ-JKusG7wuk90AtUdxYoxED36NHTvc8eo_PAjU0mzcMTgnSoW5mMD1Zh0vWAkpX6a7_wga_FIZoLo5ME5zBf_P3QkTTs_tqaLSj6ezATdXYXm3XRa4i2ZEJdqg4Y0eOKT_zAdyn2hUSO8hCT48opDIzAMEMBo2Te67DzoQtft8GlGbhnlr8BY3V2iui-aqNkyJ9Rwx_RzCihVt7fifP8isaJZyyh"/>
+<div>
+<h2 class="font-label-md text-label-md text-on-surface font-semibold">Sheikh Abdullah</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Quranic Recitation</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="px-2 py-1 rounded-full bg-blue-100 text-blue-800 font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event</span>
+                        Scheduled
+                    </span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant bg-surface-container-low p-2 rounded-lg">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+<p class="font-body-sm text-body-sm">Tomorrow, 5:00 PM</p>
+</div>
+<div class="flex justify-end pt-2 border-t border-outline-variant">
+<button class="bg-transparent border border-[#E5E7EB] text-on-surface font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-surface-container-low transition-colors">
+                    View Details
+                </button>
+</div>
+</article>
+<!-- Card 2 (Active) -->
+<article class="bg-[#FFFFFF] border-2 border-primary rounded-xl p-4 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] relative overflow-hidden flex flex-col gap-4">
+<!-- Glow effect border -->
+<div class="absolute inset-0 pointer-events-none rounded-xl ring-4 ring-primary/20"></div>
+<div class="flex justify-between items-start relative z-10">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-headline-md text-headline-md font-bold">
+                        MA
+                    </div>
+<div>
+<h2 class="font-label-md text-label-md text-on-surface font-semibold">Mufti Ahmed</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Fiqh Fundamentals</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="px-2 py-1 rounded-full bg-amber-100 text-amber-800 font-label-sm text-label-sm flex items-center gap-2 border border-amber-200">
+<div class="w-2 h-2 rounded-full bg-amber-500 pulse-dot"></div>
+                        Started
+                    </span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant bg-surface-container-low p-2 rounded-lg relative z-10">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+<p class="font-body-sm text-body-sm text-primary font-medium">Ongoing now (Started 10 mins ago)</p>
+</div>
+<div class="flex flex-col gap-2 pt-2 border-t border-outline-variant relative z-10">
+<button class="w-full bg-[#4F46E5] text-[#FFFFFF] font-label-md text-label-md px-4 py-3 rounded-lg hover:bg-primary-fixed-variant transition-colors flex justify-center items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">video_camera_front</span>
+                    Join Now
+                </button>
+<p class="font-mono-sm text-mono-sm text-center text-on-surface-variant flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+                    Your credit is held securely
+                </p>
+</div>
+</article>
+<!-- Card 3 (Past) -->
+<article class="bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl p-4 shadow-sm flex flex-col gap-4 opacity-75">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<img class="w-12 h-12 rounded-full object-cover border border-outline-variant" data-alt="A warm, inviting portrait of a female instructor wearing an elegant, muted-tone hijab. She is looking at the camera with a gentle, professional smile. The setting is a minimalist home office with soft natural light streaming in, emphasizing a clean, modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwIgC8LSS6fMzWdQ4ttaEg5Fp9tB6rMMjQA34_xMi1Y4h1yZivhYpb9IB_JQIs1B_U3zz__uUn3WZds859yOpxadLW22vOQIJZlw2hnW5mkRebFTAJmzLy3G-D08mNbs0pGzmnCJh6bz6mBidJ3hCo1foFYu7SwAGYIMiNq9JwMCg8n1yHBkjQAxbsve31BIMiOUEehmK1AelQdHPrXmJSSl41hj8wpDj3nXyDxTBUVHLSVGvV0btSWBbxw_iJagN56MjH7iNv9TGh"/>
+<div>
+<h2 class="font-label-md text-label-md text-on-surface font-semibold">Ustadha Fatima</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Arabic Grammar</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="px-2 py-1 rounded-full bg-green-100 text-green-800 font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                        Completed
+                    </span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant bg-surface-container-low p-2 rounded-lg">
+<span class="material-symbols-outlined text-[18px]">history</span>
+<p class="font-body-sm text-body-sm">Yesterday, 2:00 PM</p>
+</div>
+<div class="flex justify-between items-center pt-2 border-t border-outline-variant">
+<p class="font-mono-sm text-mono-sm text-green-700 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">payments</span>
+                     Fee released to teacher
+                </p>
+<button class="bg-transparent border border-[#E5E7EB] text-on-surface font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-surface-container-low transition-colors">
+                    View Report
+                </button>
+</div>
+</article>
+<!-- Card 4 (Cancelled) -->
+<article class="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4 shadow-sm flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-headline-md text-headline-md font-bold">
+                        HY
+                    </div>
+<div>
+<h2 class="font-label-md text-label-md text-on-surface-variant font-semibold line-through">Hafiz Yahya</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Memorization Review</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">cancel</span>
+                        Cancelled
+                    </span>
+</div>
+</div>
+<div class="pt-2 border-t border-outline-variant">
+<p class="font-mono-sm text-mono-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">replay</span>
+                     Held credit returned
+                </p>
+</div>
+</article>
+<!-- Info Banner -->
+<div class="bg-surface-container-high rounded-xl p-4 flex gap-3 items-start border border-outline-variant/50">
+<span class="material-symbols-outlined text-primary mt-0.5">security</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                Your session credits are protected by lifecycle invariants — a cancelled session can never be restarted.
+            </p>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface dark:bg-surface-dim fixed bottom-0 w-full z-50 rounded-t-xl border-t border-outline-variant dark:border-outline shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe-bottom">
+<ul class="flex justify-around items-center pt-2 px-2 pb-2">
+<!-- Home (Inactive) -->
+<li class="flex-1">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+</li>
+<!-- Sessions (Active) -->
+<li class="flex-1">
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container dark:bg-primary-fixed-dim dark:text-on-primary-fixed rounded-full px-4 py-1 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+<span class="font-label-sm text-label-sm">Sessions</span>
+</a>
+</li>
+<!-- Homework (Inactive) -->
+<li class="flex-1">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]">menu_book</span>
+<span class="font-label-sm text-label-sm">Homework</span>
+</a>
+</li>
+<!-- Profile (Inactive) -->
+<li class="flex-1">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-4 py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</li>
+</ul>
+</nav>
+</body></html>

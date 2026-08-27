@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html class="dark" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kottaby Academy - Re-apply Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#594100",
+                        "on-surface": "#e5e2e1",
+                        "primary": "#f2ca50",
+                        "inverse-surface": "#e5e2e1",
+                        "background": "#131313",
+                        "on-tertiary": "#3f2e00",
+                        "error-container": "#93000a",
+                        "outline": "#99907c",
+                        "outline-variant": "#4d4635",
+                        "surface-container-high": "#2a2a2a",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed-dim": "#e9c349",
+                        "tertiary-fixed": "#ffdf9c",
+                        "on-secondary-fixed-variant": "#4f4629",
+                        "tertiary-fixed-dim": "#e8c26b",
+                        "surface-container-lowest": "#0e0e0e",
+                        "tertiary-container": "#d3ae5a",
+                        "tertiary": "#f1c972",
+                        "secondary-container": "#52482b",
+                        "on-surface-variant": "#d0c5af",
+                        "on-primary-fixed": "#241a00",
+                        "error": "#ffb4ab",
+                        "surface-container-highest": "#353534",
+                        "primary-container": "#d4af37",
+                        "surface-dim": "#131313",
+                        "on-primary-container": "#554300",
+                        "surface": "#131313",
+                        "on-tertiary-fixed-variant": "#5b4300",
+                        "on-primary": "#3c2f00",
+                        "surface-bright": "#393939",
+                        "surface-container": "#201f1f",
+                        "on-secondary": "#383015",
+                        "on-background": "#e5e2e1",
+                        "secondary-fixed-dim": "#d4c69f",
+                        "secondary-fixed": "#f0e2ba",
+                        "surface-container-low": "#1c1b1b",
+                        "on-secondary-container": "#c5b892",
+                        "on-error": "#690005",
+                        "primary-fixed": "#ffe088",
+                        "inverse-primary": "#735c00",
+                        "surface-variant": "#353534",
+                        "secondary": "#d4c69f",
+                        "on-tertiary-fixed": "#251a00",
+                        "on-primary-fixed-variant": "#574500",
+                        "surface-tint": "#e9c349",
+                        "on-secondary-fixed": "#221b03",
+                        "inverse-on-surface": "#313030"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "48px",
+                        "margin-mobile": "16px",
+                        "container-max": "1280px",
+                        "unit": "8px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["EB Garamond", "serif"],
+                        "display-lg-mobile": ["EB Garamond", "serif"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "headline-md": ["EB Garamond", "serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "quran-text": ["EB Garamond", "serif"],
+                        "label-md": ["Inter", "sans-serif"],
+                        "display-lg": ["EB Garamond", "serif"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "500" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "quran-text": ["40px", { "lineHeight": "64px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .geometric-bg {
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4af37' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .glow-shadow {
+            box-shadow: 0 8px 32px rgba(212, 175, 55, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased h-screen overflow-hidden flex geometric-bg">
+<aside class="fixed right-0 top-0 h-full w-64 z-40 flex flex-col bg-surface border-l border-outline-variant/20 shadow-[0_8px_32px_rgba(212,175,55,0.15)]">
+<div class="p-6 border-b border-outline-variant/20">
+<h1 class="font-display-lg text-display-lg text-primary">أكاديمية سراج</h1>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">بوابة المعلمين</p>
+</div>
+<nav class="flex-1 overflow-y-auto py-6 flex flex-col gap-2 px-4">
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface px-4 py-3 hover:bg-surface-container-high transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">لوحة القيادة</span>
+</a>
+<a class="flex items-center gap-3 bg-secondary-container text-on-secondary-container rounded-lg px-4 py-3 border-r-4 border-primary scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment_ind</span>
+<span class="font-label-md text-label-md">حالة الطلب</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface px-4 py-3 hover:bg-surface-container-high transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md">الملف الشخصي</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface px-4 py-3 hover:bg-surface-container-high transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">الإعدادات</span>
+</a>
+</nav>
+<div class="p-4 border-t border-outline-variant/20">
+<button class="w-full bg-primary-container text-on-primary-container hover:bg-primary-fixed-dim transition-colors py-3 rounded-lg font-label-md text-label-md flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                تقديم طلب جديد
+            </button>
+<div class="mt-4 flex flex-col gap-2">
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-container-high transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">مساعدة</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:text-on-surface px-4 py-2 hover:bg-surface-container-high transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">تسجيل الخروج</span>
+</a>
+</div>
+</div>
+</aside>
+<div class="flex-1 flex flex-col mr-64">
+<header class="sticky top-0 w-full z-30 flex justify-between items-center px-margin-desktop h-16 bg-surface/70 backdrop-blur-xl border-b border-outline-variant/20">
+<div class="flex items-center gap-8">
+<h2 class="font-headline-sm text-headline-sm font-bold text-primary">سراج</h2>
+<nav class="hidden md:flex gap-6">
+<a class="text-on-surface-variant hover:text-primary transition-all font-body-md text-body-md" href="#">الرئيسية</a>
+<a class="text-on-surface-variant hover:text-primary transition-all font-body-md text-body-md" href="#">المناهج</a>
+<a class="text-on-surface-variant hover:text-primary transition-all font-body-md text-body-md" href="#">الدعم</a>
+</nav>
+</div>
+<div class="flex items-center gap-4 text-primary">
+<button class="hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined">language</span>
+</button>
+<div class="h-6 w-px bg-outline-variant/50"></div>
+<button class="hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined">dark_mode</span>
+</button>
+<img alt="Teacher Avatar" class="w-8 h-8 rounded-full border border-primary/30 object-cover" data-alt="A small, elegant circular avatar placeholder featuring a minimalist geometric Islamic pattern in subtle gold on a dark charcoal background. The lighting is soft and centered, creating a premium, refined aesthetic suitable for a high-end web application user profile image." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2HHfLJhS-cnrtUQ1a-gHBaBjuVfV14YtICU_E7hq78GafFbO1S7AeZ9K9M1fsmTMKvK5RtCnlJWQMI8dIy5yzBQW1U4DJLw12NvUqrZrjYjW311eQMrGajzyhiK_O50_iHC663VgjCc3rxljIGCtMnhhz_SQ6iRPlBVdyDnS07VTo-NcBQWEYEhMs9x4cmfPmcMspXQl3RkfOf8MHUMM6in4h3RfW8zIY_XNLY1BR0I9bPBTEW-eHMhAMBv7FGpRq60tVKZ64_5Q"/>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto p-margin-desktop">
+<div class="max-w-container-max mx-auto space-y-gutter">
+<header class="mb-8">
+<h2 class="font-headline-md text-headline-md text-on-surface">مرحبًا أحمد <span class="text-on-surface-variant font-body-lg text-body-lg ml-2">— Welcome Ahmed</span></h2>
+</header>
+<div class="bg-surface-container rounded-xl border border-error-container/30 glow-shadow p-8 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-error-container/5 rounded-bl-full blur-2xl"></div>
+<div class="flex flex-col md:flex-row justify-between items-start gap-8 relative z-10">
+<div class="space-y-6 flex-1">
+<div class="flex items-center gap-4">
+<span class="bg-error-container/20 text-error border border-error/20 px-3 py-1 rounded-full font-label-md text-label-md inline-flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">cancel</span>
+                                    لم يتم اجتياز التقييم <span class="text-error/70 ml-1">— Evaluation Not Passed</span>
+</span>
+<span class="text-on-surface-variant font-label-md text-label-md px-3 py-1 bg-surface-container-high rounded-full border border-outline-variant/30">
+                                    المحاولة 2 من 3 <span class="ml-1 opacity-70">— Attempt 2 of 3</span>
+</span>
+</div>
+<div class="bg-surface-container-high border-r-2 border-primary/50 p-4 rounded-lg rounded-tr-none">
+<div class="flex gap-3">
+<span class="material-symbols-outlined text-primary mt-1">record_voice_over</span>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">ملاحظات التقييم</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">"التجويد يحتاج مزيدًا من التدريب — Tajweed needs more practice"</p>
+</div>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end gap-4 min-w-[280px]">
+<p class="text-tertiary font-body-md text-body-md text-center w-full bg-tertiary-container/10 py-2 rounded-lg border border-tertiary-container/20">
+                                فترة الانتظار انتهت — يمكنك إعادة التقدم
+                                <br/><span class="text-sm opacity-80">Cooldown ended — you can re-apply</span>
+</p>
+<button class="w-full bg-primary-container text-on-primary-container hover:bg-primary-fixed-dim border-t border-l border-white/20 transition-all py-3 rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(212,175,55,0.2)]">
+<span class="material-symbols-outlined">refresh</span>
+                                إعادة التقدم — Re-apply Now
+                            </button>
+<a class="text-primary hover:text-tertiary text-sm text-center w-full underline underline-offset-4 decoration-primary/30 transition-colors" href="#">
+                                اطّلع على نصائح التحسين — View improvement tips
+                            </a>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter mt-8">
+<div class="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-6 opacity-60 grayscale-[50%] relative overflow-hidden group">
+<div class="absolute inset-0 bg-background/40 flex items-center justify-center z-10 transition-opacity">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant">lock</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-4">المواد <span class="text-on-surface-variant text-base ml-1">— Subjects</span></h3>
+<div class="space-y-3 blur-[2px]">
+<div class="h-10 bg-surface-container rounded border border-outline-variant/10"></div>
+<div class="h-10 bg-surface-container rounded border border-outline-variant/10"></div>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-6 opacity-60 grayscale-[50%] relative overflow-hidden">
+<div class="absolute inset-0 bg-background/40 flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant">lock</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-4">التوفر <span class="text-on-surface-variant text-base ml-1">— Availability</span></h3>
+<div class="grid grid-cols-7 gap-1 blur-[2px]">
+<div class="h-8 bg-surface-container rounded"></div>
+<div class="h-8 bg-surface-container rounded"></div>
+<div class="h-8 bg-surface-container rounded"></div>
+<div class="h-8 bg-surface-container rounded"></div>
+<div class="h-8 bg-surface-container rounded"></div>
+<div class="h-8 bg-surface-container rounded"></div>
+<div class="h-8 bg-surface-container rounded"></div>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-6 opacity-60 grayscale-[50%] relative overflow-hidden">
+<div class="absolute inset-0 bg-background/40 flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant">lock</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-4">الجلسات <span class="text-on-surface-variant text-base ml-1">— Sessions</span></h3>
+<div class="space-y-3 blur-[2px]">
+<div class="h-12 bg-surface-container rounded border border-outline-variant/10"></div>
+<div class="h-12 bg-surface-container rounded border border-outline-variant/10"></div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container border-t border-primary/20 rounded-xl p-6 mt-8">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary text-2xl">lightbulb</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">نصائح للتحسين <span class="text-on-surface-variant text-base ml-1">— Tips to improve</span></h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<a class="group block bg-surface p-4 rounded-lg border border-outline-variant/20 hover:border-primary/40 transition-colors" href="#">
+<div class="flex justify-between items-center mb-2">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">menu_book</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm group-hover:translate-x-1 transition-transform rtl:rotate-180">arrow_forward</span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface">دورة التجويد</h4>
+<p class="text-xs text-on-surface-variant mt-1">Tajweed Course</p>
+</a>
+<a class="group block bg-surface p-4 rounded-lg border border-outline-variant/20 hover:border-primary/40 transition-colors" href="#">
+<div class="flex justify-between items-center mb-2">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">headphones</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm group-hover:translate-x-1 transition-transform rtl:rotate-180">arrow_forward</span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface">تسجيلات تلاوة</h4>
+<p class="text-xs text-on-surface-variant mt-1">Recitation Recordings</p>
+</a>
+<a class="group block bg-surface p-4 rounded-lg border border-outline-variant/20 hover:border-primary/40 transition-colors" href="#">
+<div class="flex justify-between items-center mb-2">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">group</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm group-hover:translate-x-1 transition-transform rtl:rotate-180">arrow_forward</span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface">حلقة تدريب</h4>
+<p class="text-xs text-on-surface-variant mt-1">Training Circle</p>
+</a>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

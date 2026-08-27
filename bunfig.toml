@@ -1,0 +1,27 @@
+[test]
+timeout = 60000
+coverageSkipTestFiles = true
+# Bun only honors this single [test] section — named [test.*] profiles below are ignored.
+# test-runner-guard.ts must be FIRST so it exits before logger-mock/ensure-env if the
+# invocation bypassed the approved test runners (run-locked-cmd, run-test, run-parallel-tests).
+# graphql-interop.ts must come BEFORE any test file imports @apollo/client / graphql-tag:
+# it pre-imports graphql as ESM and seeds require.cache so graphql-tag's sync require('graphql')
+# resolves under Bun (graphql@17 CJS→ESM bridge is otherwise async-only).
+preload = ["./test/scripts/test-runner-guard.ts", "./backend/db/test/logger-mock.ts", "./backend/db/test/ensure-env.ts", "./test/preload/graphql-interop.ts"]
+
+# Backend DB tests: logger mock + env, NO happydom (no DOM needed)
+# [test.backend]
+# preload = ["./backend/db/test/logger-mock.ts", "./backend/db/test/ensure-env.ts"]
+# root = "backend/db/test/"
+
+# GraphQL integration tests: logger mock + env, NO happydom (no DOM needed)
+# [test.graphql]
+# preload = ["./backend/db/test/logger-mock.ts", "./backend/db/test/ensure-env.ts"]
+# root = "frontend/graphql/test/"
+
+# UI component tests: happydom + next/dynamic mock preloads are supplied via package.json
+# scripts (test:ui, test:ui:components, test:ui:e2e) because Bun only honors the single
+# [test] section in bunfig.toml - named profiles like [test.ui] below are ignored.
+# [test.ui]
+# preload = ["./backend/db/test/logger-mock.ts", "./backend/db/test/ensure-env.ts", "./test/ui/components/happydom-preload.ts", "./test/ui/components/next-dynamic-mock.ts"]
+# root = "test/ui/"

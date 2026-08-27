@@ -1,0 +1,23 @@
+import type { CommonLabels } from "@/shared/locale/types/common";
+
+export const commonAr: CommonLabels = {
+  title: "كتاب",
+  description: "Kottaby - كتاب",
+  welcome: "مرحبًا بك!",
+  loading: "جارٍ التحميل...",
+  error: "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+  retry: "إعادة المحاولة",
+  cancel: "إلغاء",
+  save: "حفظ",
+  delete: "حذف",
+  edit: "تعديل",
+  back: "رجوع",
+  close: "إغلاق",
+  search: "بحث",
+  noResults: "لا توجد نتائج",
+  documentTitleTemplate: (title: string) => `${title} | كتاب`,
+  serverNotAvailable: "الخادم غير متاح",
+  serverConnectionLost: "انقطع اتصال الخادم",
+  checkNetworkConnection: "يرجى التحقق من اتصالك بالشبكة",
+  connectionRestored: "تم استعادة الاتصال",
+};

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kottaby Admin - Plan Catalog</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-container": "#c3ecd7",
+                      "on-secondary-container": "#476c5b",
+                      "surface-container-high": "#dce9ff",
+                      "error-container": "#ffdad6",
+                      "on-error-container": "#93000a",
+                      "primary": "#004532",
+                      "outline": "#6f7973",
+                      "surface-tint": "#1b6b51",
+                      "primary-fixed": "#a6f2d1",
+                      "on-tertiary-fixed": "#131b2e",
+                      "on-primary": "#ffffff",
+                      "inverse-surface": "#213145",
+                      "surface-dim": "#cbdbf5",
+                      "on-background": "#0b1c30",
+                      "secondary": "#416656",
+                      "tertiary-fixed-dim": "#bec6e0",
+                      "secondary-fixed": "#c3ecd7",
+                      "secondary-fixed-dim": "#a8cfbc",
+                      "surface-variant": "#d3e4fe",
+                      "on-primary-fixed": "#002116",
+                      "surface-container-low": "#eff4ff",
+                      "tertiary-fixed": "#dae2fd",
+                      "on-tertiary-container": "#bfc7e1",
+                      "error": "#ba1a1a",
+                      "background": "#f8f9ff",
+                      "inverse-on-surface": "#eaf1ff",
+                      "inverse-primary": "#8bd6b6",
+                      "on-secondary-fixed": "#002115",
+                      "on-secondary-fixed-variant": "#294e3f",
+                      "on-primary-container": "#8bd6b7",
+                      "surface-container-highest": "#d3e4fe",
+                      "outline-variant": "#bec9c2",
+                      "on-error": "#ffffff",
+                      "tertiary-container": "#4b5369",
+                      "on-surface-variant": "#3f4944",
+                      "on-primary-fixed-variant": "#00513b",
+                      "on-tertiary-fixed-variant": "#3f465c",
+                      "on-tertiary": "#ffffff",
+                      "primary-container": "#065f46",
+                      "primary-fixed-dim": "#8bd6b6",
+                      "on-secondary": "#ffffff",
+                      "surface-container": "#e5eeff",
+                      "surface": "#f8f9ff",
+                      "surface-bright": "#f8f9ff",
+                      "tertiary": "#343c51",
+                      "surface-container-lowest": "#ffffff",
+                      "on-surface": "#0b1c30"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "data-row-height": "48px",
+                      "section-padding": "24px",
+                      "gutter": "16px",
+                      "container-margin": "32px"
+              },
+              "fontFamily": {
+                      "headline-sm": [
+                              "Geist"
+                      ],
+                      "label-md": [
+                              "Geist"
+                      ],
+                      "headline-md": [
+                              "Geist"
+                      ],
+                      "label-sm": [
+                              "Geist"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Geist"
+                      ],
+                      "headline-lg-mobile": [
+                              "Geist"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-sm": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24
+        }
+      </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="w-[260px] h-screen fixed left-0 top-0 bg-surface-container-lowest border-r border-outline-variant flex flex-col py-section-padding px-4 z-50">
+<div class="mb-8 px-2 flex items-center gap-3">
+<img alt="Kottaby Platform Logo" class="w-8 h-8 object-contain rounded-DEFAULT" data-alt="A minimalist and elegant logo for an Islamic education platform, featuring a stylized open book blending into a subtle crescent moon. The color scheme is deep emerald green on a pristine white background. Clean vector art style, high contrast, flat colors, professional SaaS aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9zW1_-2qD_hYZEgHOCvcGywDUzZMWqveQsJiKwsUp41CAbv33gYsyDWG_sUqTc0Ts5P3opphtbM2qznHdnWiNaz1iA5TmlGg3oPJhe7sOg_Hil9HP4--Ilsm9P543pIcIE0ObiFVbhAOrV9jPe_ITJT85a_xFnI4FENV6hYp7nWZTWOAP3xLR7YNi4_EasdUVDsDZ8BIF9RLI7jju_StGyV-hQ2whsQZtbURaSwg77VmxHrBJF_kNSMEfSX-OPNzPVmwsajBhJnQz"/>
+<div>
+<h1 class="font-headline-md text-headline-md text-primary">Kottaby Admin</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Islamic Education</p>
+</div>
+</div>
+<button class="mb-6 w-full py-2 px-4 bg-primary-container text-on-primary rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-sm">
+<span class="material-symbols-outlined">add</span>
+            New Registration
+        </button>
+<ul class="flex flex-col gap-1 flex-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors duration-200 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                    Overview
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors duration-200 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">group</span>
+                    Students
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors duration-200 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">school</span>
+                    Teachers
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-primary border-l-4 border-primary bg-secondary-container/30 font-bold transition-all opacity-90 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment</span>
+                    Plans
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors duration-200 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">payments</span>
+                    Billing
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors duration-200 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">settings</span>
+                    Settings
+                </a>
+</li>
+</ul>
+</nav>
+<!-- TopAppBar -->
+<header class="h-data-row-height w-[calc(100%-260px)] fixed top-0 right-0 bg-surface border-b border-outline-variant shadow-sm flex justify-between items-center px-container-margin z-40">
+<div class="flex-1 flex items-center">
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary cursor-pointer transition-all duration-200 ease-in-out p-1 rounded-full">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary cursor-pointer transition-all duration-200 ease-in-out p-1 rounded-full">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-6 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+<span class="font-label-md text-label-md text-on-surface">Super Admin</span>
+<img alt="Super Admin User Avatar" class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A professional headshot of a person wearing a subtle, modern business casual outfit, neutral background. Warm, inviting, and professional lighting. SaaS dashboard avatar style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuF8ngykPPHfQFOS2TpavKjKypPIprzQNAaVORLxzOl3gnNZVMvD8KOMJP6kfZDvz0C-CKTbo4FWQ8h7eYolp_gx02EC596vIgVU2bGVWs9YkIjOlVVl4-kbaYKN0QG3SV4yOjXYsxv5gClrMLp_Xe0sYxJYVYKmtZrUnyBX2Se34laSIH_jyinEWEDdYpj0jesi-g78LFMXci4-kDpJMnnUUgSw5BfHNfkLm7HIfkLwO4X3dg74NZOMPQq1BsJuZb4UJX6O_NDmw8"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[260px] mt-[48px] p-container-margin w-full flex flex-col gap-6">
+<!-- Header Row -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-background">Plan Catalog</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Manage subscription plans — create, edit, activate &amp; deactivate</p>
+</div>
+<button class="bg-primary-container text-on-primary hover:opacity-90 px-4 py-2 rounded-lg font-label-md text-label-md flex items-center gap-2 transition-all shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                Create Plan
+            </button>
+</div>
+<!-- Stat Strip -->
+<div class="flex flex-wrap gap-4 bg-surface-container-lowest border border-outline-variant rounded-xl p-4 shadow-sm w-fit">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Total Plans</span>
+<span class="font-headline-sm text-headline-sm text-primary">6</span>
+</div>
+<div class="w-px bg-outline-variant mx-2"></div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Active</span>
+<span class="font-headline-sm text-headline-sm text-on-background">5</span>
+</div>
+<div class="w-px bg-outline-variant mx-2"></div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Inactive</span>
+<span class="font-headline-sm text-headline-sm text-on-background">1</span>
+</div>
+</div>
+<!-- Filter Bar -->
+<div class="flex flex-col sm:flex-row gap-4 justify-between items-center bg-surface-container-lowest p-4 border border-outline-variant rounded-xl shadow-sm">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface border border-outline-variant rounded-lg font-body-md text-body-md text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Search by title..." type="text"/>
+</div>
+<label class="flex items-center gap-2 cursor-pointer group">
+<div class="relative">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-10 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant group-hover:text-on-background transition-colors">Include inactive</span>
+</label>
+</div>
+<!-- Main Data Table -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden flex-1">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse whitespace-nowrap">
+<thead class="bg-surface border-b border-outline-variant">
+<tr>
+<th class="px-4 py-3 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Title</th>
+<th class="px-4 py-3 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Sessions</th>
+<th class="px-4 py-3 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Price</th>
+<th class="px-4 py-3 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Currency</th>
+<th class="px-4 py-3 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Validity (days)</th>
+<th class="px-4 py-3 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Status</th>
+<th class="px-4 py-3 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md text-on-background divide-y divide-outline-variant/50">
+<tr class="hover:bg-surface transition-colors h-data-row-height group">
+<td class="px-4 py-2 font-medium">Hifz Jadid — Full Memorization Plan</td>
+<td class="px-4 py-2 text-right">60</td>
+<td class="px-4 py-2 text-right">1200.00</td>
+<td class="px-4 py-2 text-on-surface-variant">EGP</td>
+<td class="px-4 py-2 text-right">90</td>
+<td class="px-4 py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-label-sm">Active</span>
+</td>
+<td class="px-4 py-2 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors rounded" title="Edit">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:text-error transition-colors rounded" title="Deactivate">
+<span class="material-symbols-outlined text-[18px]">block</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface transition-colors h-data-row-height group">
+<td class="px-4 py-2 font-medium">Muraja'ah Review Plan</td>
+<td class="px-4 py-2 text-right">30</td>
+<td class="px-4 py-2 text-right">450.00</td>
+<td class="px-4 py-2 text-on-surface-variant">EGP</td>
+<td class="px-4 py-2 text-right">60</td>
+<td class="px-4 py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-label-sm">Active</span>
+</td>
+<td class="px-4 py-2 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors rounded" title="Edit">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:text-error transition-colors rounded" title="Deactivate">
+<span class="material-symbols-outlined text-[18px]">block</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface transition-colors h-data-row-height group">
+<td class="px-4 py-2 font-medium">Tathbeet Consolidation Plan</td>
+<td class="px-4 py-2 text-right">20</td>
+<td class="px-4 py-2 text-right">320.00</td>
+<td class="px-4 py-2 text-on-surface-variant">EGP</td>
+<td class="px-4 py-2 text-right">45</td>
+<td class="px-4 py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-label-sm">Active</span>
+</td>
+<td class="px-4 py-2 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors rounded" title="Edit">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:text-error transition-colors rounded" title="Deactivate">
+<span class="material-symbols-outlined text-[18px]">block</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface transition-colors h-data-row-height group">
+<td class="px-4 py-2 font-medium">Atfal Kids Plan</td>
+<td class="px-4 py-2 text-right">24</td>
+<td class="px-4 py-2 text-right">380.00</td>
+<td class="px-4 py-2 text-on-surface-variant">EGP</td>
+<td class="px-4 py-2 text-right">60</td>
+<td class="px-4 py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-label-sm">Active</span>
+</td>
+<td class="px-4 py-2 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors rounded" title="Edit">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:text-error transition-colors rounded" title="Deactivate">
+<span class="material-symbols-outlined text-[18px]">block</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface transition-colors h-data-row-height group">
+<td class="px-4 py-2 font-medium">New Teacher Verification &amp; Evaluation Plan</td>
+<td class="px-4 py-2 text-right">5</td>
+<td class="px-4 py-2 text-right">150.00</td>
+<td class="px-4 py-2 text-on-surface-variant">EGP</td>
+<td class="px-4 py-2 text-right">30</td>
+<td class="px-4 py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-label-sm">Active</span>
+</td>
+<td class="px-4 py-2 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors rounded" title="Edit">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:text-error transition-colors rounded" title="Deactivate">
+<span class="material-symbols-outlined text-[18px]">block</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface transition-colors h-data-row-height group bg-surface/50">
+<td class="px-4 py-2">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface-variant">Legacy Tajweed Plan 2025</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant/70">Deactivated on Oct 20, 2024</span>
+</div>
+</td>
+<td class="px-4 py-2 text-right text-on-surface-variant">40</td>
+<td class="px-4 py-2 text-right text-on-surface-variant">500.00</td>
+<td class="px-4 py-2 text-on-surface-variant">EGP</td>
+<td class="px-4 py-2 text-right text-on-surface-variant">90</td>
+<td class="px-4 py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">Inactive</span>
+</td>
+<td class="px-4 py-2 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors rounded" title="Reactivate">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Footer -->
+<div class="flex items-center gap-2 text-on-surface-variant/70 font-body-sm text-body-sm mt-4 pb-8">
+<span class="material-symbols-outlined text-[16px]">info</span>
+<p>Plans are append-only — no deletion. Deactivated plans stay hidden from the student catalog.</p>
+</div>
+</main>
+</body></html>

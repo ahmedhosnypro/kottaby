@@ -1,0 +1,58 @@
+# Vercel Ignore File
+# Prevents uploading files that are not needed for building/running the app on Vercel
+
+# local config & caches
+.vercel
+.next
+.next-test
+.eslintcache
+.quality-gate-state.json
+.scannerwork/
+tsconfig.tsbuildinfo
+
+# editor / IDE files
+.vscode/
+.idea/
+.cursor/
+.continue/
+.claude/
+.gemini/
+.agent-sandbox/
+.opencode/
+.codex
+opencode.json
+
+
+# development logs
+*.log
+logs/
+eslint-results.json
+debug-eslint.js
+debug-storybook.log
+
+# storage & local uploads
+/storage/
+/storage
+
+# docs / shell helpers (not needed for deployment)
+# Keep test/seed trees uploadable — Next build typecheck imports them
+# from colocated stories, scripts, and frontend *.test.tsx files.
+docs/
+*.md
+*.ps1
+*.sh
+.github/
+
+# temp & backups
+.env.bak
+.env.example
+.env.vercel
+.env.test
+.env.redis
+
+# ai
+ai
+.gitwandrc
+*.txt
+.playwright-cli
+.agent-canvas

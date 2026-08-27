@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Siraj - Request a Session</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#076968",
+                        "on-background": "#181c20",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#c3c7c7",
+                        "on-tertiary-fixed-variant": "#434848",
+                        "primary-fixed-dim": "#86d4d2",
+                        "on-primary-fixed-variant": "#00504f",
+                        "primary-container": "#006766",
+                        "background": "#f7f9ff",
+                        "inverse-primary": "#86d4d2",
+                        "surface-container-low": "#f1f4fa",
+                        "error": "#ba1a1a",
+                        "outline": "#6f7978",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#585d5d",
+                        "on-primary-fixed": "#00201f",
+                        "tertiary-fixed": "#dfe3e3",
+                        "surface-container": "#ebeef4",
+                        "secondary": "#006a63",
+                        "inverse-on-surface": "#eef1f7",
+                        "surface-container-highest": "#dfe3e8",
+                        "on-error-container": "#93000a",
+                        "on-secondary-container": "#006f67",
+                        "surface": "#f7f9ff",
+                        "secondary-container": "#8bf1e6",
+                        "secondary-fixed": "#8ef4e9",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#414546",
+                        "on-surface-variant": "#3e4948",
+                        "on-primary-container": "#94e2e0",
+                        "surface-variant": "#dfe3e8",
+                        "on-secondary-fixed-variant": "#00504a",
+                        "on-tertiary-container": "#d1d6d6",
+                        "surface-bright": "#f7f9ff",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#bec9c8",
+                        "surface-container-high": "#e5e8ee",
+                        "secondary-fixed-dim": "#71d7cd",
+                        "primary": "#004d4c",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#00201d",
+                        "primary-fixed": "#a2f0ee",
+                        "on-error": "#ffffff",
+                        "on-surface": "#181c20",
+                        "surface-dim": "#d7dae0",
+                        "on-tertiary-fixed": "#181c1d",
+                        "inverse-surface": "#2d3135"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "unit": "8px",
+                        "stack-lg": "32px",
+                        "margin-desktop": "40px",
+                        "container-max": "1200px",
+                        "stack-md": "16px",
+                        "gutter": "24px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "display": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "label-md": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "label-sm": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "display": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body-md text-on-surface antialiased h-screen overflow-hidden flex items-center justify-center">
+<!-- Dimmed Background Overlay -->
+<div class="fixed inset-0 bg-on-background/40 backdrop-blur-sm z-40 transition-opacity"></div>
+<!-- Modal Container -->
+<div class="relative z-50 w-full max-w-2xl bg-surface-container-lowest rounded-xl shadow-[0_8px_30px_rgba(0,77,76,0.12)] flex flex-col max-h-[921px] mx-margin-mobile md:mx-0 overflow-hidden transform transition-all">
+<!-- Header -->
+<div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20 bg-surface-container-lowest">
+<h2 class="font-headline-md text-headline-md text-on-surface">Request a Session</h2>
+<button aria-label="Close modal" class="p-2 rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-6 space-y-stack-lg">
+<!-- Teacher Info & Session Type -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-low p-4 rounded-lg">
+<div class="flex items-center gap-4">
+<img class="w-12 h-12 rounded-full object-cover border-2 border-primary-container/20" data-alt="A professional portrait of a male Islamic scholar in his 40s, wearing a traditional white thobe and a subtle dark teal kufi. The lighting is soft and natural, emphasizing wisdom and approachability. The background is slightly blurred showing a minimalist modern study space with warm lighting and a hint of a bookshelf." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDriuLQTkUosHUaueMB1s2zKqz43KoNA1xeERCIXmEr4JOnMw5pxvYmA2zNWuQCOq0BbBNVkySKoSUJyJlzQwX5l1dugwh0HZGWHydIYBCzsDZYvYDaM99FmMaSA-UleHZQ8RzZVZ-YXiham98XcfhBh6-9amg8VHOX1-nT21UA4LHSpobylOj7ndCSp1ap1u-FQFq5uQ3enGl0iiYZ1rs4rY_XcpBY-2dh3sJ_QsnQP1vY3iTyDAr_GLBXkFN5L5MclTnQONW8_UkV"/>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Ustadh Ahmed Hassan</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Certified Hafiz &amp; Qari</p>
+</div>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 bg-primary-container/10 text-primary-container rounded-full border border-primary-container/20">
+<span class="material-symbols-outlined text-[18px]">lock</span>
+<span class="font-label-md text-label-md text-sm">Hifz Memorization Session</span>
+</div>
+</div>
+<!-- Date Selection -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-stack-sm">Select Date</label>
+<div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+<!-- Date Tab (Inactive) -->
+<button class="flex flex-col items-center justify-center min-w-[72px] p-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest text-on-surface-variant hover:border-primary-container hover:text-primary-container transition-colors">
+<span class="font-body-md text-sm">Mon</span>
+<span class="font-headline-md text-lg">12</span>
+</button>
+<!-- Date Tab (Active) -->
+<button class="flex flex-col items-center justify-center min-w-[72px] p-3 rounded-lg border-2 border-primary bg-primary text-on-primary shadow-sm transition-all">
+<span class="font-body-md text-sm opacity-90">Tue</span>
+<span class="font-headline-md text-lg">13</span>
+</button>
+<!-- Date Tab (Inactive) -->
+<button class="flex flex-col items-center justify-center min-w-[72px] p-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest text-on-surface-variant hover:border-primary-container hover:text-primary-container transition-colors">
+<span class="font-body-md text-sm">Wed</span>
+<span class="font-headline-md text-lg">14</span>
+</button>
+<!-- Date Tab (Inactive) -->
+<button class="flex flex-col items-center justify-center min-w-[72px] p-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest text-on-surface-variant hover:border-primary-container hover:text-primary-container transition-colors">
+<span class="font-body-md text-sm">Thu</span>
+<span class="font-headline-md text-lg">15</span>
+</button>
+<!-- Date Tab (Disabled) -->
+<div class="flex flex-col items-center justify-center min-w-[72px] p-3 rounded-lg border border-outline-variant/10 bg-surface-container/50 text-on-surface-variant/40 cursor-not-allowed">
+<span class="font-body-md text-sm">Fri</span>
+<span class="font-headline-md text-lg">16</span>
+</div>
+</div>
+</div>
+<!-- Time Selection & Duration -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-lg">
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-stack-sm">Available Times (GMT+3)</label>
+<div class="grid grid-cols-3 gap-2">
+<button class="py-2 px-1 text-center rounded-md border border-outline-variant/30 bg-surface-container-lowest text-on-surface-variant font-body-md hover:border-primary-container hover:text-primary-container transition-colors">09:00 AM</button>
+<button class="py-2 px-1 text-center rounded-md border border-outline-variant/30 bg-surface-container-lowest text-on-surface-variant font-body-md hover:border-primary-container hover:text-primary-container transition-colors">09:30 AM</button>
+<button class="py-2 px-1 text-center rounded-md border-2 border-primary bg-primary/5 text-primary font-body-md font-medium transition-colors">10:00 AM</button>
+<button class="py-2 px-1 text-center rounded-md border border-outline-variant/30 bg-surface-container-lowest text-on-surface-variant font-body-md hover:border-primary-container hover:text-primary-container transition-colors">10:30 AM</button>
+<button class="py-2 px-1 text-center rounded-md border border-outline-variant/10 bg-surface-container/50 text-on-surface-variant/40 font-body-md cursor-not-allowed line-through">11:00 AM</button>
+<button class="py-2 px-1 text-center rounded-md border border-outline-variant/30 bg-surface-container-lowest text-on-surface-variant font-body-md hover:border-primary-container hover:text-primary-container transition-colors">11:30 AM</button>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-stack-sm">Duration</label>
+<div class="flex gap-3">
+<button class="flex-1 py-3 rounded-lg border-2 border-primary bg-primary/5 text-primary font-label-md text-label-md transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">timer</span>
+                            30 min
+                        </button>
+<button class="flex-1 py-3 rounded-lg border border-outline-variant/30 bg-surface-container-lowest text-on-surface-variant font-label-md text-label-md hover:border-primary-container hover:text-primary-container transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">timer</span>
+                            60 min
+                        </button>
+</div>
+</div>
+</div>
+<!-- Notes -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-stack-sm" for="notes">What would you like to focus on?</label>
+<textarea class="w-full rounded-lg border border-outline-variant/50 bg-surface-container-lowest p-3 font-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-none shadow-sm" id="notes" placeholder="e.g., Reviewing Surah Al-Kahf, fixing Tajweed rules..." rows="3"></textarea>
+</div>
+<!-- Fee Summary Card -->
+<div class="bg-surface-container p-4 rounded-lg border border-outline-variant/20 relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4 opacity-5">
+<span class="material-symbols-outlined text-[64px]">account_balance_wallet</span>
+</div>
+<div class="relative z-10 flex flex-col gap-2">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary-container mt-0.5">info</span>
+<div>
+<p class="font-body-md text-body-md text-on-surface font-medium">Fee: $8.00 held from Hifz balance (escrow)</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm mt-0.5">Funds are held safely and released back if cancelled.</p>
+</div>
+</div>
+<div class="flex items-start gap-3 mt-1">
+<span class="material-symbols-outlined text-outline mt-0.5 text-[20px]">schedule</span>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Teacher confirms within 24 hours or the request expires.</p>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/20">
+<p class="font-mono text-xs text-on-surface-variant">Request ID: req_9f3c2a — safe to retry; no duplicate charge</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="px-6 py-4 border-t border-outline-variant/20 bg-surface-container-lowest flex items-center justify-end gap-3">
+<button class="px-6 py-2.5 rounded-lg font-label-md text-label-md text-primary hover:bg-primary/5 transition-colors">Cancel</button>
+<button class="px-6 py-2.5 rounded-lg font-label-md text-label-md bg-outline-variant/30 text-on-surface-variant/50 flex items-center gap-2 cursor-not-allowed" disabled="">
+<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                Sending Request...
+            </button>
+</div>
+</div>
+<!-- Toast Warning (Duplicate Prevention) -->
+<div class="fixed bottom-margin-desktop left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
+<div class="flex items-center gap-3 bg-error-container text-on-error-container px-4 py-3 rounded-lg shadow-lg border border-error/20">
+<span class="material-symbols-outlined" data-weight="fill">warning</span>
+<span class="font-body-md text-body-md text-sm font-medium">A request for this slot already exists — duplicate submission prevented.</span>
+<button class="ml-2 p-1 hover:bg-error/10 rounded-full transition-colors">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+</body></html>

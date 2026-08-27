@@ -1,0 +1,273 @@
+%% Draft Academy — Domain Model: Entity Relationships & Aggregate Boundaries
+%% C4-adjacent domain model showing aggregate roots, entities, value objects, and domain events
+
+erDiagram
+    %% === USER AGGREGATE (Root: User) ===
+    users ||--o| admin : "inherits (shared PK)"
+    users ||--o| teacher : "inherits (shared PK)"
+    users ||--o| students : "inherits (shared PK)"
+    users ||--o| parents : "inherits (shared PK)"
+    users ||--o| applicants : "inherits (shared PK)"
+    users {
+        integer id PK
+        varchar full_name
+        varchar email
+        varchar phone
+        varchar password_hash
+        user_role role
+        date date_of_birth
+        gender gender
+        varchar country
+        boolean is_deleted
+        timestamp deleted_at
+        boolean suspended
+        timestamp suspended_at
+        integer suspended_period_days
+        boolean is_blocked
+        timestamp blocked_at
+        timestamp last_active_at
+        timestamp created_at
+        timestamp updated_at
+    }
+    admin {
+        integer id PK
+        timestamp created_at
+        timestamp updated_at
+    }
+    parents {
+        integer id PK
+        timestamp created_at
+        timestamp updated_at
+    }
+    applicants {
+        integer id PK
+        integer verification_attempts
+        timestamp last_attempt_at
+        timestamp cooldown_until
+        varchar status
+        timestamp created_at
+        timestamp updated_at
+    }
+    teacher {
+        integer id PK
+        boolean is_approved
+        boolean is_evaluator
+        decimal average_rating
+        boolean is_online
+        varchar subjects
+        teacher_request_preference request_preference
+        timestamp created_at
+        timestamp updated_at
+    }
+    students {
+        integer id PK
+        integer balance_hifz
+        integer balance_reviews
+        integer balance_tajweed
+        varchar primary_language
+        varchar another_language
+        varchar handshake_code
+        integer parent_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% === TEACHER VERIFICATION AGGREGATE ===
+    teacher ||--o{ teacher_verification : "has verification record"
+    teacher_verification {
+        integer id PK
+        integer teacher_id FK
+        varchar tajweed_level
+        varchar hifz_level
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% === PLAN & SUBSCRIPTION AGGREGATE ===
+    plans ||--o{ subscriptions : "subscribed via"
+    plans ||--o{ lessons : "contains"
+    subscriptions ||--o{ student_subscriptions : "enrolls students"
+    students ||--o{ student_subscriptions : "subscribes to"
+    plans {
+        integer id PK
+        varchar title
+        integer session_count
+        decimal price
+        char currency
+        integer interval_days
+        timestamp created_at
+        timestamp updated_at
+    }
+    subscriptions {
+        integer id PK
+        integer user_id FK
+        integer plan_id FK
+        subscription_status status
+        timestamp start_date
+        timestamp end_date
+        payment_gateway payment_method
+        varchar payment_reference
+        timestamp payment_verified_at
+        timestamp created_at
+        timestamp updated_at
+    }
+    student_subscriptions {
+        integer student_id PK
+        integer subscription_id PK
+        timestamp enrolled_at
+    }
+    lessons {
+        integer id PK
+        integer plan_id FK
+        varchar title
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% === SESSION AGGREGATE (Root: Session) ===
+    teacher ||--o{ session : "teaches in"
+    students ||--o{ session : "attends"
+    session ||--o| reports : "produces"
+    session ||--o| home_work : "assigns"
+    session ||--o{ evaluations : "evaluates"
+    session {
+        integer id PK
+        integer teacher_id FK
+        integer student_id FK
+        session_status status
+        session_type session_type
+        session_intent intent
+        decimal fee
+        boolean fee_held
+        timestamp started_at
+        timestamp ended_at
+        timestamp confirmed_by_student_at
+        timestamp confirmed_by_teacher_at
+        timestamp confirmation_deadline
+        timestamp created_at
+        timestamp updated_at
+    }
+    reports {
+        integer id PK
+        integer session_id FK
+        text teacher_notes
+        integer student_rating_by_teacher
+        timestamp created_at
+        timestamp updated_at
+    }
+    home_work {
+        integer id PK
+        integer session_id FK
+        integer current_from_ayah
+        integer current_to_ayah
+        integer current_grade
+        surah_juz_ref current_surah_juz
+        integer revision_from_ayah
+        integer revision_to_ayah
+        integer revision_grade
+        surah_juz_ref revision_surah_juz
+        timestamp created_at
+        timestamp updated_at
+    }
+    evaluations {
+        integer id PK
+        integer evaluated_id FK
+        integer evaluator_id FK
+        integer session_id FK
+        integer score
+        text notes
+        boolean is_deleted
+        timestamp deleted_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% === FINANCIAL AGGREGATE ===
+    teacher ||--o| wallet : "owns wallet"
+    wallet ||--o{ teacher_transaction : "records transactions"
+    session ||--o{ teacher_transaction : "triggers payout"
+    wallet {
+        integer id PK
+        integer teacher_id FK
+        decimal balance
+        decimal total_earning
+        timestamp created_at
+        timestamp updated_at
+    }
+    teacher_transaction {
+        integer id PK
+        integer wallet_id FK
+        integer session_id FK
+        varchar description
+        decimal amount
+        transaction_type type
+        transaction_status status
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% === PAYMENT AGGREGATE ===
+    students ||--o{ student_payments : "makes payments"
+    subscriptions ||--o{ student_payments : "payment for"
+    student_payments {
+        integer id PK
+        integer student_id FK
+        integer subscription_id FK
+        decimal amount
+        char currency
+        payment_gateway payment_gateway
+        payment_status status
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% === PROGRESS AGGREGATE ===
+    students ||--o{ progress : "tracks"
+    lessons ||--o{ progress : "tracked in"
+    progress {
+        integer id PK
+        integer student_id FK
+        integer lesson_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% === RECITATION (Value Object linked to Session) ===
+    session ||--o| recitation : "has recitation"
+    recitation {
+        integer id PK
+        integer session_id FK
+        varchar name
+        text description
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% === NOTIFICATION AGGREGATE (A.4) ===
+    users ||--o{ notifications : "receives"
+    notifications {
+        integer id PK
+        integer user_id FK
+        notification_type type
+        varchar title
+        text body
+        boolean is_read
+        varchar related_entity_type
+        integer related_entity_id
+        timestamp created_at
+    }
+
+    %% === AUDIT LOG AGGREGATE (A.5) ===
+    users ||--o{ audit_logs : "performs (actor)"
+    audit_logs {
+        integer id PK
+        integer actor_id FK
+        audit_action_type action_type
+        varchar entity_type
+        integer entity_id
+        varchar details
+        timestamp created_at
+    }
+
+    %% === PARENT-CHILD LINK (A.2) ===
+    users ||--o{ students : "parent of (via parent_id)"

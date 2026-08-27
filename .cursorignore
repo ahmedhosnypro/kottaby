@@ -1,0 +1,52 @@
+# Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+# Vercel Ignore File
+# Prevents uploading files that are not needed for building/running the app on Vercel
+
+# local config & caches
+.vercel
+.next
+.next-test
+.eslintcache
+.quality-gate-state.json
+.scannerwork
+.agent-sandbox
+tsconfig.tsbuildinfo
+
+# editor / IDE files
+.vscode
+.idea
+.continue
+.gemini
+.agent-sandbox
+.opencode
+.codex
+.kilo
+opencode.json
+.container
+.devcontainer
+.github
+.husky
+ai
+# development logs
+*.log
+logs
+eslint-results.json
+debug-eslint.js
+debug-storybook.log
+node_modules
+public
+# storage & local uploads
+/storage/
+/storage
+
+# temp & backups
+.env
+!.env.example
+.gitattributes
+.mcp.json
+.vercelignore
+biome.json
+.gitwandrc
+*.txt
+.playwright-cli
+.agent-canvas

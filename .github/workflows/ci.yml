@@ -1,0 +1,316 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Self-contained CI environment variables (no external GitHub secrets/vars required)
+env:
+  TEST_SERVER: "1"
+  TEST_CI: "1"
+  DATABASE_URL: "postgresql://kottaby:ci-local-only-fixture@127.0.0.1:5432/kottaby_test"
+  DATABASE_ENCRYPTION_KEY: "cafef00dcafe1234cafef00dcafe1234cafef00dcafe1234cafef00dcafe1234"
+  DB_PROVIDER: "postgres"
+  AUTH_COOKIE_SECURE: "false"
+  SEED_PROFILE: "minimal"
+  JWT_ACCESS_SECRET: "ci-jwt-access-secret-123456789012345678901234567890"
+  JWT_REFRESH_SECRET: "ci-jwt-refresh-secret-123456789012345678901234567890"
+  REDIS_PROVIDER: "local"
+  REDIS_URL: "redis://127.0.0.1:6379"
+  STORAGE_PROVIDER: "local"
+  LOCAL_STORAGE_PATH: "./storage/"
+  ALLOWED_ORIGIN: "http://localhost:3000"
+  NEXT_PUBLIC_BASE_URL: "http://localhost:3000"
+
+jobs:
+  # Quality stage: typecheck, linting, formatting, duplication, and GraphQL codegen check
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
+      - name: Restore Bun install cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - name: Restore ESLint cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            .eslintcache
+            .eslintcache-type-aware
+          key: ${{ runner.os }}-eslint-${{ github.run_id }}
+          restore-keys: ${{ runner.os }}-eslint-
+
+      - name: Setup environment files
+        run: |
+          cat << 'EOF' > .env.test
+          TEST_SERVER=1
+          TEST_CI=1
+          DATABASE_URL=postgresql://kottaby:ci-local-only-fixture@127.0.0.1:5432/kottaby_test
+          DATABASE_ENCRYPTION_KEY=cafef00dcafe1234cafef00dcafe1234cafef00dcafe1234cafef00dcafe1234
+          DB_PROVIDER=postgres
+          AUTH_COOKIE_SECURE=false
+          SEED_PROFILE=minimal
+          JWT_ACCESS_SECRET=ci-jwt-access-secret-123456789012345678901234567890
+          JWT_REFRESH_SECRET=ci-jwt-refresh-secret-123456789012345678901234567890
+          REDIS_PROVIDER=local
+          REDIS_URL=redis://127.0.0.1:6379
+          STORAGE_PROVIDER=local
+          LOCAL_STORAGE_PATH=./storage/
+          ALLOWED_ORIGIN=http://localhost:3000
+          NEXT_PUBLIC_BASE_URL=http://localhost:3000
+          EOF
+          cp .env.test .env
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type check (tsgo)
+        id: tsgo
+        run: bun tsgo
+
+      - name: Fast lint (oxlint)
+        id: oxlint
+        run: bun run oxlint
+
+      - name: Format check (biome)
+        id: biome_check
+        run: bun biome:check
+
+      - name: ESLint (type-aware)
+        id: lint
+        run: bun run lint
+
+      - name: Check code duplicates
+        id: duplicates
+        run: bun run check:duplicates
+
+      - name: Verify clean working directory
+        run: |
+          git diff --exit-code --name-only || {
+            echo "::error::Working directory modified by checks. Run formatting/linting locally and commit changes."
+            git status --short
+            exit 1
+          }
+
+      - name: GraphQL codegen drift check
+        run: bun run generate:gqlSchema && bun codegen && git diff --exit-code
+
+      - name: Save Bun install cache
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}-${{ github.run_id }}
+
+      - name: Save ESLint cache
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            .eslintcache
+            .eslintcache-type-aware
+          key: ${{ runner.os }}-eslint-${{ github.run_id }}
+
+  # Database tests against PostgreSQL 16 service container
+  tests-db:
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kottaby
+          POSTGRES_PASSWORD: ci-local-only-fixture
+          POSTGRES_DB: kottaby_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U kottaby -d kottaby_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
+      - name: Restore Bun install cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - name: Setup environment files
+        run: |
+          cat << 'EOF' > .env.test
+          TEST_SERVER=1
+          TEST_CI=1
+          DATABASE_URL=postgresql://kottaby:ci-local-only-fixture@127.0.0.1:5432/kottaby_test
+          DATABASE_ENCRYPTION_KEY=cafef00dcafe1234cafef00dcafe1234cafef00dcafe1234cafef00dcafe1234
+          DB_PROVIDER=postgres
+          AUTH_COOKIE_SECURE=false
+          SEED_PROFILE=minimal
+          JWT_ACCESS_SECRET=ci-jwt-access-secret-123456789012345678901234567890
+          JWT_REFRESH_SECRET=ci-jwt-refresh-secret-123456789012345678901234567890
+          REDIS_PROVIDER=local
+          REDIS_URL=redis://127.0.0.1:6379
+          STORAGE_PROVIDER=local
+          LOCAL_STORAGE_PATH=./storage/
+          ALLOWED_ORIGIN=http://localhost:3000
+          NEXT_PUBLIC_BASE_URL=http://localhost:3000
+          EOF
+          cp .env.test .env
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run database migrations
+        run: bun run db migrate
+
+      - name: Run database repository tests
+        run: bun run test:db
+
+  # Backend service tests with mocked adapters
+  tests-services:
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
+      - name: Restore Bun install cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - name: Setup environment files
+        run: |
+          cat << 'EOF' > .env.test
+          TEST_SERVER=1
+          TEST_CI=1
+          DATABASE_URL=postgresql://kottaby:ci-local-only-fixture@127.0.0.1:5432/kottaby_test
+          DATABASE_ENCRYPTION_KEY=cafef00dcafe1234cafef00dcafe1234cafef00dcafe1234cafef00dcafe1234
+          DB_PROVIDER=postgres
+          AUTH_COOKIE_SECURE=false
+          SEED_PROFILE=minimal
+          JWT_ACCESS_SECRET=ci-jwt-access-secret-123456789012345678901234567890
+          JWT_REFRESH_SECRET=ci-jwt-refresh-secret-123456789012345678901234567890
+          REDIS_PROVIDER=local
+          REDIS_URL=redis://127.0.0.1:6379
+          STORAGE_PROVIDER=local
+          LOCAL_STORAGE_PATH=./storage/
+          ALLOWED_ORIGIN=http://localhost:3000
+          NEXT_PUBLIC_BASE_URL=http://localhost:3000
+          EOF
+          cp .env.test .env
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run backend service tests
+        run: bun run test:services
+
+  # GraphQL integration tests against dev/test server
+  tests-graphql:
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kottaby
+          POSTGRES_PASSWORD: ci-local-only-fixture
+          POSTGRES_DB: kottaby_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U kottaby -d kottaby_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
+      - name: Restore Bun install cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - name: Setup environment files
+        run: |
+          cat << 'EOF' > .env.test
+          TEST_SERVER=1
+          TEST_CI=1
+          DATABASE_URL=postgresql://kottaby:ci-local-only-fixture@127.0.0.1:5432/kottaby_test
+          DATABASE_ENCRYPTION_KEY=cafef00dcafe1234cafef00dcafe1234cafef00dcafe1234cafef00dcafe1234
+          DB_PROVIDER=postgres
+          AUTH_COOKIE_SECURE=false
+          SEED_PROFILE=minimal
+          JWT_ACCESS_SECRET=ci-jwt-access-secret-123456789012345678901234567890
+          JWT_REFRESH_SECRET=ci-jwt-refresh-secret-123456789012345678901234567890
+          REDIS_PROVIDER=local
+          REDIS_URL=redis://127.0.0.1:6379
+          STORAGE_PROVIDER=local
+          LOCAL_STORAGE_PATH=./storage/
+          ALLOWED_ORIGIN=http://localhost:3000
+          NEXT_PUBLIC_BASE_URL=http://localhost:3000
+          EOF
+          cp .env.test .env
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run database migrations
+        run: bun run db migrate
+
+      - name: Run GraphQL integration tests
+        run: bun run test:graphql

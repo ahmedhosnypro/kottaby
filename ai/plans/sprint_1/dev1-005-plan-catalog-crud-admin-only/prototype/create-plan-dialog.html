@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Create Plan Modal - Kottaby Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed": "#002115",
+                      "on-error": "#ffffff",
+                      "error": "#ba1a1a",
+                      "tertiary-fixed-dim": "#bec6e0",
+                      "on-secondary-fixed-variant": "#294e3f",
+                      "outline": "#6f7973",
+                      "error-container": "#ffdad6",
+                      "surface-container-low": "#eff4ff",
+                      "surface-tint": "#1b6b51",
+                      "primary": "#004532",
+                      "on-secondary-container": "#476c5b",
+                      "surface-container-highest": "#d3e4fe",
+                      "on-surface-variant": "#3f4944",
+                      "surface-bright": "#f8f9ff",
+                      "primary-fixed-dim": "#8bd6b6",
+                      "on-tertiary-container": "#bfc7e1",
+                      "on-tertiary-fixed-variant": "#3f465c",
+                      "secondary-fixed-dim": "#a8cfbc",
+                      "background": "#f8f9ff",
+                      "surface-container-high": "#dce9ff",
+                      "on-primary-container": "#8bd6b7",
+                      "primary-fixed": "#a6f2d1",
+                      "on-error-container": "#93000a",
+                      "on-background": "#0b1c30",
+                      "secondary-fixed": "#c3ecd7",
+                      "on-primary": "#ffffff",
+                      "secondary": "#416656",
+                      "inverse-surface": "#213145",
+                      "surface-variant": "#d3e4fe",
+                      "on-tertiary": "#ffffff",
+                      "surface-dim": "#cbdbf5",
+                      "outline-variant": "#bec9c2",
+                      "tertiary": "#343c51",
+                      "surface": "#f8f9ff",
+                      "primary-container": "#065f46",
+                      "on-secondary": "#ffffff",
+                      "tertiary-fixed": "#dae2fd",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-fixed": "#002116",
+                      "secondary-container": "#c3ecd7",
+                      "tertiary-container": "#4b5369",
+                      "surface-container": "#e5eeff",
+                      "on-tertiary-fixed": "#131b2e",
+                      "inverse-primary": "#8bd6b6",
+                      "on-primary-fixed-variant": "#00513b",
+                      "on-surface": "#0b1c30",
+                      "inverse-on-surface": "#eaf1ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "section-padding": "24px",
+                      "data-row-height": "48px",
+                      "gutter": "16px",
+                      "container-margin": "32px",
+                      "unit": "4px"
+              },
+              "fontFamily": {
+                      "label-sm": ["Geist"],
+                      "body-md": ["Inter"],
+                      "headline-lg-mobile": ["Geist"],
+                      "headline-sm": ["Geist"],
+                      "headline-lg": ["Geist"],
+                      "body-lg": ["Inter"],
+                      "label-md": ["Geist"],
+                      "body-sm": ["Inter"],
+                      "headline-md": ["Geist"]
+              },
+              "fontSize": {
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                      "headline-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                      "body-sm": ["12px", {"lineHeight": "18px", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-geist { font-family: 'Geist', sans-serif; }
+        
+        /* Custom scrollbar for modal */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #bec9c2; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6f7973; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-lowest w-[260px] h-screen fixed left-0 top-0 border-r border-outline-variant flex flex-col py-section-padding z-30">
+<div class="px-4 mb-8 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center text-on-primary-container">
+<span class="material-symbols-outlined text-[24px]">menu_book</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Kottaby Admin</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Islamic Education</p>
+</div>
+</div>
+<div class="px-4 mb-6">
+<button class="w-full bg-primary text-on-primary font-label-md text-label-md py-2 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-on-primary-fixed-variant transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                New Registration
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto px-4 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Overview</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Students</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-label-md text-label-md">Teachers</span>
+</a>
+<!-- Active Tab -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-primary border-l-4 border-primary bg-secondary-container/30 font-bold opacity-90 transition-all" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment</span>
+<span class="font-label-md text-label-md">Plans</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Billing</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col ml-[260px] min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface h-data-row-height w-[calc(100%-260px)] fixed top-0 right-0 border-b border-outline-variant shadow-sm flex justify-between items-center px-container-margin z-40 transition-all duration-200 ease-in-out">
+<div class="flex items-center gap-4">
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-[20px]">search</span>
+<input class="w-full h-8 pl-10 pr-3 rounded-full border-none bg-surface-container text-body-sm text-on-surface focus:ring-2 focus:ring-primary/20 placeholder:text-outline" placeholder="Search..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary cursor-pointer w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary cursor-pointer w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[20px]">help_outline</span>
+</button>
+<div class="h-6 w-[1px] bg-outline-variant mx-1"></div>
+<div class="flex items-center gap-3 pl-2">
+<div class="text-right hidden md:block">
+<p class="font-label-sm text-label-sm text-on-surface font-semibold">Super Admin</p>
+</div>
+<img class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="A small, professional headshot of an administrator in an educational setting, clean lighting, white background, suitable for a UI avatar, modern style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCI55ASCPOj3VaU5B4FgNnFEfeAxsi8fmxElrK5voaJjD8LE5RLyePQ6_VdSkxPKxTlVf6S4pcx4G0xCycSMGgbV9M7yRxFoL96xz3V9_0rb5kzodAkXzs2n7-VZcCAaMGoWo3mIx8qIWp1xc_LL5BZrCB7ouH5qdn_zgVbwVPvzMDptF2MGk2AL0OPjCNbsugwHzE81IGfYqs7h04ujn6WeSDWw3VS4RWxZMtoH6-aXhpo8whCofIh1Mv0cqUM1LpwDiYvA5yo3voH"/>
+</div>
+</div>
+</header>
+<!-- Page Canvas (Dimmed) -->
+<main aria-hidden="true" class="flex-1 mt-[48px] p-container-margin relative z-10">
+<div class="flex justify-between items-center mb-6">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Plan Catalog</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Manage and configure educational plans for students.</p>
+</div>
+<button class="bg-primary text-on-primary font-label-md text-label-md py-2 px-4 rounded-lg flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                    Create Plan
+                </button>
+</div>
+<!-- Dummy Table Data -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden pointer-events-none">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface border-b border-outline-variant">
+<th class="font-label-sm text-label-sm text-on-surface-variant uppercase px-4 py-3 font-semibold tracking-wider">Plan Name</th>
+<th class="font-label-sm text-label-sm text-on-surface-variant uppercase px-4 py-3 font-semibold tracking-wider">Sessions</th>
+<th class="font-label-sm text-label-sm text-on-surface-variant uppercase px-4 py-3 font-semibold tracking-wider">Price</th>
+<th class="font-label-sm text-label-sm text-on-surface-variant uppercase px-4 py-3 font-semibold tracking-wider">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b border-outline-variant/50 h-data-row-height">
+<td class="px-4 py-2 font-label-md text-label-md text-on-surface">Hifz Jadid — Standard</td>
+<td class="px-4 py-2 font-body-sm text-body-sm text-on-surface-variant">12</td>
+<td class="px-4 py-2 font-body-sm text-body-sm text-on-surface-variant">450.00 EGP</td>
+<td class="px-4 py-2"><span class="bg-secondary-fixed px-2 py-1 rounded-full text-[10px] font-bold text-on-secondary-fixed">ACTIVE</span></td>
+</tr>
+<tr class="h-data-row-height">
+<td class="px-4 py-2 font-label-md text-label-md text-on-surface">Tajweed Mastery</td>
+<td class="px-4 py-2 font-body-sm text-body-sm text-on-surface-variant">24</td>
+<td class="px-4 py-2 font-body-sm text-body-sm text-on-surface-variant">800.00 EGP</td>
+<td class="px-4 py-2"><span class="bg-surface-variant px-2 py-1 rounded-full text-[10px] font-bold text-on-surface-variant">INACTIVE</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</main>
+<!-- Modal Overlay & Dialog -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-on-background/30 backdrop-blur-sm p-4">
+<!-- Modal Container -->
+<div class="bg-surface-container-lowest w-full max-w-[560px] rounded-lg shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-2px_rgba(0,0,0,0.05)] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+<!-- Header -->
+<div class="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Create Plan</h2>
+<button class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container w-8 h-8 rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Body (Form) -->
+<div class="p-6 overflow-y-auto max-h-[calc(100vh-200px)] flex flex-col gap-5">
+<!-- Field: Plan Title -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1.5" for="planTitle">Plan Title <span class="text-error">*</span></label>
+<input class="w-full h-10 px-3 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow placeholder:text-outline" id="planTitle" placeholder="e.g. Hifz Jadid — Full Memorization Plan" type="text"/>
+</div>
+<!-- Row: Session Count & Validity -->
+<div class="flex gap-4">
+<div class="flex-1">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1.5" for="sessionCount">Session Count <span class="text-error">*</span></label>
+<input class="w-full h-10 px-3 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" id="sessionCount" min="1" type="number" value="12"/>
+<p class="font-body-sm text-body-sm text-on-surface-variant/70 mt-1">Minimum 1 session</p>
+</div>
+<div class="flex-1">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1.5" for="validity">Validity Period (days) <span class="text-error">*</span></label>
+<input class="w-full h-10 px-3 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" id="validity" min="1" type="number" value="30"/>
+<p class="font-body-sm text-body-sm text-on-surface-variant/70 mt-1">Minimum 1 day</p>
+</div>
+</div>
+<!-- Row: Price & Currency -->
+<div class="flex gap-4 items-start">
+<!-- Error State Field -->
+<div class="flex-[2]">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1.5" for="price">Price <span class="text-error">*</span></label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="font-body-md text-body-md text-error font-medium">EGP</span>
+</div>
+<input class="w-full h-10 pl-12 pr-3 rounded-lg border border-error bg-error-container/10 text-body-md text-error focus:outline-none focus:border-error focus:ring-1 focus:ring-error transition-shadow" id="price" type="text" value="45o.0"/>
+<div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-error text-[18px]">error</span>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-error mt-1.5 flex items-start gap-1">
+                                Price must be a non-negative decimal (e.g. 450.00) — up to 2 decimal places
+                            </p>
+</div>
+<div class="flex-1">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1.5" for="currency">Currency</label>
+<div class="relative">
+<select class="w-full h-10 pl-3 pr-8 rounded-lg border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" id="currency">
+<option selected="" value="EGP">EGP</option>
+<option value="USD">USD</option>
+<option value="SAR">SAR</option>
+</select>
+<div class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline-variant text-[20px]">expand_more</span>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant/70 mt-1">3-letter ISO code</p>
+</div>
+</div>
+<!-- Info Callout -->
+<div class="mt-2 bg-surface-container-high rounded-lg p-4 flex gap-3 items-start border border-surface-variant">
+<span class="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">info</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                            New plans are created <strong class="text-on-surface font-semibold">Active</strong> and immediately purchasable by students via the catalog.
+                        </p>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="px-6 py-4 border-t border-outline-variant flex justify-end items-center gap-3 bg-surface-container-lowest rounded-b-lg">
+<button class="px-4 h-10 rounded-lg font-label-md text-label-md text-primary hover:bg-surface-container transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20">
+                        Cancel
+                    </button>
+<!-- Disabled Primary Button with Spinner -->
+<button class="px-4 h-10 rounded-lg font-label-md text-label-md bg-primary/60 text-on-primary flex items-center gap-2 cursor-not-allowed shadow-sm" disabled="">
+<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                        Saving...
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

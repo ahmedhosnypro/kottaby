@@ -1,0 +1,129 @@
+enum Gender {
+  Female
+  Male
+  Other
+}
+
+type HealthCheck {
+  service: String!
+  status: String!
+  timestamp: String!
+  version: String!
+}
+
+type LoginPayload {
+  """
+  Short-lived access token (15 min). Store in React memory; NEVER set as a cookie.
+  """
+  accessToken: String!
+
+  """
+  Long-lived refresh token (7 days). Also set as an httpOnly cookie by the route handler.
+  """
+  refreshToken: String!
+
+  """The authenticated user."""
+  user: User!
+}
+
+type LogoutPayload {
+  """Whether the logout succeeded (always true — public mutation)."""
+  success: Boolean!
+}
+
+type Mutation {
+  """
+  Authenticate with email + password. Returns the authenticated user + access + refresh tokens. The access_token + refresh_token + session_id are also set as httpOnly cookies.
+  """
+  login(email: String!, password: String!): LoginPayload!
+
+  """
+  Clears the access_token + refresh_token + session_id httpOnly cookies. Public — callable with an expired token. Always returns { success: true }.
+  """
+  logout: LogoutPayload!
+
+  """
+  Rotate the JWT pair from a valid refresh token. Returns fresh access + refresh tokens. The new access_token + refresh_token + session_id are also set as httpOnly cookies (rotation invalidates the prior pair).
+  """
+  refreshToken(refreshToken: String!): RefreshTokenPayload!
+  registerUser(input: RegisterUserInput!): User!
+}
+
+type Query {
+  _health: HealthCheck!
+
+  """
+  Returns the authenticated user (or null for anonymous). Anonymous callers receive null — the AuthProvider uses this to detect expired access tokens and silently restore the session via `refreshToken`.
+  """
+  me: User
+
+  """
+  Returns the canonical list of recitation readings (Qira'at) for the registration form selector. Public — no authentication required. The values are stable API identifiers; display labels are resolved client-side via the i18n recitation namespace.
+  """
+  recitationReadings: [RecitationReading!]!
+}
+
+enum RecitationReading {
+  AL_BAZZI_AN_IBN_KATHIR
+  AL_DURI_AN_ABI_AMR
+  AL_SUSI_AN_ABI_AMR
+  HAFS_AN_ASIM
+  KHALAF_AN_HAMZAH
+  KHALLAD_AN_ASIM
+  QALUN_AN_NAFI
+  QUNBUL_AN_IBN_KATHIR
+  SHUBAH_AN_ASIM
+  WARSH_AN_NAFI
+}
+
+type RefreshTokenPayload {
+  """Fresh short-lived access token (15 min)."""
+  accessToken: String!
+
+  """
+  Fresh long-lived refresh token (7 days). Also set as an httpOnly cookie by the route handler (rotation).
+  """
+  refreshToken: String!
+}
+
+enum RegisterPublicRole {
+  Parent
+  Student
+  Teacher
+}
+
+input RegisterUserInput {
+  country: String!
+  email: String!
+  fullName: String!
+  gender: Gender
+  password: String!
+  phone: String!
+  preferredRecitation: RecitationReading
+  role: RegisterPublicRole!
+}
+
+type User {
+  country: String
+  email: String!
+  fullName: String!
+  gender: Gender
+  id: Int!
+  isBlocked: Boolean!
+  isDeleted: Boolean!
+  phone: String
+
+  """
+  The user's preferred recitation reading (Qira'ah), selected during registration. Contract metadata — not persisted to the session-linked `recitation` table (C.5).
+  """
+  preferredRecitation: RecitationReading
+  role: UserRole!
+  suspended: Boolean!
+}
+
+enum UserRole {
+  Admin
+  Parent
+  Student
+  Teacher
+}

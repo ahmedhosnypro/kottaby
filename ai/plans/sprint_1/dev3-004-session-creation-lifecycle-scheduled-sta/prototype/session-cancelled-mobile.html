@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Session Cancelled - Siraj</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "background": "#f7f9ff",
+                      "on-secondary": "#ffffff",
+                      "outline-variant": "#bec9c8",
+                      "on-tertiary-fixed-variant": "#434848",
+                      "on-primary-fixed": "#00201f",
+                      "on-error-container": "#93000a",
+                      "on-error": "#ffffff",
+                      "primary-fixed": "#a2f0ee",
+                      "on-primary-fixed-variant": "#00504f",
+                      "on-primary": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "outline": "#6f7978",
+                      "inverse-on-surface": "#eef1f7",
+                      "surface-container-highest": "#dfe3e8",
+                      "on-surface": "#181c20",
+                      "secondary-fixed": "#8ef4e9",
+                      "inverse-surface": "#2d3135",
+                      "inverse-primary": "#86d4d2",
+                      "tertiary-container": "#585d5d",
+                      "surface-container-high": "#e5e8ee",
+                      "primary-container": "#006766",
+                      "secondary-container": "#8bf1e6",
+                      "on-secondary-container": "#006f67",
+                      "on-primary-container": "#94e2e0",
+                      "secondary-fixed-dim": "#71d7cd",
+                      "on-background": "#181c20",
+                      "surface-variant": "#dfe3e8",
+                      "tertiary-fixed-dim": "#c3c7c7",
+                      "surface": "#f7f9ff",
+                      "surface-container-low": "#f1f4fa",
+                      "surface-container": "#ebeef4",
+                      "on-tertiary-fixed": "#181c1d",
+                      "on-surface-variant": "#3e4948",
+                      "error-container": "#ffdad6",
+                      "error": "#ba1a1a",
+                      "primary-fixed-dim": "#86d4d2",
+                      "tertiary": "#414546",
+                      "on-secondary-fixed-variant": "#00504a",
+                      "primary": "#004d4c",
+                      "surface-bright": "#f7f9ff",
+                      "surface-tint": "#076968",
+                      "on-tertiary-container": "#d1d6d6",
+                      "on-secondary-fixed": "#00201d",
+                      "tertiary-fixed": "#dfe3e3",
+                      "on-tertiary": "#ffffff",
+                      "surface-dim": "#d7dae0",
+                      "secondary": "#006a63"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "unit": "8px",
+                      "gutter": "24px",
+                      "stack-md": "16px",
+                      "margin-desktop": "40px",
+                      "stack-lg": "32px",
+                      "margin-mobile": "16px",
+                      "stack-sm": "8px",
+                      "container-max": "1200px"
+              },
+              "fontFamily": {
+                      "headline-lg": [
+                              "Manrope"
+                      ],
+                      "body-lg": [
+                              "Manrope"
+                      ],
+                      "headline-lg-mobile": [
+                              "Manrope"
+                      ],
+                      "body-md": [
+                              "Manrope"
+                      ],
+                      "display": [
+                              "Manrope"
+                      ],
+                      "label-sm": [
+                              "Manrope"
+                      ],
+                      "label-md": [
+                              "Manrope"
+                      ],
+                      "headline-md": [
+                              "Manrope"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        /* Base styles from JSON injection */
+        body {
+            font-family: 'Manrope', sans-serif;
+            background-color: #f7f9ff;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24;
+        }
+        
+        .icon-fill {
+           font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background pb-32">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim font-headline-md text-headline-md docked full-width top-0 sticky shadow-sm flex items-center px-gutter h-16 w-full max-w-container-max mx-auto z-40 bg-surface-container-low">
+<button class="text-primary hover:bg-surface-variant/50 transition-colors active:scale-95 duration-200 p-2 rounded-full mr-4 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-display text-headline-md text-primary font-bold">Session Details</h1>
+</header>
+<main class="px-margin-mobile pt-stack-md flex flex-col gap-stack-md max-w-md mx-auto">
+<!-- Hero Card -->
+<section class="bg-surface-container-lowest rounded-xl shadow-[0_4px_20px_rgba(0,103,102,0.05)] p-stack-lg flex flex-col items-center text-center">
+<div class="bg-surface-variant rounded-full p-4 mb-4">
+<span class="material-symbols-outlined text-4xl text-outline" data-icon="cancel">cancel</span>
+</div>
+<div class="bg-error-container text-on-error-container font-label-sm text-label-sm px-3 py-1 rounded-full mb-4">
+                CANCELLED
+            </div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-2">Your Tajweed session with Sheikh Abdullah Al-Mansour was cancelled</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Scheduled for Wed, Oct 25 at 15:00</p>
+</section>
+<!-- Session Info Card -->
+<section class="bg-surface-container-lowest rounded-xl shadow-[0_4px_20px_rgba(0,103,102,0.05)] p-stack-md flex flex-col gap-4">
+<div class="flex justify-between items-center py-2 border-b border-surface-container-high last:border-0">
+<span class="font-body-md text-body-md text-on-surface-variant">Intent</span>
+<span class="font-label-md text-label-md text-on-surface">Tajweed</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-surface-container-high last:border-0">
+<span class="font-body-md text-body-md text-on-surface-variant">Session Type</span>
+<span class="font-label-md text-label-md text-on-surface">Student Session</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-surface-container-high last:border-0">
+<span class="font-body-md text-body-md text-on-surface-variant">Original Fee</span>
+<span class="font-label-md text-label-md text-on-surface">45.00 EGP</span>
+</div>
+<div class="bg-surface-container-low rounded-lg p-4 mt-2 flex gap-3 items-start">
+<span class="material-symbols-outlined text-secondary mt-1" data-icon="lock_open_right">lock_open_right</span>
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-on-surface">Held fee released — 0.00 EGP charged</span>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">No balance was deducted; your session credit is available again.</p>
+</div>
+</div>
+</section>
+<!-- Why was it cancelled? Card -->
+<section class="bg-surface-container-lowest rounded-xl shadow-[0_4px_20px_rgba(0,103,102,0.05)] p-stack-md">
+<h3 class="font-label-md text-label-md text-on-surface-variant mb-2 uppercase tracking-wider">Reason</h3>
+<p class="font-body-md text-body-md text-on-surface">Cancelled by student · Wed 15:58</p>
+</section>
+<!-- Terminal State Note -->
+<section class="bg-surface-variant/50 rounded-xl p-4 flex gap-3 items-center opacity-80">
+<span class="material-symbols-outlined text-outline" data-icon="lock">lock</span>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">This session is closed — it cannot be restarted or modified</p>
+</section>
+<!-- Action Buttons -->
+<div class="flex flex-col gap-3 mt-stack-md">
+<button class="w-full bg-primary text-on-primary font-label-md text-label-md py-3 rounded-lg hover:bg-primary-container transition-colors shadow-sm">
+                Book a new session
+            </button>
+<button class="w-full bg-transparent border border-outline text-primary font-label-md text-label-md py-3 rounded-lg hover:bg-surface-variant/50 transition-colors">
+                Find another teacher
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface dark:bg-surface-dim font-label-md text-label-md fixed bottom-0 w-full z-50 rounded-t-xl shadow-[0_-4px_20px_rgba(0,103,102,0.05)] shadow-lg fixed bottom-0 left-0 w-full flex justify-around items-center px-4 py-2 bg-surface md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-container-high transition-all active:scale-90 duration-150 rounded-lg">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span>Home</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-150">
+<span class="material-symbols-outlined icon-fill mb-1" data-icon="menu_book">menu_book</span>
+<span>Sessions</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-container-high transition-all active:scale-90 duration-150 rounded-lg">
+<span class="material-symbols-outlined mb-1" data-icon="event_note">event_note</span>
+<span>Plans</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-container-high transition-all active:scale-90 duration-150 rounded-lg">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span>Profile</span>
+</button>
+</nav>
+</body></html>

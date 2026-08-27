@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+
+<html class="dark" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>403 Access Denied - Kottaby Quran Academy</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-fixed": "#f0e2ba",
+                        "on-primary-fixed": "#241a00",
+                        "surface-dim": "#131313",
+                        "on-surface": "#e5e2e1",
+                        "on-primary-fixed-variant": "#574500",
+                        "primary": "#f2ca50",
+                        "background": "#131313",
+                        "tertiary-fixed": "#ffdf9c",
+                        "outline": "#99907c",
+                        "on-tertiary-container": "#594100",
+                        "on-surface-variant": "#d0c5af",
+                        "primary-fixed-dim": "#e9c349",
+                        "on-error": "#690005",
+                        "inverse-on-surface": "#313030",
+                        "on-secondary-fixed": "#221b03",
+                        "secondary-fixed-dim": "#d4c69f",
+                        "surface-variant": "#353534",
+                        "on-secondary-fixed-variant": "#4f4629",
+                        "inverse-primary": "#735c00",
+                        "surface-container-high": "#2a2a2a",
+                        "on-error-container": "#ffdad6",
+                        "surface": "#131313",
+                        "error": "#ffb4ab",
+                        "on-secondary-container": "#c5b892",
+                        "secondary-container": "#52482b",
+                        "outline-variant": "#4d4635",
+                        "on-tertiary": "#3f2e00",
+                        "surface-container-lowest": "#0e0e0e",
+                        "secondary": "#d4c69f",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed": "#251a00",
+                        "surface-tint": "#e9c349",
+                        "primary-fixed": "#ffe088",
+                        "inverse-surface": "#e5e2e1",
+                        "on-primary": "#3c2f00",
+                        "surface-container": "#201f1f",
+                        "on-background": "#e5e2e1",
+                        "tertiary-container": "#d3ae5a",
+                        "surface-bright": "#393939",
+                        "on-tertiary-fixed-variant": "#5b4300",
+                        "tertiary-fixed-dim": "#e8c26b",
+                        "on-primary-container": "#554300",
+                        "tertiary": "#f1c972",
+                        "surface-container-highest": "#353534",
+                        "primary-container": "#d4af37",
+                        "surface-container-low": "#1c1b1b",
+                        "on-secondary": "#383015"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "gutter": "24px",
+                        "margin-desktop": "48px",
+                        "margin-mobile": "16px",
+                        "unit": "8px",
+                        "container-max": "1280px"
+                    },
+                    fontFamily: {
+                        "headline-sm": ["EB Garamond", "serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "label-md": ["Inter", "sans-serif"],
+                        "display-lg-mobile": ["EB Garamond", "serif"],
+                        "headline-md": ["EB Garamond", "serif"],
+                        "display-lg": ["EB Garamond", "serif"],
+                        "quran-text": ["EB Garamond", "serif"],
+                        "body-lg": ["Inter", "sans-serif"]
+                    },
+                    fontSize: {
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "quran-text": ["40px", { "lineHeight": "64px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom styles for glowing effects */
+        .glow-effect {
+            box-shadow: 0 8px 32px rgba(212, 175, 55, 0.15);
+        }
+        
+        .ambient-glow {
+            background: radial-gradient(circle at center, rgba(212, 175, 55, 0.08) 0%, transparent 70%);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md antialiased overflow-hidden relative">
+<!-- Ambient Background Glow -->
+<div class="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
+<div class="w-[800px] h-[800px] ambient-glow rounded-full mix-blend-screen opacity-50"></div>
+</div>
+<!-- Header (Suppressed main nav for transactional/error page) -->
+<header class="w-full z-10 px-margin-mobile md:px-margin-desktop py-6 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<!-- Kottaby Logo (Left in RTL is logical right, but requested left) -->
+<div class="flex items-center">
+<span class="font-display-lg-mobile md:font-display-lg text-primary tracking-tight" dir="ltr">Kottaby</span>
+</div>
+<a class="flex items-center justify-center w-10 h-10 rounded-full border border-outline-variant hover:bg-surface-container-high transition-colors text-on-surface" href="/">
+<span aria-label="Back" class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</a>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative text-on-surface hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full ring-2 ring-background"></span>
+</button>
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A sophisticated minimalist profile avatar featuring elegant Islamic geometric patterns in muted gold tones against a deep charcoal background, exuding a luxurious and academic aura." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCjW8FgL6YfBW5gakOP7QdNZnyspdW2FBJPyS98GPuT16qId7GcNZc5wTwf05-_ko4jPFVnOlFI0T3uUHvj8q4w1BKBzSQfxVhmx2GOToTnopeYlH0_zrqiapg6XoQHe-GAczE8N5MhCiXlM0Yge1vWbCyVTlXyZCQCI922uHjGlaAwYsuXHTaIGXA_yeNEGE-IQuUjYM6bMo2fkuVzm08NEbZSTurSSMVUa1cxma3Qqy5AjVFRir3uBT52c6a2X7PgLrDkC8iZ-k"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center px-margin-mobile md:px-margin-desktop z-10 relative">
+<div class="max-w-2xl w-full text-center flex flex-col items-center">
+<!-- Lock/Candle Motif -->
+<div class="mb-8 w-32 h-32 relative">
+<img alt="Kottaby Logo - Lock Motif" class="w-full h-full object-contain opacity-80 mix-blend-screen" src="https://lh3.googleusercontent.com/aida/AEtjO1VZ0Xnpb7k0fI1eQ6oy15WEGgZ1lohWfc_mNRgEhb0KEhMis9ZU2VAJGq4daFtQWwbf9K4Xr7R_jm2ua-r8N0dBY9rC3GKs3B4bgnA5lM6CCEPkEJVedxGRwLsEFb606GPzlziEU3GNJ3ujMp0MVakMAuGxyCctSsYXvpkCfhXit9UjAOMqPNjwRhnRr7ns8fZUFzCaynzJ_IxnswcDGoQRVWoL4gV8Kd3iZeszx2LkdTdGyivFA3-_4uk"/>
+</div>
+<!-- Error Code -->
+<h1 class="font-display-lg text-primary-fixed-dim mb-4" dir="ltr">
+                ٤٠٣ — 403
+            </h1>
+<!-- Heading -->
+<h2 class="font-headline-md text-on-surface mb-6">
+                غير مصرّح بالوصول
+                <span class="block text-on-surface-variant font-headline-sm mt-2 opacity-80">Access Denied</span>
+</h2>
+<!-- Body Text -->
+<p class="font-body-lg text-on-surface-variant max-w-lg mx-auto mb-12 leading-relaxed">
+                ليس لديك صلاحية الوصول إلى هذه الصفحة. هذه الصفحة مخصّصة لهوية مستخدم أخرى.
+                <span class="block mt-4 text-body-md opacity-75">
+                    You don't have permission to view this page. This page belongs to a different account identity.
+                </span>
+</p>
+<!-- Actions -->
+<div class="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
+<a class="flex items-center justify-center gap-3 px-8 py-4 bg-primary-container text-on-primary-container rounded-lg font-label-md hover:opacity-90 transition-opacity border-t border-primary/50 shadow-sm w-full sm:w-auto min-w-[240px]" href="/dashboard">
+<span class="material-symbols-outlined text-[20px]" data-icon="dashboard">dashboard</span>
+                    العودة إلى لوحة التحكم
+                    <span class="text-xs opacity-80 border-r border-on-primary-container/30 pr-2 ml-2">Back to dashboard</span>
+</a>
+<button class="flex items-center justify-center gap-3 px-8 py-4 bg-transparent text-on-surface rounded-lg font-label-md hover:bg-surface-container-high transition-colors border border-outline-variant w-full sm:w-auto min-w-[240px]">
+<span class="material-symbols-outlined text-[20px]" data-icon="logout">logout</span>
+                    تسجيل الخروج
+                    <span class="text-xs opacity-80 border-r border-on-surface/30 pr-2 ml-2">Sign out</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Subtle Footer -->
+<footer class="w-full py-8 text-center z-10 px-margin-mobile">
+<p class="font-body-md text-sm text-outline font-mono">
+            مرجع الطلب — Request ID: f8a1c2
+        </p>
+</footer>
+</body></html>

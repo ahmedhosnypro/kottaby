@@ -1,0 +1,12 @@
+{
+  "js/ts.tsdk.path": "node_modules/@typescript/native-preview",
+  "chat.mcp.serverSampling": {
+    "kottaby/.mcp.json: next-devtools": {
+      "allowedModels": []
+    }
+  },
+  "chat.permissions.default": "autopilot",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "always"
+  }
+}

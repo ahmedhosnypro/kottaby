@@ -1,0 +1,13 @@
+{
+  "servers": {
+    "mui-mcp": {
+      "type": "stdio",
+      "command": "bun",
+      "args": ["x", "-y", "@mui/mcp@latest"]
+    },
+    "storybook": {
+      "type": "http",
+      "url": "http://localhost:6006/mcp"
+    }
+  }
+}

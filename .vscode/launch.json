@@ -1,0 +1,64 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Server (Next.js + Apollo DevTools)",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "debug"],
+      "cwd": "${workspaceFolder}",
+      "skipFiles": ["<node_internals>/**"],
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/.next/**/*.js"],
+      "env": {
+        "NODE_OPTIONS": "--inspect=9229"
+      }
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Attach Client (Next.js App)",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "DB Seed",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "debug"],
+      "args": ["server/db/scripts/drizzleSeed.ts"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "DB Reset",
+      "runtimeExecutable": "bun",
+      "args": ["server/db/scripts/resetDb.ts"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "DB Test Helper",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--inspect"],
+      "args": ["tests/helpers/db-test-helper-debug.ts"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**"],
+      "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
+      "stopOnEntry": true
+    }
+  ]
+}

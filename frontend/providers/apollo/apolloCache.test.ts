@@ -1,0 +1,209 @@
+/**
+ * dev3-003 Task 4.1.TE — HealthCheck Apollo cache-policy suite (Tier 1).
+ * · REQ-061 / plan D4 — embedded-type normalization opt-out pairing for the
+ *   scalar-only `_health` probe object registered by Phase 3.
+ *
+ * WHAT THIS LOCKS
+ *   1. CONFIG EXPOSURE (the task-def gate): an `InMemoryCache` built by
+ *      `createApolloCache()` exposes `config.typePolicies.HealthCheck
+ *      .keyFields === false` — the embedded-value declaration that keeps any
+ *      future consumer of `_health` from ever triggering Apollo's "Cache data
+ *      may be lost" heuristic. Behavioral halves below additionally pin the
+ *      written-back value as an INLINE child of its parent (never a standalone
+ *      `HealthCheck:*` entity) with loss-free rewrites.
+ *   2. SIBLING REGRESSION PIN — the pre-existing embedded entries
+ *      (`AdminNoteInfo`, `OnlineMeetingInfo`) keep their `keyFields: false`
+ *      posture and the `AdminDashboardScheduleResult.rows` replace-not-merge
+ *      precedent stays exactly as authored (the four-entry policy surface is
+ *      FROZEN; a new embedded type must extend, never shrink, this list per
+ *      frontend/graphql/AGENTS.md embedded-type policy).
+ *
+ * NARROWING DISCIPLINE
+ *   Policies internals are reached through guarded `Reflect.get` walks that
+ *   THROW descriptive errors instead of casting (`sonarjs/
+ *   no-unsafe-type-assertion` clean by construction) — the same
+ *   guard-and-throw pattern used by `error-link.map.test.ts`.
+ *
+ * gql IMPORT NOTE
+ *   Documents are parsed with `parse()` from the `graphql` package directly —
+ *   importing `gql` from `@apollo/client` pulls `graphql-tag`'s UMD bundle,
+ *   which dies under Bun's loader (known pre-existing breakage recorded in
+ *   C2-phase3b for auth.test.ts).
+ *
+ * Pure unit tier — NO server boot, NO network, NO DB. Runs via the mandated
+ * runner: `bun run test/scripts/run-test.ts frontend/providers/apollo/apolloCache.test.ts`.
+ */
+
+import { describe, expect, test } from "bun:test";
+import { InMemoryCache } from "@apollo/client";
+import { parse } from "graphql";
+import { createApolloCache } from "@/frontend/providers/apollo/apolloCache";
+
+// ---------------------------------------------------------------------------
+// Guarded reflection helpers (assertion-free narrowing)
+//
+// WHY `config`, not `policies.typePolicies`: Apollo normalizes lazily — the
+// user-supplied policy map lives on `cache.config.typePolicies` at construction
+// time (`policies.typePolicies` only fills per-type as reads/writes touch each
+// type). `config` is `protected` in the @apollo/client typings and the runtime
+// map replaces `keyFields:false` during normalization, so the RAW config map
+// is BOTH the authoritative registration site AND the only one whose shape
+// mirrors the source. `Reflect.get` keeps us cast-free across the protected
+// boundary.
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/** Verifies one value is a record BEFORE any member access happens on it. */
+function requireRecord(value: unknown, path: string): Record<string, unknown> {
+  if (!isRecord(value)) {
+    throw new Error(`cache internals shape broken at ${path}`);
+  }
+  return value;
+}
+
+/**
+ * Reads record slot `path.key` off a verified parent record — every hop is
+ * type-checked before descent, so no property access assumes internal Apollo
+ * shapes and NO cast is needed anywhere in this suite.
+ */
+function slot(parent: unknown, path: string, key: string): Record<string, unknown> {
+  const holder = requireRecord(parent, path);
+  if (!Object.hasOwn(holder, key)) {
+    throw new Error(`cache internals missing ${path}.${key}`);
+  }
+  return requireRecord(Reflect.get(holder, key), `${path}.${key}`);
+}
+
+/** Walks cache → config → typePolicies without a single unsafe cast.
+ *  Values stay `unknown` — every consumer narrows through {@link slot}/
+ *  `{@link requireRecord}` before touching members. */
+function typePoliciesOf(cache: InMemoryCache): Record<string, unknown> {
+  const config = slot(cache, "InMemoryCache", "config");
+  return slot(config, "config", "typePolicies");
+}
+
+/** Reads `keyFields` off one named policy, failing loudly when unregistered. */
+function keyFieldsOf(policies: Record<string, unknown>, typeName: string): unknown {
+  if (!Object.hasOwn(policies, typeName)) {
+    throw new Error(`no typePolicy registered for ${typeName}`);
+  }
+  return Reflect.get(requireRecord(policies[typeName], `typePolicies.${typeName}`), "keyFields");
+}
+
+// ---------------------------------------------------------------------------
+// Fixture: a document whose result embeds a HealthCheck-shaped value under a
+// synthetic parent field (client-side cache only — no server schema needed).
+
+const GATEWAY_PROBE_DOCUMENT = parse(`
+  query GatewayProbeStatus {
+    gatewayProbe {
+      __typename
+      status
+      service
+      version
+      timestamp
+    }
+  }
+`);
+
+const FIRST_PROBE_VALUE = () => ({
+  __typename: "HealthCheck",
+  status: "ok",
+  service: "kottaby",
+  version: "0.1.0",
+  timestamp: "2026-08-27T00:00:00.000Z",
+});
+
+const SECOND_PROBE_VALUE = () => ({
+  __typename: "HealthCheck",
+  status: "ok",
+  service: "kottaby",
+  version: "0.2.0",
+  timestamp: "2026-08-27T00:01:00.000Z",
+});
+
+// ===========================================================================
+describe("createApolloCache — initialised InMemoryCache config exposure", () => {
+  test("returns a genuine initialised InMemoryCache instance", () => {
+    const cache: InMemoryCache = createApolloCache();
+    expect(cache).toBeInstanceOf(InMemoryCache);
+  });
+
+  test("typePolicies.HealthCheck.keyFields === false (REQ-061/D4 gate)", () => {
+    const cache = createApolloCache();
+    const policies = typePoliciesOf(cache);
+    expect(keyFieldsOf(policies, "HealthCheck")).toBe(false);
+  });
+
+  test("policy surface is FROZEN to the four documented entries", () => {
+    const cache = createApolloCache();
+    expect(Object.keys(typePoliciesOf(cache)).toSorted((a, b) => a.localeCompare(b))).toEqual([
+      "AdminDashboardScheduleResult",
+      "AdminNoteInfo",
+      "HealthCheck",
+      "OnlineMeetingInfo",
+    ]);
+  });
+});
+
+describe("sibling regression pins — pre-existing policies untouched", () => {
+  test("`AdminNoteInfo` / `OnlineMeetingInfo` keep keyFields:false", () => {
+    const policies = typePoliciesOf(createApolloCache());
+    expect(keyFieldsOf(policies, "AdminNoteInfo")).toBe(false);
+    expect(keyFieldsOf(policies, "OnlineMeetingInfo")).toBe(false);
+  });
+
+  test("`AdminDashboardScheduleResult.rows` keeps merge:false (replace semantics)", () => {
+    const cache = createApolloCache();
+    const policies = typePoliciesOf(cache);
+    if (!Object.hasOwn(policies, "AdminDashboardScheduleResult")) {
+      throw new Error("AdminDashboardScheduleResult policy vanished");
+    }
+    const resultPolicy = policies.AdminDashboardScheduleResult;
+    const rows = slot(slot(resultPolicy, "AdminDashboardScheduleResult", "fields"), "fields", "rows");
+    expect(Reflect.get(rows, "merge")).toBe(false);
+  });
+});
+
+describe("behavioral proof — HealthCheck writes stay embedded (no standalone entity)", () => {
+  test("written payloads normalize INLINE: extract contains no `HealthCheck:` entity id", () => {
+    const cache = createApolloCache();
+    expect(() =>
+      cache.writeQuery({
+        query: GATEWAY_PROBE_DOCUMENT,
+        data: { gatewayProbe: FIRST_PROBE_VALUE() },
+      })
+    ).not.toThrow();
+
+    const extracted = JSON.stringify(cache.extract());
+    expect(extracted).toContain('"status":"ok"');
+    // A normalized entry would appear as a top-level `HealthCheck:<key>` id —
+    // keyFields:false forbids exactly that.
+    expect(extracted.includes('"HealthCheck:')).toBe(false);
+  });
+
+  test("second write REPLACES the inline value cleanly (loss-safe rewrite)", () => {
+    const cache = createApolloCache();
+    cache.writeQuery({ query: GATEWAY_PROBE_DOCUMENT, data: { gatewayProbe: FIRST_PROBE_VALUE() } });
+    expect(() =>
+      cache.writeQuery({
+        query: GATEWAY_PROBE_DOCUMENT,
+        data: { gatewayProbe: SECOND_PROBE_VALUE() },
+      })
+    ).not.toThrow();
+
+    const reread: unknown = cache.readQuery({ query: GATEWAY_PROBE_DOCUMENT });
+    if (!isRecord(reread) || !Object.hasOwn(reread, "gatewayProbe")) {
+      throw new Error("embedded probe value unreadable after rewrite");
+    }
+    const probe = requireRecord(Reflect.get(reread, "gatewayProbe"), "reread.gatewayProbe");
+    expect(Reflect.get(probe, "version")).toBe("0.2.0");
+    expect(Reflect.get(probe, "timestamp")).toBe("2026-08-27T00:01:00.000Z");
+
+    const extracted = JSON.stringify(cache.extract());
+    expect(extracted.includes('"version":"0.1.0"')).toBe(false);
+    expect(extracted.includes('"HealthCheck:')).toBe(false);
+  });
+});

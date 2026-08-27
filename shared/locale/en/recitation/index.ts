@@ -1,0 +1,30 @@
+import type { RecitationLabels } from "@/shared/locale/types/recitation";
+
+export const recitationEn: RecitationLabels = {
+  selectTitle: "Recitation reading (Qira'ah)",
+  selectHelper:
+    "Choose your preferred Quranic recitation reading. This helps us match you with compatible teachers. You can change this later.",
+  selectDescription: "Select your preferred Qira'ah reading",
+  hafsAnAsim: "Hafs 'an Asim",
+  warshAnNafi: "Warsh 'an Nafi",
+  qalunAnNafi: "Qalun 'an Nafi",
+  alDuriAnAbiAmr: "Al-Duri 'an Abu Amr",
+  alSusiAnAbiAmr: "Al-Susi 'an Abu Amr",
+  khalafAnHamzah: "Khalaf 'an Hamzah",
+  khalladAnAsim: "Khallad 'an Asim",
+  shubahAnAsim: "Shubah 'an Asim",
+  alBazziAnIbnKathir: "Al-Bazzi 'an Ibn Kathir",
+  qunbulAnIbnKathir: "Qunbul 'an Ibn Kathir",
+  hafsAnAsimDesc: "The most widely practiced reading globally",
+  warshAnNafiDesc: "Common in North and West Africa",
+  qalunAnNafiDesc: "Common in Libya and Tunisia",
+  alDuriAnAbiAmrDesc: "Common in Sudan and East Africa",
+  alSusiAnAbiAmrDesc: "Practiced in parts of North Africa",
+  khalafAnHamzahDesc: "A lesser-practiced canonical reading",
+  khalladAnAsimDesc: "One of the two Asim transmissions",
+  shubahAnAsimDesc: "The other Asim transmission",
+  alBazziAnIbnKathirDesc: "One of the two Ibn Kathir transmissions",
+  qunbulAnIbnKathirDesc: "The other Ibn Kathir transmission",
+  mostPopular: "Most popular",
+  invalidRecitation: "Please select a valid recitation reading from the list.",
+};

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://opencodeai/config.json",
+  "instructions": [".github/copilot-instructions.md", ".github/instructions/**/*.instructions.md"],
+  "mcp": {
+    "mui-mcp": {
+      "type": "local",
+      "command": ["bun", "x", "-y", "@mui/mcp@latest"],
+      "enabled": true
+    },
+    "next-devtools": {
+      "type": "local",
+      "command": ["bun", "x", "-y", "next-devtools-mcp@latest"],
+      "enabled": true
+    },
+    "playwright": {
+      "type": "local",
+      "command": ["bun", "x", "-y", "@playwright/mcp@0.0.38"],
+      "enabled": true
+    },
+    "storybook": {
+      "type": "remote",
+      "url": "http://localhost:6006/mcp",
+      "enabled": true
+    }
+  }
+}

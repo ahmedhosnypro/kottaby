@@ -1,0 +1,63 @@
+/* Root color variables are intentionally omitted — MUI's CssBaseline and theme provider handle
+   root-level background/text colors via the active palette. If custom overrides are needed,
+   add them in the MUI theme configuration (createTheme) rather than here. */
+/* Google Fonts are self-hosted via next/font in app/layout.tsx — no @import needed here, to improve the performance */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-inter), var(--font-cairo), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Arabic / RTL font: Cairo is designed for Arabic + Latin, loads via next/font */
+html[lang="ar"] body,
+html[dir="rtl"] body {
+  font-family: var(--font-cairo), var(--font-inter), system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+/* Pre-hydration MUI sizing guard (review-R6): emotion component styles ship
+   only after client hydration (no SSR critical-CSS extraction), so the very
+   first paint renders intrinsic-size SVG icons (measured 672×672px in a 1440×900
+   viewport) that collapse to ~20–24px at hydration → CLS ≈ 1.0 (POOR, t≈0.9s).
+   These static rules mirror MUI's own SvgIcon defaults so the pre-hydration
+   paint is already correctly sized. Equal-specificity ties are won by the later
+   emotion <style> tags post-hydration, and width/height/font-size are never
+   flipped by stylis-plugin-rtl — zero effect after hydration. */
+.MuiSvgIcon-root {
+  width: 1em;
+  height: 1em;
+}
+
+.MuiSvgIcon-fontSizeSmall {
+  font-size: 20px;
+}
+
+.MuiSvgIcon-fontSizeLarge {
+  font-size: 36px;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}

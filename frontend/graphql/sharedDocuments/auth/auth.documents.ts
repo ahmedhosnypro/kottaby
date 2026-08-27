@@ -1,0 +1,136 @@
+import { gql, type TypedDocumentNode } from "@apollo/client";
+import type {
+  LoginMutation,
+  LoginMutationVariables,
+  LogoutMutation,
+  MeQuery,
+  RefreshTokenMutation,
+  RefreshTokenMutationVariables,
+  RegisterUserMutation,
+  RegisterUserMutationVariables,
+} from "@/frontend/graphql/generated/gql/graphql";
+
+/**
+ * `registerUser` mutation — creates a new Student / Teacher (applicant) /
+ * Parent account.
+ *
+ * Selection includes `id` on the returned `User` so Apollo Client can
+ * normalize the cache entry (per `sharedDocuments/AGENTS.md` "id Field
+ * Requirement").
+ */
+export const registerUserMutationDocument: TypedDocumentNode<RegisterUserMutation, RegisterUserMutationVariables> = gql`
+  mutation RegisterUser($input: RegisterUserInput!) {
+    registerUser(input: $input) {
+      id
+      email
+      fullName
+      role
+    }
+  }
+`;
+
+/**
+ * `me` query — returns the authenticated user (or `null` for anonymous).
+ *
+ * The AuthProvider runs this on mount to restore the session from the
+ * `Authorization: Bearer <accessToken>` header (held in React memory) or
+ * the `access_token` cookie (SSR fallback). On `null` (anonymous), the
+ * AuthProvider attempts a `refreshToken` via `useAuthRecoveryRegistration`
+ * before settling on `isAuthenticated = false`.
+ *
+ * Selection includes `id` so Apollo cache normalization writes the user
+ * into the same cache entry the `login` mutation produced. The selection
+ * also includes the profile-page fields (`phone`, `country`, `gender`) and
+ * the read-only governance fields (`isDeleted`, `suspended`, `isBlocked`)
+ * so the profile page can render full account info + status badges from a
+ * single `me` query (DASHBOARD-1).
+ */
+export const meQueryDocument: TypedDocumentNode<MeQuery> = gql`
+  query Me {
+    me {
+      id
+      email
+      fullName
+      phone
+      country
+      gender
+      role
+      preferredRecitation
+      isDeleted
+      suspended
+      isBlocked
+    }
+  }
+`;
+
+/**
+ * `login` mutation — authenticates with email + password.
+ *
+ * Returns `{ user, accessToken, refreshToken }`. The AuthProvider stores
+ * `accessToken` in React memory (via `updateAuthToken`) + `refreshToken`
+ * in a module-level slot (read by `useAuthRecoveryRegistration` so the
+ * recovery link can call `refreshToken` without JS-readable cookies).
+ *
+ * The server ALSO sets `refresh_token` + `session_id` as httpOnly cookies
+ * on the response (handled by the GraphQL route handler reading the
+ * per-request `ctx.authCookieOut` accumulator).
+ *
+ * The `user` selection mirrors the `me` query selection (DASHBOARD-1) so
+ * the AuthProvider can store the authenticated user directly from the
+ * login mutation result — the same shape flows into `useAuth().user`.
+ */
+export const loginMutationDocument: TypedDocumentNode<LoginMutation, LoginMutationVariables> = gql`
+  mutation Login($email: String!, $password: String!) {
+    login(email: $email, password: $password) {
+      user {
+        id
+        email
+        fullName
+        phone
+        country
+        gender
+        role
+        preferredRecitation
+        isDeleted
+        suspended
+        isBlocked
+      }
+      accessToken
+      refreshToken
+    }
+  }
+`;
+
+/**
+ * `refreshToken` mutation — rotates the JWT pair from a valid refresh token.
+ *
+ * Returns `{ accessToken, refreshToken }`. The AuthProvider stores the new
+ * `accessToken` in React memory + the new `refreshToken` in the
+ * module-level slot. The server ALSO sets the new `refresh_token` +
+ * `session_id` as httpOnly cookies (rotation invalidates the prior pair).
+ */
+export const refreshTokenMutationDocument: TypedDocumentNode<RefreshTokenMutation, RefreshTokenMutationVariables> = gql`
+  mutation RefreshToken($refreshToken: String!) {
+    refreshToken(refreshToken: $refreshToken) {
+      accessToken
+      refreshToken
+    }
+  }
+`;
+
+/**
+ * `logout` mutation — clears the `access_token` + `refresh_token` +
+ * `session_id` httpOnly cookies on the server. Public — callable with an
+ * expired token. The AuthProvider calls this from `logout()` before
+ * clearing its React-memory state + navigating to `/login`.
+ *
+ * Returns `{ success }` (always `true` — the resolver always clears the
+ * cookies via `clearAuthCookies` and returns success).
+ */
+export const logoutMutationDocument: TypedDocumentNode<LogoutMutation> = gql`
+  mutation Logout {
+    logout {
+      success
+    }
+  }
+`;

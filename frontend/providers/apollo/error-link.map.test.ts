@@ -1,0 +1,546 @@
+/**
+ * Task 4.1 paired suite — REQ-061 frontend error-link mapping + wiring.
+ *
+ * WHAT THIS LOCKS
+ *   1. The PURE `mapGraphQLErrorByCode` branch table (every REQ-061 row,
+ *      including the legacy `RATE_LIMIT_EXCEEDED` alias carried into the
+ *      frontend table per plan-review-R1 correction #3, and the strict
+ *      "branch on extensions.code ONLY" posture per REQ-016).
+ *   2. The `routeApolloLinkError` integration seam in `utils.ts`: the EXISTING
+ *      deduped token-refresh double-path (refresh-once → stay-on-page;
+ *      refresh-failure → logout/login redirect), the REQ-061 surface dispatch
+ *      (with auth-row and self-surfaced-operation exclusions), and the
+ *      pre-existing network-error connectivity branch.
+ *
+ * FIXTURES
+ *   Errors are authored as genuine Apollo Client v4 `CombinedGraphQLErrors`
+ *   containers — exactly what the HTTP link builds (`{ errors: [...] }
+ *   FormattedExecutionResult`) — mirroring
+ *   `frontend/graphql/test/warnings/warning-surfacing.test.ts`.
+ *
+ * i18n ADAPTATION NOTE (REQ-075; plan-review-R1 finding #7 / correction #7):
+ *   The component-tier `readTranslation(handle, locale)` / `TestWrapper` /
+ *   `translation-preload.ts` scaffold is ABSENT from the tree (`test/ui/`
+ *   holds only its AGENTS.md). Per correction #7 this unit-tier suite
+ *   resolves every expected user-facing string through `getDefaultTranslations()`
+ *   (`shared/locale/server.ts` — the same MessagesSchema the namespace handles
+ *   wrap) and probes AR parity by direct namespace-object access. No copy
+ *   string is hardcoded; fixture field texts are technical test data
+ *   (`test/ui/AGENTS.md` "What Counts as Acceptable").
+ *
+ * RUNS VIA (in-sandbox): bun run test/scripts/run-test.ts
+ *   frontend/providers/apollo/error-link.map.test.ts — pure unit tier, no
+ *   server boot, no DB.
+ */
+
+import { afterEach, describe, expect, test } from "bun:test";
+import { CombinedGraphQLErrors } from "@apollo/client";
+import { parse } from "graphql";
+import { buildLoginHref } from "@/frontend/lib/safeRedirect";
+import {
+  extractWireFieldErrors,
+  type GraphQLErrorAction,
+  type GraphQLErrorMappingContext,
+  isWireFieldErrorEntry,
+  LEGACY_ERROR_CODE_ALIASES,
+  mapGraphQLErrorByCode,
+  normalizeGraphQLErrorCode,
+} from "@/frontend/providers/apollo/error-link.map";
+import {
+  dispatchMappedGraphQLErrorActions,
+  registerAuthRecovery,
+  registerGraphQLErrorActionListener,
+  routeApolloLinkError,
+  unregisterAuthRecovery,
+  unregisterGraphQLErrorActionListener,
+} from "@/frontend/providers/apollo/utils";
+import { getDefaultTranslations, loadAllTranslations } from "@/shared/locale/server";
+
+// ---------------------------------------------------------------------------
+// Translation-backed expectations (never hardcoded copy)
+
+const labels = getDefaultTranslations().errorsTranslations;
+const arLabels = loadAllTranslations("ar").errorsTranslations;
+
+/** Resolves the exact user-visible copy a published action will surface. */
+const shownCopyOf = (action: GraphQLErrorAction): string => labels[action.messageKey];
+
+/** Expect-wrapped mapping call — narrows `null` WITHOUT an unsafe cast. */
+function mapped(code: string, context: GraphQLErrorMappingContext): GraphQLErrorAction {
+  const action = mapGraphQLErrorByCode(code, context);
+  if (action === null) {
+    // Assertion first (bun prints the diff), then an explicit throw so the
+    // success path narrows without any type assertion.
+    expect(action).not.toBeNull();
+    throw new Error("expected a non-null REQ-061 mapping");
+  }
+  return action;
+}
+
+// ---------------------------------------------------------------------------
+// Fixture builders
+
+type FixtureItem = { readonly message: string; readonly extensions?: Record<string, unknown> };
+
+/** Builds the genuine Apollo v4 container from wire-shaped error items. */
+function combinedError(items: readonly FixtureItem[]): CombinedGraphQLErrors {
+  return new CombinedGraphQLErrors({
+    errors: items.map(item => ({
+      message: item.message,
+      ...(item.extensions === undefined ? {} : { extensions: item.extensions }),
+    })),
+  });
+}
+
+const FIELD_PAIRS = [
+  { field: "email", code: "EMAIL_INVALID", message: "Enter a valid email address." },
+  { field: "password.confirm", code: "PASSWORD_MISMATCH", message: "Passwords must match." },
+] as const;
+
+const QUERY_DOCUMENT = parse("query CurrentViewerQuery { viewer { id } }");
+const MUTATION_DOCUMENT = parse("mutation PingMutation { __typename }");
+
+const queryContext: GraphQLErrorMappingContext = { contextKind: "query", hasForm: false };
+const mutationContext: GraphQLErrorMappingContext = { contextKind: "mutation", hasForm: false };
+
+/** Minimal Operation-like stand-in matching what ErrorLink hands consumers. */
+function operationLike(
+  query: typeof QUERY_DOCUMENT,
+  operationName = "CurrentViewerQuery"
+): { operationName: string; query: typeof QUERY_DOCUMENT } {
+  return { operationName, query };
+}
+
+/** Drains the fire-and-forget async auth machinery inside routeApolloLinkError. */
+async function flushAsyncRouting(): Promise<void> {
+  await new Promise<void>(resolve => setTimeout(resolve, 0));
+  await Promise.resolve();
+}
+
+type GlobalWithWindow = { window?: unknown };
+const globalScope = globalThis as GlobalWithWindow;
+
+let installedFakeWindow = false;
+let preexistingWindowPresent = false;
+const preexistingWindowValue = globalScope.window;
+
+/** Reads the faked (or real) window href without unsafe assumptions or casts. */
+function currentHref(): string {
+  if (!Object.hasOwn(globalThis, "window")) return "";
+  return globalThis.window.location.href;
+}
+
+/** Installs a capturing listener; returns arrays filled by the dispatcher. */
+function recordActions(): { actions: GraphQLErrorAction[]; operationNames: string[] } {
+  const actions: GraphQLErrorAction[] = [];
+  const operationNames: string[] = [];
+  registerGraphQLErrorActionListener((action, meta) => {
+    actions.push(action);
+    operationNames.push(meta.operationName);
+  });
+  return { actions, operationNames };
+}
+
+// ---------------------------------------------------------------------------
+// globalThis.window fake (link behavior branches on browser presence)
+
+function installWindow(pathname = "/dashboard", search = ""): void {
+  preexistingWindowPresent = Object.hasOwn(globalThis, "window");
+  globalScope.window = { location: { pathname, search, href: `${pathname}${search}` } };
+  installedFakeWindow = true;
+}
+
+afterEach(() => {
+  if (!installedFakeWindow) return;
+  if (preexistingWindowPresent) {
+    globalScope.window = preexistingWindowValue;
+  } else {
+    delete globalScope.window;
+  }
+  installedFakeWindow = false;
+});
+
+// ===========================================================================
+describe("mapGraphQLErrorByCode — REQ-061 pure branch table", () => {
+  test("row UNAUTHORIZED → auth-recovery with localized unauthorized copy", () => {
+    const action = mapped("UNAUTHORIZED", queryContext);
+    expect(action.kind).toBe("auth-recovery");
+    expect(action.retryable).toBe(false);
+    expect(shownCopyOf(action)).toBe(labels.unauthorized);
+    // i18n parity probe (direct namespace access; scaffold absent — see header).
+    expect(arLabels.unauthorized.length).toBeGreaterThan(0);
+  });
+
+  test("legacy UNAUTHENTICATED literal intentionally retires at the PURE map (owned upstream)", () => {
+    // The deduped-refresh TRIGGER list still honors it; the mapping receives
+    // canonical codes only, so anything unknown maps to null (dispatcher skip).
+    expect(mapGraphQLErrorByCode("UNAUTHENTICATED", queryContext)).toBeNull();
+  });
+
+  test("row FORBIDDEN → permission-fallback in query context", () => {
+    const action = mapped("FORBIDDEN", queryContext);
+    expect(action.kind).toBe("permission-fallback");
+    expect(shownCopyOf(action)).toBe(labels.forbidden);
+    expect(action.tone).toBe("error");
+  });
+
+  test("row FORBIDDEN → localized toast in mutation context", () => {
+    const action = mapped("FORBIDDEN", mutationContext);
+    expect(action.kind).toBe("toast");
+    expect(shownCopyOf(action)).toBe(labels.forbidden);
+  });
+
+  test("row VALIDATION + form + fields[] → form-fields setError pairs verbatim", () => {
+    const action = mapped("VALIDATION", { contextKind: "mutation", hasForm: true, fields: FIELD_PAIRS });
+    expect(action.kind).toBe("form-fields");
+    expect(shownCopyOf(action)).toBe(labels.validation);
+    expect(action.fieldErrors).toEqual(FIELD_PAIRS);
+    expect(action.fieldErrors?.map(pair => pair.field)).toEqual(["email", "password.confirm"]);
+  });
+
+  test("row VALIDATION without form context → toast fallback that still carries pairs", () => {
+    const action = mapped("VALIDATION", { contextKind: "mutation", hasForm: false, fields: FIELD_PAIRS });
+    expect(action.kind).toBe("toast");
+    expect(shownCopyOf(action)).toBe(labels.validation);
+    expect(action.fieldErrors).toEqual(FIELD_PAIRS);
+  });
+
+  test("row VALIDATION without fields (even with a form) → bare toast fallback", () => {
+    const action = mapped("VALIDATION", { contextKind: "mutation", hasForm: true });
+    expect(action.kind).toBe("toast");
+    expect(action.fieldErrors).toBeUndefined();
+    expect(shownCopyOf(action)).toBe(labels.validation);
+  });
+
+  test("row NOT_FOUND family → localized not-found inline notice", () => {
+    for (const code of ["NOT_FOUND", "USER_NOT_FOUND", "LESSON_HOME_WORK_NOT_FOUND"]) {
+      const action = mapped(code, queryContext);
+      expect(action.kind).toBe("notice");
+      expect(action.noticeKind).toBe("not-found");
+      expect(shownCopyOf(action)).toBe(labels.notFound);
+    }
+  });
+
+  test("row CONFLICT → conflict inline notice", () => {
+    const action = mapped("CONFLICT", mutationContext);
+    expect(action.kind).toBe("notice");
+    expect(action.noticeKind).toBe("conflict");
+    expect(shownCopyOf(action)).toBe(labels.conflict);
+    expect(action.tone).toBe("error");
+  });
+
+  test("row DUPLICATE_REQUEST → success-equivalent idempotent notice (docs/IDEMPOTENCY.md §3)", () => {
+    const action = mapped("DUPLICATE_REQUEST", mutationContext);
+    expect(action.kind).toBe("notice");
+    expect(action.noticeKind).toBe("duplicate-request");
+    expect(shownCopyOf(action)).toBe(labels.duplicateRequest);
+    expect(action.duplicateSuccessEquivalent).toBe(true);
+    expect(action.tone).toBe("info");
+  });
+
+  test("row RATE_LIMITED → retry-later notice with NO thresholds/counters surfaced", () => {
+    const action = mapped("RATE_LIMITED", queryContext);
+    expect(action.kind).toBe("notice");
+    expect(action.noticeKind).toBe("retry-later");
+    expect(shownCopyOf(action)).toBe(labels.rateLimitExceeded);
+    expect(action.retryable).toBe(true);
+    // REQ-034 nondisclosure discipline: the action shape itself stays
+    // counter/threshold/window free.
+    expect("attempts" in action).toBe(false);
+    expect("retryAfterSeconds" in action).toBe(false);
+    expect(action.fieldErrors).toBeUndefined();
+  });
+
+  test("legacy RATE_LIMIT_EXCEEDED alias folds onto the RATE_LIMITED row (R1 correction #3)", () => {
+    expect(normalizeGraphQLErrorCode("RATE_LIMIT_EXCEEDED")).toBe("RATE_LIMITED");
+    expect(LEGACY_ERROR_CODE_ALIASES.RATE_LIMIT_EXCEEDED).toBe("RATE_LIMITED");
+    const viaLegacy = mapped("RATE_LIMIT_EXCEEDED", queryContext);
+    const viaCanonical = mapped("RATE_LIMITED", queryContext);
+    expect(viaLegacy).toEqual(viaCanonical);
+    expect(viaLegacy.noticeKind).toBe("retry-later");
+  });
+
+  test("row SERVICE_UNAVAILABLE → retryable manual-retry notice", () => {
+    const action = mapped("SERVICE_UNAVAILABLE", queryContext);
+    expect(action.kind).toBe("notice");
+    expect(action.noticeKind).toBe("retryable-service-unavailable");
+    expect(shownCopyOf(action)).toBe(labels.serviceUnavailable);
+    expect(action.retryable).toBe(true);
+  });
+
+  test("row masked INTERNAL_SERVER_ERROR → generic toast + requestId correlation guidance", () => {
+    const action = mapped("INTERNAL_SERVER_ERROR", { ...queryContext, requestId: "req-1234-abcd" });
+    expect(action.kind).toBe("toast");
+    expect(shownCopyOf(action)).toBe(labels.internalServerError);
+    expect(action.requestIdCorrelationGuidance).toBe(true);
+    expect(action.correlationRequestId).toBe("req-1234-abcd");
+  });
+
+  test("requestId correlation attaches to non-masked rows too (REQ-013)", () => {
+    const action = mapped("FORBIDDEN", { ...mutationContext, requestId: "req-echo-42" });
+    expect(action.correlationRequestId).toBe("req-echo-42");
+  });
+
+  test("codes WITHOUT a REQ-061 row map to null (behavior left untouched)", () => {
+    for (const code of ["BAD_REQUEST", "GRAPHQL_PARSE_FAILED", "PAYLOAD_TOO_LARGE", "", "unauthorized_x"]) {
+      expect(mapGraphQLErrorByCode(code, queryContext)).toBeNull();
+    }
+  });
+});
+
+// ===========================================================================
+describe("wire-shape guards", () => {
+  test("isWireFieldErrorEntry accepts only complete {field,code,message} entries", () => {
+    expect(isWireFieldErrorEntry({ field: "email", code: "EMAIL_INVALID", message: "bad" })).toBe(true);
+    expect(isWireFieldErrorEntry({ field: "email", code: "EMAIL_INVALID" })).toBe(false);
+    expect(isWireFieldErrorEntry({ field: "email", code: "EMAIL_INVALID", message: 7 })).toBe(false);
+    expect(isWireFieldErrorEntry(null)).toBe(false);
+    expect(isWireFieldErrorEntry("email")).toBe(false);
+  });
+
+  test("extractWireFieldErrors filters malformed entries and drops empty results", () => {
+    expect(extractWireFieldErrors(undefined)).toBeUndefined();
+    expect(extractWireFieldErrors("not-an-array")).toBeUndefined();
+    expect(extractWireFieldErrors([{ nope: true }, 42])).toBeUndefined();
+    expect(extractWireFieldErrors([...FIELD_PAIRS, { broken: true }])).toEqual(FIELD_PAIRS);
+  });
+});
+
+// ===========================================================================
+describe("dispatchMappedGraphQLErrorActions — surface seam integration", () => {
+  test("publishes mapped actions with inferred query/mutation contextKind", () => {
+    installWindow("/dashboard");
+    const recording = recordActions();
+
+    dispatchMappedGraphQLErrorActions(
+      combinedError([{ message: "denied", extensions: { code: "FORBIDDEN" } }]),
+      operationLike(QUERY_DOCUMENT)
+    );
+    dispatchMappedGraphQLErrorActions(
+      combinedError([{ message: "conflict", extensions: { code: "CONFLICT" } }]),
+      operationLike(MUTATION_DOCUMENT, "PingMutation")
+    );
+
+    expect(recording.actions.map(action => action.kind)).toEqual(["permission-fallback", "notice"]);
+    expect(recording.actions[1]?.noticeKind).toBe("conflict");
+    expect(recording.operationNames).toEqual(["CurrentViewerQuery", "PingMutation"]);
+    unregisterGraphQLErrorActionListener();
+  });
+
+  test("auth-row items NEVER reach the surface listener (deduped refresh owns display)", () => {
+    installWindow("/dashboard");
+    const recording = recordActions();
+    let refreshCalls = 0;
+    registerAuthRecovery({
+      refresh: () => {
+        refreshCalls += 1;
+        return Promise.resolve(null);
+      },
+      reFetch: () => undefined,
+    });
+
+    try {
+      // Dispatcher-only call: the mapping/seam never triggers recovery itself.
+      dispatchMappedGraphQLErrorActions(
+        combinedError([
+          { message: "gone", extensions: { code: "UNAUTHORIZED", requestId: "req-a1" } },
+          { message: "legacy", extensions: { code: "UNAUTHENTICATED" } },
+        ]),
+        operationLike(QUERY_DOCUMENT)
+      );
+      expect(refreshCalls).toBe(0); // recovery ignition lives in routeApolloLinkError, not here
+    } finally {
+      unregisterAuthRecovery();
+      unregisterGraphQLErrorActionListener();
+    }
+    expect(recording.actions).toHaveLength(0);
+  });
+
+  test("self-surfaced operations (login/demoLogin/refreshToken) are exempt from toasts", () => {
+    installWindow("/dashboard");
+    const recording = recordActions();
+    dispatchMappedGraphQLErrorActions(
+      combinedError([{ message: "bad credentials", extensions: { code: "CONFLICT" } }]),
+      operationLike(MUTATION_DOCUMENT, "login")
+    );
+    expect(recording.actions).toHaveLength(0);
+    unregisterGraphQLErrorActionListener();
+  });
+
+  test("masked 500 requestId flows from extensions into correlationRequestId", () => {
+    installWindow("/dashboard");
+    const recording = recordActions();
+    dispatchMappedGraphQLErrorActions(
+      combinedError([
+        { message: "masked!", extensions: { code: "INTERNAL_SERVER_ERROR", requestId: "req-correlate-9" } },
+      ]),
+      operationLike(QUERY_DOCUMENT)
+    );
+    expect(recording.actions[0]?.messageKey).toBe("internalServerError");
+    expect(recording.actions[0]?.correlationRequestId).toBe("req-correlate-9");
+    expect(recording.actions[0]?.requestIdCorrelationGuidance).toBe(true);
+    unregisterGraphQLErrorActionListener();
+  });
+
+  test("VALIDATION published at link scope is toast-with-pairs (hasForm=false; forms adopt locally)", () => {
+    installWindow("/dashboard");
+    const recording = recordActions();
+    dispatchMappedGraphQLErrorActions(
+      combinedError([{ message: "invalid", extensions: { code: "VALIDATION", fields: [...FIELD_PAIRS] } }]),
+      operationLike(MUTATION_DOCUMENT, "RegisterUser")
+    );
+    const validationAction = recording.actions[0];
+    expect(validationAction?.kind).toBe("toast");
+    expect(validationAction?.fieldErrors).toEqual(FIELD_PAIRS);
+    expect(validationAction && shownCopyOf(validationAction)).toBe(labels.validation);
+    unregisterGraphQLErrorActionListener();
+  });
+
+  test("transport-preset carriers and headerless items publish nothing", () => {
+    installWindow("/dashboard");
+    const recording = recordActions();
+    dispatchMappedGraphQLErrorActions(
+      combinedError([
+        { message: "Syntax error", extensions: { code: "GRAPHQL_PARSE_FAILED" } },
+        { message: "no code here" },
+        { message: "payload", extensions: { code: "PAYLOAD_TOO_LARGE" } },
+      ]),
+      operationLike(QUERY_DOCUMENT)
+    );
+    expect(recording.actions).toHaveLength(0);
+    unregisterGraphQLErrorActionListener();
+  });
+
+  test("a throwing listener never breaks routing of remaining items", () => {
+    installWindow("/dashboard");
+    let listenerInvocations = 0;
+    registerGraphQLErrorActionListener(() => {
+      listenerInvocations += 1;
+      throw new Error("surface boom");
+    });
+    expect(() =>
+      dispatchMappedGraphQLErrorActions(
+        combinedError([
+          { message: "first", extensions: { code: "CONFLICT" } },
+          { message: "second", extensions: { code: "SERVICE_UNAVAILABLE" } },
+        ]),
+        operationLike(QUERY_DOCUMENT)
+      )
+    ).not.toThrow();
+    expect(listenerInvocations).toBe(2);
+    unregisterGraphQLErrorActionListener();
+  });
+
+  test("headless environment (no window) keeps the dispatcher inert", () => {
+    const recording = recordActions();
+    dispatchMappedGraphQLErrorActions(
+      combinedError([{ message: "conflict", extensions: { code: "CONFLICT" } }]),
+      operationLike(QUERY_DOCUMENT)
+    );
+    expect(recording.actions).toHaveLength(0);
+    unregisterGraphQLErrorActionListener();
+  });
+});
+
+// ===========================================================================
+describe("routeApolloLinkError — preserved deduped token-refresh double-path", () => {
+  const connectivityDeps = {
+    getConnected: () => true,
+    setConnected: (_v: boolean) => undefined,
+    notifyDisconnected: () => undefined,
+  };
+
+  const unauthorizedContainer = () =>
+    combinedError([{ message: "expired", extensions: { code: "UNAUTHORIZED", requestId: "req-auth-7" } }]);
+
+  test("transport-layer LinkError handling stays wired verbatim (connectivity branch)", () => {
+    installWindow("/dashboard");
+    let disconnectedNotified = false;
+    let connectedValue = true;
+    routeApolloLinkError(
+      {
+        getConnected: () => connectedValue,
+        setConnected: value => {
+          connectedValue = value;
+        },
+        notifyDisconnected: () => {
+          disconnectedNotified = true;
+        },
+      },
+      new TypeError("Failed to fetch"),
+      operationLike(QUERY_DOCUMENT)
+    );
+    expect(disconnectedNotified).toBe(true);
+    expect(connectedValue).toBe(false);
+
+    // Non-CombinedGraphQLErrors values also stay invisible to the surface seam.
+    const recording = recordActions();
+    dispatchMappedGraphQLErrorActions(new TypeError("Failed to fetch"), operationLike(QUERY_DOCUMENT));
+    expect(recording.actions).toHaveLength(0);
+    unregisterGraphQLErrorActionListener();
+  });
+
+  test("path 1 — one deduped refreshToken, stay on page, active queries re-fetched", async () => {
+    installWindow("/dashboard");
+    let refreshCalls = 0;
+    let refetchCalls = 0;
+    let releaseRefresh: ((token: string | null) => void) | undefined;
+    const refreshPromise = new Promise<string | null>(resolve => {
+      releaseRefresh = resolve;
+    });
+    registerAuthRecovery({
+      refresh: () => {
+        refreshCalls += 1;
+        return refreshPromise;
+      },
+      reFetch: () => {
+        refetchCalls += 1;
+      },
+    });
+
+    const beforeHref = currentHref();
+    // Two simultaneous UNAUTHORIZED responses arrive while refresh is pending…
+    routeApolloLinkError(connectivityDeps, unauthorizedContainer(), operationLike(QUERY_DOCUMENT));
+    routeApolloLinkError(connectivityDeps, unauthorizedContainer(), operationLike(QUERY_DOCUMENT));
+    // …so BOTH share ONE refreshToken mutation.
+    expect(refreshCalls).toBe(1);
+
+    releaseRefresh?.("fresh-access-token");
+    await flushAsyncRouting();
+
+    expect(refetchCalls).toBeGreaterThanOrEqual(1);
+    expect(currentHref()).toBe(beforeHref); // stayed on page
+
+    unregisterAuthRecovery();
+  });
+
+  test("path 2 — failed refresh redirects to /login exactly once; duplicates suppressed", async () => {
+    installWindow("/dashboard", "?tab=sessions");
+    let refreshCalls = 0;
+    registerAuthRecovery({
+      refresh: () => {
+        refreshCalls += 1;
+        return Promise.resolve(null); // refresh definitively fails
+      },
+      reFetch: () => undefined,
+    });
+
+    const currentUrl = "/dashboard?tab=sessions";
+    const expectedTarget = buildLoginHref(currentUrl);
+    expect(expectedTarget.startsWith("/login")).toBe(true);
+
+    routeApolloLinkError(connectivityDeps, unauthorizedContainer(), operationLike(QUERY_DOCUMENT));
+    await flushAsyncRouting();
+    expect(currentHref()).toBe(expectedTarget);
+
+    // A trailing duplicate is suppressed by the in-flight-redirect guard and
+    // must NOT mint yet another refreshToken mutation.
+    const callsAfterFirstRedirect = refreshCalls;
+    routeApolloLinkError(connectivityDeps, unauthorizedContainer(), operationLike(QUERY_DOCUMENT));
+    await flushAsyncRouting();
+    expect(refreshCalls).toBe(callsAfterFirstRedirect);
+    expect(currentHref()).toBe(expectedTarget);
+
+    unregisterAuthRecovery();
+  });
+});

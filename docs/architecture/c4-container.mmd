@@ -1,0 +1,79 @@
+%% Draft Academy — C4 Level 2: Functional Container / Subsystems
+%% Shows high-level logical subsystems within the Draft Academy platform
+
+graph TB
+    %% === EXTERNAL ACTORS ===
+    Student["Student"]
+    TeacherApplicant["Teacher Applicant"]
+    CertifiedSheikh["Certified Sheikh"]
+    Parent["Parent"]
+    SuperAdmin["Super Admin"]
+
+    %% === SUBSYSTEMS ===
+    subgraph "Draft Academy Platform"
+        UserMgmt["User Management &\nRole Service\n(Registration, auth, role\ninheritance, soft delete)"]
+        MatchingEngine["Matching Engine\n(On-demand teacher discovery,\nfiltering, presence locking,\nqueue)"]
+        EvaluationEngine["Evaluation Engine\n(5-session verification loop,\nscoring aggregation,\ncooldown tracking)"]
+        SubscriptionQuota["Subscription &\nQuota Tracker\n(Plan management, session\nbalance crediting, interval\nexpiration)"]
+        SessionMgmt["Session Management\nService\n(Lifecycle, scheduling,\nreport submission,\ndual confirmation)"]
+        FinancialEscrow["Financial &\nEscrow Ledger\n(Student payments, wallet\nmanagement, teacher\ntransactions, payout)"]
+        CurriculumProgress["Curriculum &\nProgress Tracker\n(Tajweed lessons, Hifz/Madi\nhomework, progress state)"]
+        ParentPortal["Parent Supervision\nPortal\n(Handshake code pairing,\nread-only monitoring,\nnotifications)"]
+        NotificationService["Notification\nService\n(Session requests, completion\nalerts, system broadcasts)"]
+        AuditTrail["Audit Trail\nService\n(Admin action logging,\nimmutable financial records,\npermanent retention)"]
+        AdminGovernance["Admin Governance\nModule\n(Cold-start bootstrapping,\ndirect onboarding, override\nauthority, plan management)"]
+    end
+
+    %% === EXTERNAL SYSTEMS ===
+    PaymentGateway["Payment Gateway(s)"]
+    WebRTCMedia["WebRTC / Media Server"]
+    NotificationEngine["Real-time Notification Engine"]
+
+    %% === ACTOR → SUBSYSTEM FLOWS ===
+    Student -->|"Register, subscribe,\nbrowse, request sessions"| UserMgmt
+    Student -->|"Browse available teachers"| MatchingEngine
+    Student -->|"Subscribe to plans"| SubscriptionQuota
+    Student -->|"Attend sessions,\nconfirm completion"| SessionMgmt
+    Student -->|"Confirm parent link"| ParentPortal
+
+    TeacherApplicant -->|"Register, purchase\nverification plan"| UserMgmt
+    TeacherApplicant -->|"Attend evaluation\nsessions"| EvaluationEngine
+
+    CertifiedSheikh -->|"Toggle availability,\naccept sessions"| MatchingEngine
+    CertifiedSheikh -->|"Host sessions,\nsubmit reports"| SessionMgmt
+    CertifiedSheikh -->|"Evaluate applicants"| EvaluationEngine
+    CertifiedSheikh -->|"Withdraw earnings"| FinancialEscrow
+
+    Parent -->|"Search child by code,\nlink request"| ParentPortal
+
+    SuperAdmin -->|"Manage users, plans,\nsubscriptions, sessions"| AdminGovernance
+    SuperAdmin -->|"Bootstrap certified\nShuyukh"| AdminGovernance
+    SuperAdmin -->|"Override evaluations"| EvaluationEngine
+    SuperAdmin -->|"Audit financials,\napprove payouts"| FinancialEscrow
+    SuperAdmin -->|"Broadcast notifications"| NotificationService
+
+    %% === INTERNAL SUBSYSTEM INTERACTIONS ===
+    UserMgmt -->|"Role data, profiles"| MatchingEngine
+    UserMgmt -->|"User profiles"| EvaluationEngine
+    SubscriptionQuota -->|"Session balance"| MatchingEngine
+    MatchingEngine -->|"Matched teacher+student"| SessionMgmt
+    SessionMgmt -->|"Session completion,\ndual confirmation"| FinancialEscrow
+    SessionMgmt -->|"Homework, grades"| CurriculumProgress
+    SessionMgmt -->|"Session events"| NotificationService
+    EvaluationEngine -->|"Verification outcome"| UserMgmt
+    EvaluationEngine -->|"Evaluation reports"| AuditTrail
+    FinancialEscrow -->|"Payment processing"| PaymentGateway
+    SessionMgmt -->|"Live session"| WebRTCMedia
+    ParentPortal -->|"Child session events"| NotificationService
+    NotificationService -->|"Dispatch notifications"| NotificationEngine
+    AdminGovernance -->|"Admin actions"| AuditTrail
+    AdminGovernance -->|"Plan CRUD"| SubscriptionQuota
+    AdminGovernance -->|"Direct subscription\nactivation"| SubscriptionQuota
+
+    %% === STYLING ===
+    classDef actor fill:#08427b,stroke:#052e56,color:#fff
+    classDef subsystem fill:#1168bd,stroke:#0b4884,color:#fff
+    classDef external fill:#999999,stroke:#6b6b6b,color:#fff
+
+    class Student,TeacherApplicant,CertifiedSheikh,Parent,SuperAdmin actor
+    class PaymentGateway,WebRTCMedia,NotificationEngine external

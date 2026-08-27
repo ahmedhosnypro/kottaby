@@ -1,0 +1,121 @@
+# yaml-language-server: $schema=https://coderabbitai/integrations/schema.v2.json
+language: "en-US"
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    Kottabys: false
+    base_branches:
+      - "prod"
+  path_filters:
+    # --- tsconfig.json excludes ---
+    - "!**/ai/**"
+    - "!**/.agents/**"
+    - "!**/.cursor/**"
+    - "!**/.git/**"
+    - "!**/.github/**"
+    - "!**/.husky/**"
+    - "!**/.kiro/**"
+    - "!**/.next/**"
+    - "!**/.next-dev/**"
+    - "!**/.next-test*/**"
+    - "!**/.playwright-mcp/**"
+    - "!**/.scannerwork/**"
+    - "!**/.stakpak/**"
+    - "!**/.vercel/**"
+    - "!**/.vscode/**"
+    - "!**/node_modules/**"
+    - "!**/dist/**"
+    - "!**/out/**"
+    - "!**/build/**"
+    - "!**/storybook-static/**"
+    - "!Kottaby/**"
+    - "!frontend/graphql/generated/**"
+    - "!**/unRefactored_tests/**"
+    # --- .gitignore ignores ---
+    - "!**/.pnp.*"
+    - "!**/.yarn/**"
+    - "!**/coverage/**"
+    - "!**/.env*"
+    - "!**/vercel.json"
+    - "!**/*.tsbuildinfo"
+    - "!**/next-env.d.ts"
+    - "!**/.eslintcache"
+    - "!**/.eslintcache-type-aware"
+    - "!**/logs/**"
+    - "!**/.mcp.json"
+    - "!**/*.sql_ignore"
+    - "!**/*.log"
+    - "!**/scratch/**"
+    - "!**/.quality-gate-state.json"
+    - "!**/.quality-gate-lock/**"
+    - "!**/eslint-results.json"
+    - "!**/*storybook.log"
+    - "!**/.idea/**"
+    - "!**/storage/**"
+    - "!**/.aider*"
+    - "!**/ai/.archive/**"
+    - "!**/prompt/**"
+    - "!**/.gitwandrc"
+    - "!**/.playwright-cli/**"
+    - "!**/skills-lock.json"
+    - "!**/.agent-canvas/**"
+    - "!**/.oxlint/**"
+    - "!**/.oxlint-baseline.json"
+    - "!**/.unused/**"
+    - "!**/nohup.out"
+    - "!**/report/**"
+    - "!**/jscpd-*/**"
+    - "!**/.graphql-test-ports/**"
+    - "!**/.graphql-test-heartbeats/**"
+    - "!**/.next-locale-snapshots-version"
+    - "!**/.openhands/**"
+    # --- binary / asset files ---
+    - "!**/*.svg"
+    - "!**/*.png"
+    - "!**/*.jpg"
+    - "!**/*.jpeg"
+    - "!**/*.gif"
+    - "!**/*.ico"
+    - "!**/*.pem"
+    - "!**/.DS_Store"
+    - "!**/bun.lock"
+  path_instructions:
+    - path: "backend/graphql/**/*.ts"
+      instructions: |
+        Review Pothos GraphQL resolvers for:
+        - Proper authorization checks on every field
+        - Correct use of ctx.t() for i18n error messages
+        - Types imported from @/backend/types, not defined locally
+        - DataLoader batching for N+1 query prevention
+    - path: "backend/db/repo/**/*.ts"
+      instructions: |
+        Review Drizzle repository methods for:
+        - All methods accept tx parameter (DBTransaction or DBQueryExecutor)
+        - No raw SQL injection vectors
+        - Proper use of prepared statements where applicable
+    - path: "backend/services/**/*.ts"
+      instructions: |
+        Review service layer for:
+        - Business logic correctness and edge cases
+        - Proper error handling with typed DomainError
+        - No direct database access (must go through repository layer)
+    - path: "frontend/views/**/*.tsx"
+      instructions: |
+        Review React components for:
+        - MUI v9 sx prop usage (no style props like fontWeight, mb, p directly on Typography/Stack/Box)
+        - Apollo hooks imported from @apollo/client/react
+        - i18n via useAppTranslation() — no hardcoded user-facing strings
+        - No console.* usage — use @/frontend/utils/logger
+    - path: "shared/**/*.ts"
+      instructions: |
+        Review shared layer for:
+        - No imports from @/frontend/**, @/backend/**, or @/app/** (ESLint enforced)
+        - Cross-layer enums and constants only
+chat:
+  auto_reply: true

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Sessions — Report &amp; Homework</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;family=Courier+Prime&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#777587",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#4edea3",
+                        "surface": "#f9f9ff",
+                        "surface-container-high": "#e2e8f8",
+                        "secondary": "#006c49",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#4f46e5",
+                        "surface-variant": "#dce2f3",
+                        "background": "#f9f9ff",
+                        "inverse-surface": "#2a313d",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#6cf8bb",
+                        "on-secondary-fixed-variant": "#005236",
+                        "inverse-primary": "#c3c0ff",
+                        "on-secondary-fixed": "#002113",
+                        "inverse-on-surface": "#ebf1ff",
+                        "on-tertiary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "tertiary": "#684000",
+                        "surface-dim": "#d3daea",
+                        "on-tertiary-fixed": "#2a1700",
+                        "surface-bright": "#f9f9ff",
+                        "tertiary-container": "#885500",
+                        "on-surface-variant": "#464555",
+                        "on-surface": "#151c27",
+                        "primary": "#3525cd",
+                        "surface-container-low": "#f0f3ff",
+                        "outline-variant": "#c7c4d8",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "on-primary-fixed": "#0f0069",
+                        "tertiary-fixed": "#ffddb8",
+                        "surface-tint": "#4d44e3",
+                        "tertiary-fixed-dim": "#ffb95f",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "on-background": "#151c27",
+                        "surface-container-highest": "#dce2f3",
+                        "on-error": "#ffffff",
+                        "on-secondary-container": "#00714d",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#e7eefe",
+                        "on-primary-container": "#dad7ff",
+                        "primary-fixed": "#e2dfff",
+                        "on-tertiary-container": "#ffd4a4",
+                        "secondary-fixed": "#6ffbbe",
+                        "status-green-bg": "rgba(34, 197, 94, 0.1)",
+                        "status-green-text": "#15803d",
+                        "status-amber-bg": "rgba(245, 158, 11, 0.1)",
+                        "status-amber-text": "#b45309",
+                        "status-gray-bg": "rgba(107, 114, 128, 0.1)",
+                        "status-gray-text": "#374151"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "unit": "4px",
+                        "gutter": "24px",
+                        "stack-lg": "24px",
+                        "margin-desktop": "32px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "mono-sm": ["Courier Prime"],
+                        "headline-xl": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "mono-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "headline-xl": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col md:flex-row font-body-md">
+<!-- TopNavBar (Mobile Only) -->
+<header class="md:hidden bg-surface-container-lowest flex justify-between items-center w-full px-margin-mobile h-16 border-b border-outline-variant z-50 sticky top-0">
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary">Quran Academy Portal</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+<img alt="Sheikh Abdullah Profile Photo" class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="Professional portrait photograph of a confident male educational administrator in a modern, well-lit office setting. The lighting is soft and bright, emphasizing a clean, light-mode corporate aesthetic with subtle cool-toned background details. Highly detailed, photorealistic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXKTc9MwTogPmX7N31eXBzD3tpeiKE93OIga9K7hQwoVGznPMYhV6Yekz4X16HyrdjlG63gaxI49gYF4kJq3EpBO1y3UVvi8HPOKYJ7o0oWWUWj_6HTF7m6QRbJHed9LgEa9s8yvZqC7w1jJsLfAatzjGzlxGwe9ogGKq_XI4MT8S1wmAriKCsrAC--nwlTSiTRTrHjYeYJO0K-V4eBZNUPUyC1jURJsjePwXfKb-3m2EaKbYfagoF_it5_sHfacOUd1KIs8oV2g6l"/>
+</div>
+</header>
+<!-- SideNavBar (Desktop Only) -->
+<aside class="hidden md:flex flex-col h-screen w-64 left-0 bg-inverse-surface py-stack-lg shadow-md z-40 fixed text-secondary-fixed font-label-md">
+<div class="px-gutter mb-8 flex flex-col items-center">
+<img alt="Sheikh Abdullah Profile Photo" class="w-16 h-16 rounded-full object-cover mb-4 border-2 border-surface-variant" data-alt="Professional portrait photograph of a confident male educational administrator in a modern, well-lit office setting. The lighting is soft and bright, emphasizing a clean, light-mode corporate aesthetic with subtle cool-toned background details. Highly detailed, photorealistic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQzIQiFXIxpx--YnAaAL2PyDhZSwfg0zte9YRysUIadQ8WuZPsH_cSaKzzXu6gvs3IpCMrm6EMtpbe7kKqbNUIjfCFhshhpxAJO-HGdjev27okwk6RvjthFCyza4ora21aEMkmXD1EfVQNwR-4o_8kc0BdkIsiWkMyUtKOPi7H-V740JhzR-V7iL9AdFJ4W56umzA0UK6nFyDCY5rkG64KI0xmA8-jhZ5_EM3phXajLaKff0B_DPVN17ZE2OhWp2DJSglXaNwnOoo1"/>
+<h2 class="font-headline-sm text-headline-sm font-black text-on-primary text-center">Sheikh Abdullah</h2>
+<p class="text-surface-variant text-sm mt-1 text-center">Senior Quran Instructor</p>
+<div class="mt-2 bg-surface-container-high/20 text-on-primary px-2 py-1 rounded text-xs border border-surface-variant/30">Certified</div>
+</div>
+<nav class="flex-1 px-2 space-y-1">
+<!-- Active Tab: Sessions -->
+<a class="flex items-center gap-3 bg-primary-container text-on-primary-container rounded-lg mx-2 px-4 py-3 active:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_month" data-weight="fill" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+<span>Sessions</span>
+</a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-surface-variant/10 transition-all rounded-lg mx-2 active:translate-x-1" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span>Students</span>
+</a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-surface-variant/10 transition-all rounded-lg mx-2 active:translate-x-1" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span>Reports</span>
+</a>
+<a class="flex items-center gap-3 text-surface-variant px-4 py-3 hover:bg-surface-variant/10 transition-all rounded-lg mx-2 active:translate-x-1" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span>Profile</span>
+</a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary transition-colors py-3 rounded-lg font-bold flex items-center justify-center gap-2 active:scale-95 shadow-sm">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                Start New Session
+            </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 p-margin-mobile md:p-margin-desktop bg-surface max-w-container-max mx-auto w-full">
+<!-- Header -->
+<header class="mb-stack-lg flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">My Sessions</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Report &amp; Homework Management</p>
+</div>
+<!-- Desktop Top Nav Actions injected into main layout header for seamless look -->
+<div class="hidden md:flex items-center gap-4 bg-surface-container-lowest p-2 rounded-xl border border-outline-variant shadow-sm">
+<div class="relative px-3 py-1 flex items-center gap-2 border-r border-outline-variant">
+<span class="material-symbols-outlined text-outline" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-48 text-on-surface" placeholder="Search sessions..." type="text"/>
+</div>
+<button class="text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors active:scale-95 relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors active:scale-95 mr-2">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<!-- Data List Container -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden mb-stack-lg shadow-sm">
+<div class="px-6 py-4 bg-surface-container-low border-b border-outline-variant flex justify-between items-center">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Recent Sessions</h2>
+<button class="text-primary font-label-md text-label-md hover:underline">View All</button>
+</div>
+<div class="divide-y divide-outline-variant">
+<!-- Row 1: Completed Session -->
+<div class="p-6 hover:bg-surface-container-low/50 transition-colors">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+<div class="flex-1 space-y-2">
+<div class="flex items-center gap-3">
+<h3 class="font-headline-sm text-headline-sm">Session #4821</h3>
+<span class="bg-status-green-bg text-status-green-text px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="check_circle">check_circle</span>
+                                    Completed
+                                </span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant font-body-sm text-body-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="person">person</span> Student: Ahmed Ali</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="schedule">schedule</span> Oct 24, 10:00 AM</span>
+</div>
+<p class="font-mono-sm text-mono-sm text-outline">INV-S7 satisfied</p>
+</div>
+<div class="flex flex-col sm:flex-row gap-3 min-w-max">
+<button class="bg-surface-container-lowest border border-outline-variant text-on-surface font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-surface-container-low transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="assignment">assignment</span>
+                                Submit Report
+                            </button>
+<button class="bg-primary text-on-primary font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-primary-fixed-variant transition-colors flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="book">book</span>
+                                Assign Homework
+                            </button>
+</div>
+</div>
+</div>
+<!-- Row 2: Started Session (Disabled actions) -->
+<div class="p-6 hover:bg-surface-container-low/50 transition-colors">
+<div class="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+<div class="flex-1 space-y-2">
+<div class="flex items-center gap-3">
+<h3 class="font-headline-sm text-headline-sm">Session #4830</h3>
+<span class="bg-status-amber-bg text-status-amber-text px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="pending">pending</span>
+                                    Started
+                                </span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant font-body-sm text-body-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="person">person</span> Student: Fatima Zahra</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="schedule">schedule</span> Oct 24, 2:00 PM (In Progress)</span>
+</div>
+</div>
+<div class="flex flex-col gap-3 min-w-max">
+<div>
+<button class="w-full bg-surface-variant/30 border border-outline-variant/30 text-outline font-label-md text-label-md px-4 py-2 rounded-lg cursor-not-allowed flex items-center justify-center gap-2" disabled="">
+<span class="material-symbols-outlined text-[18px]" data-icon="lock">lock</span>
+                                    Submit Report
+                                </button>
+<p class="text-[11px] text-error mt-1 text-right">Report requires completed session <br/><span class="font-mono-sm text-mono-sm bg-error-container/50 px-1 rounded">(SESSION_NOT_COMPLETED)</span></p>
+</div>
+<div>
+<button class="w-full bg-surface-variant/30 border border-outline-variant/30 text-outline font-label-md text-label-md px-4 py-2 rounded-lg cursor-not-allowed flex items-center justify-center gap-2" disabled="">
+<span class="material-symbols-outlined text-[18px]" data-icon="lock">lock</span>
+                                    Assign Homework
+                                </button>
+<p class="text-[11px] text-outline mt-1 text-right">Requires submitted report</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Grid for Mockups -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-stack-lg">
+<!-- Blocked Dialog Mockup -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.05)] flex flex-col h-full relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-status-amber-text"></div>
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-status-amber-text text-[32px]" data-icon="warning">warning</span>
+<h2 class="font-headline-md text-headline-md">Submit Session Report</h2>
+</div>
+<div class="flex-1">
+<div class="bg-status-amber-bg border border-status-amber-text/30 rounded-lg p-4 flex items-start gap-3">
+<span class="material-symbols-outlined text-status-amber-text shrink-0" data-icon="error">error</span>
+<div>
+<h3 class="font-label-md text-label-md text-status-amber-text mb-1">Action Blocked</h3>
+<p class="font-body-sm text-body-sm text-on-surface mb-2">This session has not completed yet. You must formally end the session before submitting an evaluation report.</p>
+<span class="inline-block bg-surface-container-lowest border border-outline-variant text-outline font-mono-sm text-mono-sm px-2 py-1 rounded">SESSION_NOT_COMPLETED</span>
+</div>
+</div>
+</div>
+<div class="mt-8 flex justify-end gap-3 pt-4 border-t border-outline-variant">
+<button class="px-4 py-2 text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-low rounded-lg transition-colors">Cancel</button>
+<button class="px-6 py-2 bg-surface-variant text-outline font-label-md text-label-md rounded-lg cursor-not-allowed" disabled="">Submit Report</button>
+</div>
+</div>
+<!-- Form Error Mockup -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.05)] flex flex-col h-full relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-error"></div>
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary text-[32px]" data-icon="menu_book">menu_book</span>
+<h2 class="font-headline-md text-headline-md">Assign Homework</h2>
+</div>
+<div class="flex-1 space-y-6">
+<div class="bg-error-container border border-error/30 rounded-lg p-4 flex items-start gap-3">
+<span class="material-symbols-outlined text-error shrink-0" data-icon="gpp_bad">gpp_bad</span>
+<div>
+<h3 class="font-label-md text-label-md text-error mb-1">Pre-requisite Missing</h3>
+<p class="font-body-sm text-body-sm text-on-error-container mb-2">A session report must exist before assigning homework. Homework is tied directly to the learning outcomes evaluated in the report.</p>
+<span class="inline-block bg-surface-container-lowest border border-error/30 text-error font-mono-sm text-mono-sm px-2 py-1 rounded">SESSION_REPORT_REQUIRED</span>
+</div>
+</div>
+<!-- Disabled Form Representation -->
+<div class="space-y-4 opacity-50 pointer-events-none">
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface mb-1">Assignment Title</label>
+<input class="w-full h-10 bg-surface-container-low border border-outline-variant rounded px-3 text-on-surface-variant" disabled="" type="text" value="Surah Al-Baqarah Verses 1-5"/>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface mb-1">Instructions</label>
+<textarea class="w-full h-24 bg-surface-container-low border border-outline-variant rounded p-3 text-on-surface-variant resize-none" disabled="">Memorize and record recitation.</textarea>
+</div>
+</div>
+</div>
+<div class="mt-8 flex justify-end gap-3 pt-4 border-t border-outline-variant">
+<button class="px-4 py-2 text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-low rounded-lg transition-colors">Cancel</button>
+<button class="px-6 py-2 bg-primary/30 text-on-primary font-label-md text-label-md rounded-lg cursor-not-allowed" disabled="">Assign</button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

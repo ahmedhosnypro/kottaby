@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Siraj - Plans &amp; Balance</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-dim": "#d7dae0",
+                      "background": "#f7f9ff",
+                      "outline-variant": "#bec9c8",
+                      "tertiary-fixed-dim": "#c3c7c7",
+                      "on-surface-variant": "#3e4948",
+                      "surface-container-highest": "#dfe3e8",
+                      "primary": "#004d4c",
+                      "surface-container-low": "#f1f4fa",
+                      "on-primary": "#ffffff",
+                      "surface": "#f7f9ff",
+                      "primary-container": "#006766",
+                      "secondary-fixed-dim": "#71d7cd",
+                      "on-primary-fixed-variant": "#00504f",
+                      "on-tertiary-fixed": "#181c1d",
+                      "error": "#ba1a1a",
+                      "error-container": "#ffdad6",
+                      "on-error-container": "#93000a",
+                      "on-background": "#181c20",
+                      "surface-tint": "#076968",
+                      "tertiary": "#414546",
+                      "on-secondary-fixed-variant": "#00504a",
+                      "on-tertiary": "#ffffff",
+                      "inverse-surface": "#2d3135",
+                      "surface-variant": "#dfe3e8",
+                      "on-tertiary-fixed-variant": "#434848",
+                      "on-secondary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "secondary-fixed": "#8ef4e9",
+                      "on-primary-container": "#94e2e0",
+                      "tertiary-container": "#585d5d",
+                      "tertiary-fixed": "#dfe3e3",
+                      "surface-container-high": "#e5e8ee",
+                      "on-surface": "#181c20",
+                      "primary-fixed": "#a2f0ee",
+                      "on-tertiary-container": "#d1d6d6",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-bright": "#f7f9ff",
+                      "inverse-primary": "#86d4d2",
+                      "inverse-on-surface": "#eef1f7",
+                      "on-secondary-fixed": "#00201d",
+                      "secondary-container": "#8bf1e6",
+                      "surface-container": "#ebeef4",
+                      "secondary": "#006a63",
+                      "primary-fixed-dim": "#86d4d2",
+                      "on-primary-fixed": "#00201f",
+                      "on-secondary-container": "#006f67",
+                      "outline": "#6f7978"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "16px",
+                      "stack-md": "16px",
+                      "margin-desktop": "40px",
+                      "unit": "8px",
+                      "container-max": "1200px",
+                      "stack-sm": "8px",
+                      "gutter": "24px",
+                      "stack-lg": "32px"
+              },
+              "fontFamily": {
+                      "headline-lg": [
+                              "Manrope"
+                      ],
+                      "body-lg": [
+                              "Manrope"
+                      ],
+                      "headline-md": [
+                              "Manrope"
+                      ],
+                      "label-md": [
+                              "Manrope"
+                      ],
+                      "headline-lg-mobile": [
+                              "Manrope"
+                      ],
+                      "display": [
+                              "Manrope"
+                      ],
+                      "body-md": [
+                              "Manrope"
+                      ],
+                      "label-sm": [
+                              "Manrope"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+</head>
+<body class="bg-surface font-body-md text-on-surface h-screen flex overflow-hidden">
+<!-- SideNavBar (from JSON) -->
+<nav class="h-screen w-64 fixed left-0 top-0 bg-surface dark:bg-inverse-surface shadow-sm z-50 flex flex-col h-full p-4 border-r border-outline-variant/10 shadow-[0_4px_20px_rgba(0,103,102,0.05)] hidden md:flex">
+<!-- Header -->
+<div class="flex items-center gap-4 px-4 py-6 mb-4">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center shrink-0">
+<img alt="Siraj Platform Logo" class="w-6 h-6 object-contain" data-alt="A minimal, elegant logo mark for an educational platform, featuring a stylized open book or a subtle crescent moon motif, rendered in crisp white against a deep teal circular background. High-quality vector style, flat shading." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmktrBq8g__O2izOKDxOX5lNXuBN__jGZy1dgVzO7BUcWGE5wBqGdnBe_A2juPTy2ER6XabuFu9R1A3wVUjvMo9hR7ZU3YN0Dt-Wdn6mNGScr3FGJXOpl-CMvDzOyYXFS12-rHWfqMNpYdcF77YP8HXez9P3nfUosbuCZHAe7ywclG4BJpX0F3gf5WUb78_uXwhi296xi8hYbAkykCd8X-29-6tCOsUS5FrqfC6NVc0ivyURowiabKrlwx-wENjAq8SSOG5nvBMx8h"/>
+</div>
+<div>
+<h1 class="font-display text-headline-md text-primary dark:text-inverse-primary">Siraj</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">Quran Education</p>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 flex flex-col gap-2 overflow-y-auto mt-4">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-xl hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all group" href="#">
+<span class="material-symbols-outlined group-active:scale-95 duration-200">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-xl hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all group" href="#">
+<span class="material-symbols-outlined group-active:scale-95 duration-200">person_search</span>
+<span class="font-label-md text-label-md">Find a Teacher</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-xl hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all group" href="#">
+<span class="material-symbols-outlined group-active:scale-95 duration-200">event_note</span>
+<span class="font-label-md text-label-md">My Sessions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-xl font-bold hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all group" href="#">
+<span class="material-symbols-outlined group-active:scale-95 duration-200" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="font-label-md text-label-md">Plans &amp; Balance</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-xl hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all group" href="#">
+<span class="material-symbols-outlined group-active:scale-95 duration-200">account_circle</span>
+<span class="font-label-md text-label-md">Profile</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-xl hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all group" href="#">
+<span class="material-symbols-outlined group-active:scale-95 duration-200">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+<!-- CTA -->
+<div class="mt-auto pt-6 px-2">
+<button class="w-full bg-primary text-on-primary font-label-md text-label-md py-3 px-4 rounded-xl hover:bg-primary/90 transition-colors shadow-sm flex items-center justify-center gap-2">
+                Book New Session
+            </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-0 md:ml-64 flex items-center justify-center p-4 md:p-margin-desktop overflow-y-auto bg-surface relative">
+<!-- Subtle Background Pattern -->
+<div class="absolute inset-0 opacity-20 pointer-events-none" style="background-image: radial-gradient(#006766 1px, transparent 1px); background-size: 24px 24px;"></div>
+<!-- Error Card (Level 1 Elevation) -->
+<div class="w-full max-w-2xl bg-surface-container-lowest rounded-2xl shadow-[0_4px_20px_rgba(0,103,102,0.05)] border border-outline-variant/20 p-stack-lg relative z-10">
+<!-- Icon Header -->
+<div class="flex justify-center mb-stack-md">
+<div class="w-16 h-16 rounded-full bg-error-container/30 flex items-center justify-center text-error">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 0;">account_balance_wallet</span>
+</div>
+</div>
+<!-- Text Content -->
+<div class="text-center mb-stack-lg">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-stack-sm">You don't have enough sessions available</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-xl mx-auto">
+                    Booking requires one available credit in your Hifz lane or free trial. All your remaining credits are currently HELD by scheduled or in-progress sessions.
+                </p>
+</div>
+<!-- Breakdown Table -->
+<div class="mb-stack-lg border border-outline-variant/30 rounded-xl overflow-hidden bg-surface">
+<div class="px-6 py-4 bg-surface-container-lowest border-b border-outline-variant/30">
+<h3 class="font-label-md text-label-md text-on-surface">Your availability</h3>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface border-b border-outline-variant/20">
+<th class="px-6 py-3 font-label-sm text-label-sm text-on-surface-variant font-medium">Lane</th>
+<th class="px-6 py-3 font-label-sm text-label-sm text-on-surface-variant font-medium text-right">Granted/Subscribed</th>
+<th class="px-6 py-3 font-label-sm text-label-sm text-on-surface-variant font-medium text-right">Held</th>
+<th class="px-6 py-3 font-label-sm text-label-sm text-on-surface-variant font-medium text-right">Available</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<!-- Free Trial Row -->
+<tr class="bg-surface-container-lowest">
+<td class="px-6 py-4 font-body-md text-body-md text-on-surface font-medium flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+                                    Free Trial
+                                </td>
+<td class="px-6 py-4 font-body-md text-body-md text-on-surface-variant text-right">2 granted</td>
+<td class="px-6 py-4 text-right">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#fff8e1] text-[#f57f17] border border-[#ffecb3]">
+                                        2 held
+                                    </span>
+</td>
+<td class="px-6 py-4 font-body-md text-body-md text-on-surface text-right font-bold text-error">0 available</td>
+</tr>
+<!-- Hifz Row (Subtle) -->
+<tr class="bg-surface-container-lowest/50 opacity-70">
+<td class="px-6 py-4 font-body-md text-body-md text-on-surface-variant flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
+                                    Hifz
+                                </td>
+<td class="px-6 py-4 font-body-md text-body-md text-on-surface-variant text-right">8 subscribed</td>
+<td class="px-6 py-4 font-body-md text-body-md text-on-surface-variant text-right">3 held</td>
+<td class="px-6 py-4 font-body-md text-body-md text-on-surface-variant text-right">5 available</td>
+</tr>
+<!-- Tajweed Row (Empty) -->
+<tr class="bg-surface-container-lowest/50 opacity-50">
+<td class="px-6 py-4 font-body-md text-body-md text-on-surface-variant flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-outline-variant/50"></span>
+                                    Tajweed
+                                </td>
+<td class="px-6 py-4 font-body-md text-body-md text-on-surface-variant text-right">0 subscribed</td>
+<td class="px-6 py-4 font-body-md text-body-md text-on-surface-variant text-right">0 held</td>
+<td class="px-6 py-4 font-body-md text-body-md text-on-surface-variant text-right">0 available</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-3 bg-surface-container-low border-t border-outline-variant/30 flex items-start gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-sm mt-0.5">info</span>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Held credits are released automatically if a session is cancelled or times out.</p>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex flex-col sm:flex-row gap-4 justify-center mt-stack-lg">
+<button class="bg-primary text-on-primary font-label-md text-label-md py-3 px-8 rounded-xl hover:bg-primary/90 transition-colors shadow-sm order-1 sm:order-2">
+                    Upgrade my plan
+                </button>
+<button class="bg-transparent text-primary font-label-md text-label-md py-3 px-8 rounded-xl border border-primary/20 hover:bg-primary/5 transition-colors order-2 sm:order-1">
+                    View my sessions
+                </button>
+</div>
+<!-- Support Link -->
+<div class="mt-stack-md text-center">
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors underline decoration-outline-variant/50 underline-offset-4" href="#">
+                    Think this is wrong? Contact support
+                </a>
+</div>
+</div>
+</main>
+</body></html>

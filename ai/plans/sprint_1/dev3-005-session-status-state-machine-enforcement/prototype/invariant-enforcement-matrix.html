@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Session State Machine — Invariant Test Matrix</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-background": "#151c27",
+                      "surface-dim": "#d3daea",
+                      "surface": "#f9f9ff",
+                      "on-surface-variant": "#464555",
+                      "outline-variant": "#c7c4d8",
+                      "primary": "#3525cd",
+                      "on-tertiary-container": "#ffd4a4",
+                      "on-secondary-container": "#00714d",
+                      "surface-container": "#e7eefe",
+                      "on-error-container": "#93000a",
+                      "tertiary-container": "#885500",
+                      "inverse-on-surface": "#ebf1ff",
+                      "tertiary-fixed-dim": "#ffb95f",
+                      "surface-container-highest": "#dce2f3",
+                      "on-surface": "#151c27",
+                      "background": "#f9f9ff",
+                      "outline": "#777587",
+                      "on-tertiary-fixed": "#2a1700",
+                      "inverse-surface": "#2a313d",
+                      "error-container": "#ffdad6",
+                      "surface-tint": "#4d44e3",
+                      "surface-container-high": "#e2e8f8",
+                      "on-primary-fixed-variant": "#3323cc",
+                      "surface-bright": "#f9f9ff",
+                      "primary-fixed-dim": "#c3c0ff",
+                      "secondary-fixed-dim": "#4edea3",
+                      "secondary": "#006c49",
+                      "on-secondary-fixed": "#002113",
+                      "on-tertiary-fixed-variant": "#653e00",
+                      "error": "#ba1a1a",
+                      "secondary-fixed": "#6ffbbe",
+                      "surface-variant": "#dce2f3",
+                      "on-secondary": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "tertiary": "#684000",
+                      "on-tertiary": "#ffffff",
+                      "on-primary-fixed": "#0f0069",
+                      "secondary-container": "#6cf8bb",
+                      "inverse-primary": "#c3c0ff",
+                      "surface-container-low": "#f0f3ff",
+                      "on-primary-container": "#dad7ff",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed": "#e2dfff",
+                      "primary-container": "#4f46e5",
+                      "on-secondary-fixed-variant": "#005236",
+                      "on-error": "#ffffff",
+                      "tertiary-fixed": "#ffddb8"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-md": "16px",
+                      "gutter": "24px",
+                      "stack-sm": "8px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "32px",
+                      "container-max": "1440px",
+                      "unit": "4px",
+                      "stack-lg": "24px"
+              },
+              "fontFamily": {
+                      "body-lg": ["Inter"],
+                      "mono-sm": ["Courier Prime"],
+                      "label-md": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-sm": ["Inter"],
+                      "headline-xl": ["Inter"],
+                      "headline-lg": ["Inter"]
+              },
+              "fontSize": {
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "mono-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "headline-xl": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+              }
+            }
+          }
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface antialiased flex h-screen overflow-hidden">
+<!-- Shared Component: SideNavBar -->
+<nav class="bg-on-background dark:bg-inverse-surface fixed inset-y-0 left-0 flex flex-col z-40 docked h-full w-64 left-0 top-0">
+<!-- Brand -->
+<div class="px-gutter py-stack-lg border-b border-on-surface-variant/20 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary-fixed" style="font-variation-settings: 'FILL' 1;">shield</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-surface-bright dark:text-surface-bright leading-tight">Invariant Guard</h1>
+<p class="font-label-sm text-label-sm text-surface-dim opacity-70">System Administrator</p>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto py-stack-md flex flex-col gap-unit px-stack-sm">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-surface-variant dark:text-surface-dim hover:text-surface-bright hover:bg-on-surface-variant/10 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-surface-variant dark:text-surface-dim hover:text-surface-bright hover:bg-on-surface-variant/10 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">rule</span>
+<span class="font-label-md text-label-md">Invariants</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-primary-fixed-dim font-bold border-l-4 border-primary-fixed-dim bg-on-surface-variant/20 opacity-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-primary-fixed-dim" style="font-variation-settings: 'FILL' 1;">account_tree</span>
+<span class="font-label-md text-label-md text-primary-fixed-dim">State Machine</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-surface-variant dark:text-surface-dim hover:text-surface-bright hover:bg-on-surface-variant/10 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-md text-label-md">System Logs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-surface-variant dark:text-surface-dim hover:text-surface-bright hover:bg-on-surface-variant/10 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">policy</span>
+<span class="font-label-md text-label-md">Security Policies</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-surface-variant dark:text-surface-dim hover:text-surface-bright hover:bg-on-surface-variant/10 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">settings_accessibility</span>
+<span class="font-label-md text-label-md">Admin Settings</span>
+</a>
+</div>
+<!-- Footer Actions -->
+<div class="px-stack-sm py-stack-md border-t border-on-surface-variant/20 flex flex-col gap-2">
+<button class="w-full bg-primary-container text-on-primary text-label-md font-label-md py-2 rounded-lg hover:bg-surface-tint transition-colors shadow-sm mb-2">
+                Run Global Verification
+            </button>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-surface-variant dark:text-surface-dim hover:text-surface-bright hover:bg-on-surface-variant/10 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Help Center</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-surface-variant dark:text-surface-dim hover:text-surface-bright hover:bg-on-surface-variant/10 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Sign Out</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="ml-64 flex-1 flex flex-col h-full overflow-hidden">
+<!-- Shared Component: TopNavBar -->
+<header class="bg-surface/80 backdrop-blur-md dark:bg-on-background sticky top-0 z-30 flex justify-between items-center w-full px-margin-desktop py-stack-sm border-b border-outline-variant dark:border-outline flat no shadows">
+<div class="flex items-center gap-gutter">
+<h2 class="font-headline-sm text-headline-sm font-semibold text-on-surface dark:text-inverse-on-surface">Enforcement Verification Dashboard</h2>
+<nav class="hidden lg:flex items-center gap-stack-lg ml-gutter border-l border-outline-variant pl-gutter">
+<a class="font-label-sm text-label-sm text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors" href="#">Direct Monitor</a>
+<a class="font-label-sm text-label-sm text-primary dark:text-inverse-primary border-b-2 border-primary dark:border-inverse-primary pb-1 scale-95 transition-transform duration-100" href="#">Global State</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors" href="#">History</a>
+</nav>
+</div>
+<div class="flex items-center gap-stack-md">
+<!-- Trailing Actions -->
+<button class="font-label-sm text-label-sm px-4 py-2 border border-outline-variant rounded-lg text-on-surface hover:bg-surface-container transition-colors">Export Report</button>
+<button class="font-label-sm text-label-sm px-4 py-2 bg-primary-container text-on-primary rounded-lg hover:bg-surface-tint transition-colors">Deploy Fix</button>
+<div class="w-px h-6 bg-outline-variant mx-2"></div>
+<!-- Icon Actions -->
+<button class="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center w-8 h-8 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center w-8 h-8 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">history_edu</span>
+</button>
+<!-- Profile Image -->
+<img class="w-8 h-8 rounded-full border border-outline-variant object-cover ml-2" data-alt="A small, professional headshot of an IT administrator, serving as an avatar placeholder, styled in a clean, modern aesthetic with neutral lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCre2UWnzjg2fb2pakwCBbJNI2dziobODFpPqDCF5E75YYzbef86icY2K04vCngGUgqFFWQSre-vf3MEd21IbNaQik82EJwlEUwsGjAoT48bsewnTzXS6ggbO-vAvO80DThwoK0SFclrrrYnZMAJBZEy5hGKvYhvRCCeAhMV5d_QzkDlWHzpJQyCCWW-YWlphxi-rxP4EXfwt_q1WBQX2fF2EfLXXTq7phpvxv0yiROQ74GnCj7wkIUsC9q2XZpRwtoWxDOClq8oo21"/>
+</div>
+</header>
+<!-- Scrollable Content -->
+<main class="flex-1 overflow-y-auto bg-surface-container-low p-margin-desktop">
+<div class="max-w-[1440px] mx-auto flex flex-col gap-stack-lg">
+<!-- Header Section -->
+<div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-stack-md">Session State Machine — Invariant Test Matrix</h1>
+<div class="bg-secondary-container/20 border border-secondary-container rounded-xl p-stack-md flex items-center gap-stack-md">
+<div class="w-10 h-10 rounded-full bg-secondary text-on-secondary flex items-center justify-center shrink-0 shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-secondary-fixed">M1 Release Gate: ALL INVARIANTS ENFORCED</h3>
+<p class="font-body-sm text-body-sm text-on-secondary-fixed-variant mt-1">System is fully compliant with structural integrity requirements for the M1 milestone.</p>
+</div>
+</div>
+</div>
+<!-- Invariant Cards Grid (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-gutter">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div>
+<div class="flex justify-between items-start mb-stack-sm">
+<span class="font-mono-sm text-mono-sm bg-surface-container-highest px-2 py-1 rounded text-on-surface-variant font-semibold">INV-S1</span>
+<span class="bg-secondary-container/30 text-on-secondary-fixed-variant px-2 py-0.5 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-secondary-container/50">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> PASSING
+                                </span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Completed Is Terminal</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Ensures a session marked as completed cannot transition back to scheduled or started.</p>
+</div>
+<div class="mt-stack-md pt-stack-sm border-t border-outline-variant/50 flex items-center justify-between text-surface-tint font-label-sm text-label-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">science</span> 25 tests</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div>
+<div class="flex justify-between items-start mb-stack-sm">
+<span class="font-mono-sm text-mono-sm bg-surface-container-highest px-2 py-1 rounded text-on-surface-variant font-semibold">INV-S2</span>
+<span class="bg-secondary-container/30 text-on-secondary-fixed-variant px-2 py-0.5 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-secondary-container/50">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> PASSING
+                                </span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Cancelled Is Terminal</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Verifies that a cancelled session halts all further state mutations permanently.</p>
+</div>
+<div class="mt-stack-md pt-stack-sm border-t border-outline-variant/50 flex items-center justify-between text-surface-tint font-label-sm text-label-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">science</span> 20 tests</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div>
+<div class="flex justify-between items-start mb-stack-sm">
+<span class="font-mono-sm text-mono-sm bg-surface-container-highest px-2 py-1 rounded text-on-surface-variant font-semibold">INV-S3</span>
+<span class="bg-secondary-container/30 text-on-secondary-fixed-variant px-2 py-0.5 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-secondary-container/50">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> PASSING
+                                </span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Financial Purity — No Wallet Writes</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">State transitions do not directly mutate wallet balances, maintaining separation of concerns.</p>
+</div>
+<div class="mt-stack-md pt-stack-sm border-t border-outline-variant/50 flex items-center justify-between text-surface-tint font-label-sm text-label-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">science</span> 12 tests</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div>
+<div class="flex justify-between items-start mb-stack-sm">
+<span class="font-mono-sm text-mono-sm bg-surface-container-highest px-2 py-1 rounded text-on-surface-variant font-semibold">INV-S4</span>
+<span class="bg-secondary-container/30 text-on-secondary-fixed-variant px-2 py-0.5 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-secondary-container/50">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> PASSING
+                                </span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Participant Integrity NOT NULL</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Every session state guarantees valid, non-null references to both student and tutor entities.</p>
+</div>
+<div class="mt-stack-md pt-stack-sm border-t border-outline-variant/50 flex items-center justify-between text-surface-tint font-label-sm text-label-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">science</span> 6 tests</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div>
+<div class="flex justify-between items-start mb-stack-sm">
+<span class="font-mono-sm text-mono-sm bg-surface-container-highest px-2 py-1 rounded text-on-surface-variant font-semibold">INV-S5</span>
+<span class="bg-secondary-container/30 text-on-secondary-fixed-variant px-2 py-0.5 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-secondary-container/50">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> PASSING
+                                </span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Certified Teacher Only</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Enforces that the assigned tutor entity holds an active, verified certification flag.</p>
+</div>
+<div class="mt-stack-md pt-stack-sm border-t border-outline-variant/50 flex items-center justify-between text-surface-tint font-label-sm text-label-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">science</span> 8 tests</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+</div>
+<!-- Card 6 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div>
+<div class="flex justify-between items-start mb-stack-sm">
+<span class="font-mono-sm text-mono-sm bg-surface-container-highest px-2 py-1 rounded text-on-surface-variant font-semibold">INV-S6</span>
+<span class="bg-secondary-container/30 text-on-secondary-fixed-variant px-2 py-0.5 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-secondary-container/50">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> PASSING
+                                </span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">In-Session Lock</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Prevents deletion or major modification of session parameters while status is 'Started'.</p>
+</div>
+<div class="mt-stack-md pt-stack-sm border-t border-outline-variant/50 flex items-center justify-between text-surface-tint font-label-sm text-label-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">science</span> 10 tests</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+</div>
+<!-- Card 7 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div>
+<div class="flex justify-between items-start mb-stack-sm">
+<span class="font-mono-sm text-mono-sm bg-surface-container-highest px-2 py-1 rounded text-on-surface-variant font-semibold">INV-S7</span>
+<span class="bg-secondary-container/30 text-on-secondary-fixed-variant px-2 py-0.5 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-secondary-container/50">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> PASSING
+                                </span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Report Requires Completed Session</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">A post-session report entity can only be instantiated if the parent session is 'Completed'.</p>
+</div>
+<div class="mt-stack-md pt-stack-sm border-t border-outline-variant/50 flex items-center justify-between text-surface-tint font-label-sm text-label-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">science</span> 5 tests</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+</div>
+<!-- Card 8 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div>
+<div class="flex justify-between items-start mb-stack-sm">
+<span class="font-mono-sm text-mono-sm bg-surface-container-highest px-2 py-1 rounded text-on-surface-variant font-semibold">INV-S8</span>
+<span class="bg-secondary-container/30 text-on-secondary-fixed-variant px-2 py-0.5 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-secondary-container/50">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> PASSING
+                                </span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Homework Requires Report</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Homework assignments are gated by the successful creation of a session report.</p>
+</div>
+<div class="mt-stack-md pt-stack-sm border-t border-outline-variant/50 flex items-center justify-between text-surface-tint font-label-sm text-label-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">science</span> 5 tests</span>
+<span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+</div>
+</div>
+<!-- Matrix Table Section -->
+<div class="mt-stack-md">
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-stack-sm">5×5 Transition Matrix</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-stack-md">Defines allowed state mutations from current state (rows) to target state (columns).</p>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-x-auto shadow-sm">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container text-on-surface-variant border-b border-outline-variant">
+<th class="p-4 font-label-md text-label-md font-semibold border-r border-outline-variant w-48">Current \ Target</th>
+<th class="p-4 font-label-sm text-label-sm font-semibold border-r border-outline-variant text-center w-1/5">Scheduled</th>
+<th class="p-4 font-label-sm text-label-sm font-semibold border-r border-outline-variant text-center w-1/5">Started</th>
+<th class="p-4 font-label-sm text-label-sm font-semibold border-r border-outline-variant text-center w-1/5">Completed</th>
+<th class="p-4 font-label-sm text-label-sm font-semibold border-r border-outline-variant text-center w-1/5">Cancelled</th>
+<th class="p-4 font-label-sm text-label-sm font-semibold text-center w-1/5">Disputed</th>
+</tr>
+</thead>
+<tbody>
+<!-- Row 1: Scheduled -->
+<tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+<td class="p-4 font-label-md text-label-md font-medium text-on-surface border-r border-outline-variant bg-surface-container-lowest">Scheduled</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle">
+<div class="flex flex-col items-center justify-center text-error opacity-60">
+<span class="material-symbols-outlined">close</span>
+</div>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle bg-secondary-container/5">
+<span class="material-symbols-outlined text-secondary font-bold text-[28px]">check</span>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle">
+<div class="flex flex-col items-center justify-center gap-1">
+<span class="material-symbols-outlined text-error">close</span>
+<span class="font-mono-sm text-[10px] text-error px-1 bg-error-container rounded">SESSION_INVALID_TRANSITION</span>
+</div>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle bg-secondary-container/5">
+<span class="material-symbols-outlined text-secondary font-bold text-[28px]">check</span>
+</td>
+<td class="p-4 text-center align-middle border-dashed border-2 border-outline-variant bg-surface-container-highest/30">
+<span class="font-mono-sm text-[11px] text-outline">DEV3-022 reserved</span>
+</td>
+</tr>
+<!-- Row 2: Started -->
+<tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+<td class="p-4 font-label-md text-label-md font-medium text-on-surface border-r border-outline-variant bg-surface-container-lowest">Started</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle">
+<div class="flex flex-col items-center justify-center gap-1">
+<span class="material-symbols-outlined text-error">close</span>
+<span class="font-mono-sm text-[10px] text-error px-1 bg-error-container rounded">SESSION_INVALID_TRANSITION</span>
+</div>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle">
+<div class="flex flex-col items-center justify-center text-error opacity-60">
+<span class="material-symbols-outlined">close</span>
+</div>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle bg-secondary-container/5">
+<span class="material-symbols-outlined text-secondary font-bold text-[28px]">check</span>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle bg-secondary-container/5">
+<span class="material-symbols-outlined text-secondary font-bold text-[28px]">check</span>
+</td>
+<td class="p-4 text-center align-middle border-dashed border-2 border-outline-variant bg-surface-container-highest/30">
+<span class="font-mono-sm text-[11px] text-outline">DEV3-022 reserved</span>
+</td>
+</tr>
+<!-- Row 3: Completed -->
+<tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors bg-surface-dim/20">
+<td class="p-4 font-label-md text-label-md font-medium text-on-surface border-r border-outline-variant bg-surface-container-lowest">Completed (Terminal)</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle">
+<div class="flex flex-col items-center justify-center gap-1">
+<span class="material-symbols-outlined text-error">close</span>
+</div>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle">
+<div class="flex flex-col items-center justify-center gap-1">
+<span class="material-symbols-outlined text-error">close</span>
+</div>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle">
+<div class="flex flex-col items-center justify-center text-error opacity-60">
+<span class="material-symbols-outlined">close</span>
+</div>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle">
+<div class="flex flex-col items-center justify-center gap-1">
+<span class="material-symbols-outlined text-error">close</span>
+</div>
+</td>
+<td class="p-4 text-center align-middle bg-secondary-container/5">
+<span class="material-symbols-outlined text-secondary font-bold text-[28px]">check</span>
+</td>
+</tr>
+<!-- Row 4: Cancelled -->
+<tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors bg-surface-dim/20">
+<td class="p-4 font-label-md text-label-md font-medium text-on-surface border-r border-outline-variant bg-surface-container-lowest">Cancelled (Terminal)</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle">
+<div class="flex flex-col items-center justify-center gap-1">
+<span class="material-symbols-outlined text-error">close</span>
+</div>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle">
+<div class="flex flex-col items-center justify-center gap-1">
+<span class="material-symbols-outlined text-error">close</span>
+</div>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle">
+<div class="flex flex-col items-center justify-center gap-1">
+<span class="material-symbols-outlined text-error">close</span>
+</div>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle">
+<div class="flex flex-col items-center justify-center text-error opacity-60">
+<span class="material-symbols-outlined">close</span>
+</div>
+</td>
+<td class="p-4 text-center align-middle bg-secondary-container/5">
+<span class="material-symbols-outlined text-secondary font-bold text-[28px]">check</span>
+</td>
+</tr>
+<!-- Row 5: Disputed -->
+<tr class="hover:bg-surface-container-low transition-colors bg-error-container/10">
+<td class="p-4 font-label-md text-label-md font-medium text-on-surface border-r border-outline-variant bg-surface-container-lowest">Disputed</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle border-dashed border-t-2">
+<span class="font-mono-sm text-[11px] text-outline">DEV3-022 reserved</span>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle border-dashed border-t-2">
+<span class="font-mono-sm text-[11px] text-outline">DEV3-022 reserved</span>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle bg-secondary-container/5">
+<span class="material-symbols-outlined text-secondary font-bold text-[28px]">check</span>
+</td>
+<td class="p-4 border-r border-outline-variant text-center align-middle bg-secondary-container/5">
+<span class="material-symbols-outlined text-secondary font-bold text-[28px]">check</span>
+</td>
+<td class="p-4 text-center align-middle">
+<div class="flex flex-col items-center justify-center text-error opacity-60">
+<span class="material-symbols-outlined">close</span>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Footer Strip -->
+<div class="mt-stack-md py-stack-md flex items-center justify-center gap-2 border-t border-outline-variant text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">lock</span>
+<span class="font-label-md text-label-md font-medium uppercase tracking-wider">100% matrix coverage — permanent regression lock</span>
+</div>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,129 @@
+---
+name: generate-spec-plan
+description: >
+  Generate exhaustive, line-accurate implementation plans for tickets in docs/planning/TICKETS.md
+  using Repomix code bundling and the Spec-Driven Development methodology. Use when:
+  (1) creating a new implementation plan for a ticket (e.g. DEV1-002, DEV2-005),
+  (2) converting a feature specification or ticket into an 8-phase spec-driven plan,
+  (3) running automated plan generation via repomix and Kimi K3 / LLM models.
+license: MIT
+compatibility: Works with Antigravity, Claude Code, and all agent skill runtimes.
+metadata:
+  version: "1.0.0"
+allowed-tools: Read Write Edit Glob Grep
+---
+
+# Generate Spec Plan
+
+Automates the generation of complete, production-grade Implementation Plans for tickets from [docs/planning/TICKETS.md](file:///home/ahmed/Projects/Kottaby_academy/docs/planning/TICKETS.md) using Repomix context bundling, the [spec-driven-development](file:///home/ahmed/Projects/Kottaby_academy/.agents/skills/spec-driven-development/SKILL.md) framework, and the Python orchestrator script [scripts/run_spec_plan_kimi.py](file:///home/ahmed/Projects/Kottaby_academy/scripts/run_spec_plan_kimi.py).
+
+## Overview
+
+Generating an implementation plan in this codebase requires full awareness of:
+- **All Layer AGENTS.md files** (`AGENTS.md`, `backend/AGENTS.md`, `frontend/AGENTS.md`, `shared/AGENTS.md`, etc.)
+- **Project Documentation** (`docs/**`, `db/schema.dbml`, `docs/planning/TICKETS.md`, etc.)
+- **Domain Skills & Conventions** (`spec-driven-development`, `spec-implementation`, `plan-review`, `drizzle-best-practices`, etc.)
+- **Canonical Type Systems** (`backend/types/`, `backend/enum/`, `backend/db/schema/`)
+
+The orchestrator script packages all required project context via Repomix into an XML payload, embeds the full methodology prompt, extracts the target ticket from `docs/planning/TICKETS.md`, and streams the resulting plan into `ai/plans/<ticket-id>/plan-<timestamp>.md`.
+
+---
+
+## Process
+
+Follow this process when asked to generate a plan for a ticket or feature:
+
+- [ ] **Step 1: Identify or Select the Target Ticket**
+  - **Interactive Mode (Recommended)**: Run without `--ticket` to launch the interactive autocomplete filter UI:
+    ```bash
+    python3 scripts/run_spec_plan_kimi.py
+    ```
+    - Type any keywords (e.g. `registration`, `teacher`, `DEV2`) to filter in real-time.
+    - Use `↑` / `↓` arrow keys to highlight the desired ticket and press `Enter` to select.
+  - **Direct Mode**: Pass the ticket ID directly via `--ticket` (e.g., `DEV1-002`, `DEV2-005`).
+  - Or supply a custom feature description via `--query`.
+
+- [ ] **Step 2: Dry Run & Token Budget Verification**
+  - Execute the script with `--dry-run` to verify Repomix bundling and token counts:
+    ```bash
+    python3 scripts/run_spec_plan_kimi.py --ticket DEV1-002 --dry-run
+    ```
+
+- [ ] **Step 3: Execute Plan Generation**
+  - Run the orchestrator against the local router or direct NVIDIA API:
+    ```bash
+    # Via local router (default):
+    python3 scripts/run_spec_plan_kimi.py --ticket DEV1-002
+
+    # Via direct NVIDIA API key:
+    python3 scripts/run_spec_plan_kimi.py --ticket DEV1-002 --direct-nvidia
+
+    # For a custom prompt / feature query:
+    python3 scripts/run_spec_plan_kimi.py --query "Implement teacher onboarding flow"
+    ```
+
+- [ ] **Step 4: Review and Validate the Generated Plan**
+  - Validate the generated plan under `ai/plans/<ticket-id>/` against [plan-review](file:///home/ahmed/Projects/Kottaby_academy/.agents/skills/plan-review/SKILL.md):
+    - Verify canonical type imports from `@/backend/types/{entity}.types.ts`
+    - Verify Drizzle repository transaction propagation (`tx` + `runInRollback`)
+    - Verify MUI v9 `sx` usage (no direct style props)
+    - Verify typed i18n usage from `@/shared/locale/`
+    - Verify subtask pipeline (`.QL`, `.TE`, `.SEC`, `.SR`, `.IV`)
+
+- [ ] **Step 5: Hand off to Implementation**
+  - Use [spec-implementation](file:///home/ahmed/Projects/Kottaby_academy/.agents/skills/spec-implementation/SKILL.md) to execute the plan task-by-task.
+
+---
+
+## Quick Reference & CLI Options
+
+```bash
+python3 scripts/run_spec_plan_kimi.py [OPTIONS]
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--ticket` | `None` | Ticket ID from `docs/planning/TICKETS.md` (e.g. `DEV1-002`) |
+| `--query` | `None` | Custom feature prompt if not using an existing ticket |
+| `--tickets-file` | `docs/planning/TICKETS.md` | Path to ticket catalog |
+| `--output-plan` | `ai/plans/<ticket>/plan-<time>.md` | Custom output filepath |
+| `--thinking` | `max` | Thinking/reasoning effort level (`off`, `low`, `high`, `max`) |
+| `--model` | `nvidia/moonshotai/kimi-k3` | LLM model name |
+| `--direct-nvidia` | `False` | Connect directly using NVIDIA API keys |
+| `--compress` | `False` | Enable Repomix compression for tighter context |
+| `--dry-run` | `False` | Test packing and prompt generation without calling API |
+
+---
+
+## Plan Directory & Artifact Structure
+
+Plans generated by this skill strictly conform to the **Spec-Driven Development** standard and are placed under `ai/plans/<dev-ticket-slug>/`:
+
+```
+ai/plans/dev1-002-user-registration-with-role-specific-child-table/
+├── specs.md                  # Phase 1: Requirements, EARS Acceptance Criteria, Traceability
+├── plan.md                   # Phase 2: Technical Architecture, DB Schema, UX & APIs
+├── tasks.md                  # Phase 3: Phased Implementation Tasks
+├── deferred-items.md         # Deferred Items Ledger (initialized automatically)
+└── outcome/                  # Dedicated directory for task execution outcome docs
+```
+
+---
+
+## Output Plan Content Requirements
+
+1. **`specs.md`**: User stories, EARS acceptance criteria (`WHEN... THEN... SHALL...`), scope boundaries, cross-layer traceability matrix.
+2. **`plan.md`**: Data models, Drizzle schema additions in `backend/db/schema/`, Pothos resolvers with `authScopes`, frontend UX routes & navigation specs, BOLA/BOPLA security mitigations.
+3. **`tasks.md`**: Phased task breakdown (Phases 0 through 7) with the mandatory 5-stage subtask pipeline (`.QL`, `.TE`, `.SEC`, `.SR`, `.IV`).
+4. **`deferred-items.md`**: Standard ledger table tracking cross-task deferred items.
+5. **`outcome/`**: Destination directory for per-task `<task-id>-outcome.md` knowledge transfer documents.
+
+---
+
+## Ground Rules
+
+- ALWAYS verify ticket existence in [docs/planning/TICKETS.md](file:///home/ahmed/Projects/Kottaby_academy/docs/planning/TICKETS.md) before generating.
+- ALWAYS use the standard subtask pipeline (`.QL`, `.TE`, `.SEC`, `.SR`, `.IV`) for implementation tasks.
+- NEVER spread input payloads directly into Drizzle `.set()` queries (BOPLA defense).
+- NEVER use direct style props on MUI v9 components (`sx` prop only).
+- ALWAYS use compile-time i18n from `shared/locale/` for all user-facing strings.

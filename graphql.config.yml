@@ -1,0 +1,8 @@
+schema: ["frontend/graphql/generated/schema.graphql"]
+documents: ["frontend/graphql/sharedDocuments/**/*.{ts,tsx}"]
+extensions:
+  endpoints:
+    default:
+      url: http://localhost:3000/api/graphql
+      headers:
+        user-agent: JS GraphQL

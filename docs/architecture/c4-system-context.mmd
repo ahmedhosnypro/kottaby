@@ -1,0 +1,38 @@
+%% Draft Academy — C4 Level 1: System Context Diagram
+%% Shows all actors and external boundary systems interacting with Draft Academy
+
+graph TB
+    %% === ACTORS ===
+    Student["Student\n(Quran learner)"]
+    TeacherApplicant["Teacher Applicant\n(Uncertified Sheikh)"]
+    CertifiedSheikh["Certified Sheikh\n(Verified Teacher)"]
+    Parent["Parent\n(Monitor / Guardian)"]
+    SuperAdmin["Super Admin\n(Platform Orchestrator)"]
+
+    %% === SYSTEM ===
+    DraftAcademy["Draft Academy Platform\nSaaS P2P Quran Teaching Platform"]
+
+    %% === EXTERNAL SYSTEMS ===
+    PaymentGateway["Payment Gateway(s)\n(Stripe / PayPal / Paymob / Fawry)"]
+    WebRTCMedia["WebRTC / Media Server\n(Live Audio/Video Sessions)"]
+    NotificationEngine["Real-time Notification Engine\n(Session requests, completion alerts, broadcasts)"]
+
+    %% === RELATIONSHIPS ===
+    Student -->|"Browses available teachers,\nrequests on-demand sessions,\nsubscribes to plans"| DraftAcademy
+    TeacherApplicant -->|"Registers, purchases verification plan,\nattends 5 evaluation sessions"| DraftAcademy
+    CertifiedSheikh -->|"Hosts sessions, submits reports,\ntoggles availability,\nwithdraws earnings"| DraftAcademy
+    Parent -->|"Links to child via handshake code,\nmonitors progress (read-only)"| DraftAcademy
+    SuperAdmin -->|"Full CRUD governance,\ncold-start bootstrapping,\noverride evaluations,\nmanage financials"| DraftAcademy
+
+    DraftAcademy -->|"Processes payments,\nvalidates transactions"| PaymentGateway
+    DraftAcademy -->|"Initiates live audio/video sessions"| WebRTCMedia
+    DraftAcademy -->|"Dispatches session, system,\n& admin notifications"| NotificationEngine
+
+    %% === STYLING ===
+    classDef actor fill:#08427b,stroke:#052e56,color:#fff
+    classDef system fill:#1168bd,stroke:#0b4884,color:#fff
+    classDef external fill:#999999,stroke:#6b6b6b,color:#fff
+
+    class Student,TeacherApplicant,CertifiedSheikh,Parent,SuperAdmin actor
+    class DraftAcademy system
+    class PaymentGateway,WebRTCMedia,NotificationEngine external

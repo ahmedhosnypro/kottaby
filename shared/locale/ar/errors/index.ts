@@ -1,0 +1,22 @@
+import type { ErrorsLabels } from "@/shared/locale/types/errors";
+
+export const errorsAr: ErrorsLabels = {
+  unauthorized: "مطلوب تسجيل الدخول.",
+  forbidden: "ليست لديك صلاحية لتنفيذ هذا الإجراء.",
+  validation: "إدخال غير صحيح.",
+  conflict: "حدث تعارض مع الحالة الحالية.",
+  duplicateRequest: "هذه القيمة مستخدمة بالفعل.",
+  rateLimitExceeded: "طلبات كثيرة جداً. يرجى المحاولة لاحقاً.",
+  notFound: "المورد المطلوب غير موجود.",
+  internalServerError: "حدث خطأ داخلي في الخادم.",
+  badRequest: "طلب غير صحيح.",
+  serviceUnavailable: "الخدمة غير متاحة مؤقتاً. يرجى المحاولة لاحقاً.",
+  invalidLocale: "لغة غير صالحة. اللغات المدعومة: en, ar.",
+  invalidOrigin: "مصدر الطلب غير مسموح به.",
+  failedToSetLocale: "فشل تعيين اللغة. يرجى المحاولة مرة أخرى.",
+  accountDeleted: "تم حذف هذا الحساب.",
+  accountBlocked: "تم حظر هذا الحساب.",
+  accountSuspended: "هذا الحساب موقوف.",
+  tokenExpired: "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.",
+  forbiddenRole: "ليست لديك صلاحية للوصول إلى هذه الصفحة.",
+};

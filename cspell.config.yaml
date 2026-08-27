@@ -1,0 +1,52 @@
+version: "0.1"
+language: en
+import:
+  - "@cspell/dict-ar/cspell-ext.json"
+dictionaries:
+  - ar
+words:
+  - codegen
+  - kiro
+  - flagcdn
+  - Hijri
+  - tsvector
+  - tsquery
+  - dbname
+  - datname
+  - PGPORT
+  - trgm
+  - officedocument
+  - msword
+  - openxmlformats
+  - wordprocessingml
+  - spreadsheetml
+  - zcard
+  - UNLOGGED
+  - zremrangebyscore
+  - zadd
+  - Playload
+  - ILIKE
+  - iban
+  - plpgsql
+  - tstzrange
+  - rolname
+  - ciphertext
+  - recalc
+  - sess
+  - xact
+  - hashtext
+  - iana
+  - resched
+  - sched
+  - nonassign
+  - updateassign
+  - turbopack
+  - hanken
+  - Dhabi
+  - Bento
+  - kottabylms
+  - Zaid
+  - Mansour
+  - Kottaby
+  - autodocs
+  - oxlint
