@@ -14,11 +14,11 @@ import { ApplicantStatusCard } from "@/frontend/views/teachers/dashboard";
  *  2. Renders the `DashboardView` client component, composing a
  *     role-specific content slot ABOVE the stat grid:
  *
- *     - Teacher → `<ApplicantStatusCard />` (DEV2-004 Task 4.3). The card is
+ *     - Teacher → `<ApplicantStatusCard />`. The card is
  *       a pure UI affordance: the page guard above stays the only server-side
  *       boundary, the zero-argument `myApplicantProfile` query answers
  *       identity server-side, and applicant vs certified presentation comes
- *       entirely from the query payload (plan §5.1/§5.2). No new routes, no
+ *       entirely from the query payload. No new routes, no
  *       extra guard logic.
  *     - Other roles → nothing (slot empty; their dashboards unchanged).
  *

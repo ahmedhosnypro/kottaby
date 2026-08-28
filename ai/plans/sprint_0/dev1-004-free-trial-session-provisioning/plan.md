@@ -79,7 +79,7 @@ This is a **backend-only vertical slice** that injects a one-time trial-credit g
 
 ### Existing schema verification
 
-`backend/db/schema/students/students.ts` already defines `students` with `balanceHifz`, `balanceReviews`, `balanceTajweed`, `handshakeCode` (unique), `parentId`, and three non-negativity CHECK constraints (`students_balance_hifz_check`, `students_balance_reviews_check`, `students_balance_tajweed_check`). `db/schema.dbml` mirrors it (students Note references B.12/A.3/A.2). Types `StudentSelectType`/`StudentInsertType` in `backend/types/students/student.types.ts` are pure `$inferSelect`/`$inferInsert` — new columns flow through automatically (REQ-003 satisfied with zero type-file edits).
+`backend/db/schema/students/students.ts` already defines `students` with `balanceHifz`, `balanceReviews`, `balanceTajweed`, `handshakeCode` (unique), `parentId`, and three non-negativity CHECK constraints (`students_balance_hifz_check`, `students_balance_reviews_check`, `students_balance_tajweed_check`). The Drizzle schema in `backend/db/schema/` is the sole structural ground truth. Types `StudentSelectType`/`StudentInsertType` in `backend/types/students/student.types.ts` are pure `$inferSelect`/`$inferInsert` — new columns flow through automatically (REQ-003 satisfied with zero type-file edits).
 
 > Note: existing balance columns lack `.notNull()` (inferred `number | null`). Per REQ-010, the new column is `NOT NULL`, so its inferred types will be stricter: `StudentSelectType.balanceTrial: number` and `StudentInsertType.balanceTrial?: number`. No consumer breakage is expected because no code reads these new fields yet; `bun tsgo` is the verification.
 
@@ -96,20 +96,6 @@ check("students_balance_trial_check", sql`${t.balanceTrial} >= 0`),  // REQ-035 
 No new enums. No new tables. No indexes (lookups on the marker are single-row by PK; directory-scale scans do not exist).
 
 **Application discipline** (REQ-043): exclusively `bun run db push`. `db reset`/`db cleanGenerate` are permanently disabled by repo policy (`docs/DATABASE_MIGRATIONS.md`). No custom SQL migration — this is pure Drizzle schema.
-
-### DBML reconciliation — `db/schema.dbml` (MODIFIED, same commit set per REQ-043)
-
-```
-Table students {
-  ...
-  balance_trial     integer [not null, default: 0, check: `balance_trial >= 0`,
-      note: 'FR-2.6/INV-B7: one-time free trial lane, segregated from paid lanes (INV-B5). Consumed before paid lanes per INV-B8. No expiry (not subscription-bound).']
-  trial_granted_at  timestamp [note: 'INV-B7 grant-once marker. NULL until first grant. Guarded conditional UPDATE enforces at-most-once at SQL level.']
-  ...
-}
-```
-
-`bun validate:dbml` must pass; DBML is updated in the same unit of work as the Drizzle change.
 
 ### Canonical types — `backend/types/students/student.types.ts` (UNCHANGED)
 
@@ -288,7 +274,7 @@ Repository-layer notes:
 
 ### Verification anchors (tie-ins used by `Trackable Tasks`)
 
-- `bun run db push` then `bun validate:dbml` — schema + DBML in same commit (REQ-043).
+- `bun run db push` — schema change applied in the same commit set as the code (REQ-043).
 - `bun tsgo && bun biome:check && lint-service per-file` + `bun quality-gate` staged flow.
 - `bun run generate:gqlSchema && bun codegen` — expect zero trial-related schema diff (REQ-060).
 - Tests covering REQ-070..076: repo coverage (grant success, re-grant guard, negative-balance CHECK), registration service role matrix + forced-failure rollback, logic-level double-grant idempotency with `expectRepoError` substring assertion against the translated `trialAlreadyGranted` message (never the raw key — per `backend/db/test/AGENTS.md` rule 19).

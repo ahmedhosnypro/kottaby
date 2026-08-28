@@ -1,6 +1,6 @@
 # DomainError → GraphQLError extensions.code Propagation
 
-> **Superseded by reference (transport surface):** the canonical REQ-010 taxonomy table, code↔HTTP-status semantics, legacy alias normalization, masking pipeline, API envelopes, client mapping, and testing-convention matrix now live in [`docs/graphql/error-handling-contract.md`](./error-handling-contract.md) (DEV3-002). This document remains authoritative for producer-side throw conventions (subclass hierarchy, constructors, resolver/service patterns); do not duplicate its rules here.
+> **Superseded by reference (transport surface):** the canonical code↔HTTP-status taxonomy table, legacy alias normalization, masking pipeline, API envelopes, client mapping, and testing-convention matrix now live in [`docs/graphql/error-handling-contract.md`](./error-handling-contract.md). This document remains authoritative for producer-side throw conventions (subclass hierarchy, constructors, resolver/service patterns); do not duplicate its rules here.
 
 ## Why
 
@@ -228,10 +228,6 @@ The following was implemented across the codebase:
 - **GraphQL integration tests** for all error paths — `expectMutationError` helper upgraded with optional `expectedCode` parameter using `CombinedGraphQLErrors.is()` pattern.
 
 - **Test helper cleanup assertions** — `cleanupTestEntities` and `cleanupTestSuperAdmin` now assert `result === true`, converting silent 400s into loud test failures.
-
-- **386/388 tests pass** (2 expected failures: flaky HTTP batching timeout + rate-limit flag disabled for full suite run).
-
-- **Log diff**: HTTP 400 responses eliminated (73→0), dropped notifications eliminated (2,390→0), WARN logs reduced 99.9% (2,111→1).
 
 ## Related Documents
 

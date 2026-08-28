@@ -1,20 +1,20 @@
 /**
- * Transport-guard library tests — dev3-003 Task 2.2 paired suite.
+ * Transport-guard library tests.
  *
- * Coverage map (tasks.md 2.2.TE):
+ * Coverage:
  *  - Tier 1: every guard branch — allowed POST vs each disallowed method;
  *    present/absent/wrong content-type; at-limit/over-limit/missing
  *    content-length; parseable/malformed JSON (plus stream-death).
  *  - Tier 2 (boundary): body EXACTLY at MAX_GRAPHQL_BODY_BYTES vs limit+1;
  *    first-failure precedence between guards.
  *  - Tier 3 (chaos): 100 concurrent `guardTransport` calls produce fully
- *    independent verdicts (REQ-040).
+ *    independent verdicts.
  *  - Tier 4 (security): forged/deceptive headers cannot flip a transport
  *    verdict class (lying declared lengths land on the SAME kinds a honest
  *    request would produce; method/type spoof attempts never resurrect a pass).
  *
  * Pure unit tier — NO server boot, NO NextRequest dependency (fetch-spec
- * Request only, so Task 3.2's NextRequest composes identically).
+ * Request only, so the route's NextRequest composes identically).
  * Runs via the mandated runner: `bun run test/scripts/run-test.ts <path>`.
  */
 
@@ -309,7 +309,7 @@ describe("guardTransport — composed pipeline (live-order preserved)", () => {
 
 // ─── Tier 3: chaos — 100 independent concurrent pipelines ────────────────
 
-describe("guardTransport — concurrency independence (REQ-040)", () => {
+describe("guardTransport — concurrency independence", () => {
   test("100 concurrent calls preserve per-call verdicts with zero cross-talk", async () => {
     const scenarios = [
       { label: "ok-json", build: () => makeRequest({ body: '{"query":"{me}"}' }), expectKind: null },

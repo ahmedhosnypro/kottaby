@@ -1,6 +1,6 @@
 # Draft Academy — Resolved Decisions & Edge Cases
 
-> **Source of truth:** `draft_docs/1-sc.en.md`, `draft_docs/2-admin-sc.en.md`, `db/schema.dbml`
+> **Source of truth:** `draft_docs/1-sc.en.md`, `draft_docs/2-admin-sc.en.md`, `backend/db/schema/` (Drizzle schema)
 > **Purpose:** All 33 open decisions have been resolved through stakeholder review. This document records each decision, its resolution, and the schema/specification impact.
 > **Status:** ✅ All decisions resolved. Schema updated and validated.
 
@@ -254,4 +254,4 @@
 | `users.last_active_at` added | B.15 | Inactivity tracking |
 | 7 new enums created | Multiple | `session_type`, `session_intent`, `subscription_status`, `link_status`, `notification_type`, `audit_action_type`, `surah_juz_ref`, `teacher_request_preference` |
 
-All schema changes have been validated with `bun validate:dbml`.
+All schema changes have been validated against the Drizzle schema in `backend/db/schema/` (the sole structural ground truth).

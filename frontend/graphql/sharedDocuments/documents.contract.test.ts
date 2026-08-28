@@ -1,5 +1,5 @@
 /**
- * Task 4.3 — REQ-063 structural lock over the contract-test GraphQL documents.
+ * Structural lock over the shared GraphQL documents.
  *
  * The contract/integration suites (`frontend/graphql/test/auth/auth.test.ts`,
  * warning-surfacing) consume the SHARED `TypedDocumentNode` documents from
@@ -23,8 +23,7 @@
  * Zero server boot, zero DB, zero network: inspects only already-compiled
  * ASTs through graphql kind-guard narrowing — no unsafe assertions anywhere
  * (oxlint `no-unsafe-type-assertion`). NO useLazyQuery exists anywhere in
- * the documents layer; consumers import hooks from "@apollo/client/react"
- * (audited this leg — see outcome/4.3-outcome.md §documents audit).
+ * the documents layer; consumers import hooks from "@apollo/client/react".
  */
 
 import { describe, expect, test } from "bun:test";
@@ -147,7 +146,7 @@ const DOCUMENT_CONTRACT_TABLE: readonly DocumentContractRow[] = [
   },
 ];
 
-describe("REQ-063 shared-document contract — named operations + channel + variables", () => {
+describe("shared-document contract — named operations + channel + variables", () => {
   for (const row of DOCUMENT_CONTRACT_TABLE) {
     test(`${row.operationName} is a single named ${row.channel} operation`, () => {
       const operation = singleOperationOrThrow(row.document);
@@ -159,7 +158,7 @@ describe("REQ-063 shared-document contract — named operations + channel + vari
   }
 });
 
-describe("REQ-063 shared-document contract — id field requirement", () => {
+describe("shared-document contract — id field requirement", () => {
   test("object selections include id exactly where Apollo normalizes cache entries", () => {
     for (const row of DOCUMENT_CONTRACT_TABLE) {
       const operation = singleOperationOrThrow(row.document);

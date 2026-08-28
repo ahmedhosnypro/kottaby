@@ -3,16 +3,16 @@ import { auditActionType } from "@/backend/db/schema/enums";
 import { users } from "@/backend/db/schema/users/users";
 
 /**
- * Audit logs table (DBML `audit_logs`, L465–L480).
+ * Audit logs table (`audit_logs`).
  *
- * Immutable, append-only audit trail for all admin actions (A.5).
+ * Immutable, append-only audit trail for all admin actions.
  * `actor_id` is the admin who performed the action (FK to `users.id`,
  * `restrict` on delete — an admin's audit history cannot be silently
  * removed). `action_type` is the verb (create, update, delete, override,
  * adjust, suspend, reactivate). `entity_type` + `entity_id` form a
  * polymorphic pointer to the affected row (session, user, subscription,
  * etc.). `details` is a free-form varchar(2000) carrying JSON-encoded
- * context of the action (per DBML R11 — varchar, not jsonb).
+ * context of the action (varchar, not jsonb).
  *
  * IMMUTABLE: this table is append-only. UPDATE and DELETE are blocked by
  * a trigger (`3-immutability-triggers.sql`). Corrections are made by
@@ -20,7 +20,7 @@ import { users } from "@/backend/db/schema/users/users";
  * an existing one. This preserves the audit trail for compliance and
  * post-incident review.
  *
- * Per DBML there is NO `updated_at` column — rows are never updated.
+ * There is NO `updated_at` column — rows are never updated.
  *
  * Indexes:
  *  - `audit_logs_actor_id_idx` on `actor_id` (per-actor audit history)

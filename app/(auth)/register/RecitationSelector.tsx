@@ -24,8 +24,8 @@ import type { RecitationLabels } from "@/shared/locale/types/recitation";
  *  - Loading state: centered CircularProgress.
  *  - All colors from `theme.palette.*` — no hardcoded hex.
  *
- * Per DEV1-003 REQ-052: all labels via `useAppTranslation(Recitation)`,
- * MUI v9 `sx` only, `*Outlined` icons.
+ * All labels come from `useAppTranslation(Recitation)`; MUI v9 `sx` only,
+ * `*Outlined` icons.
  */
 export interface RecitationSelectorProps {
   /** Currently selected reading (or "" for none). */
@@ -79,7 +79,7 @@ export function RecitationSelector({ value, onChange, labels, options, loading }
         return (
           <Card
             key={reading}
-            // audit-R4: these cards were pointer-only (`<div onClick>`) — a
+            // These cards were pointer-only (`<div onClick>`) — a
             // complete keyboard lockout (WCAG 2.1.1) and role/name-less to
             // assistive tech. Native <button> gives focus + Enter/Space, and
             // `aria-pressed` publishes the selected state to AT (the

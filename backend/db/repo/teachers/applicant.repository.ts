@@ -2,13 +2,13 @@
  * ApplicantRepository — data-access layer for the `applicants` table.
  *
  * The `applicants` row shares its PK with `users.id` (FK ON DELETE CASCADE)
- * and tracks the teacher-applicant verification pipeline (B.6, B.7):
+ * and tracks the teacher-applicant verification pipeline:
  *  - `status` defaults to `'pending'` (varchar, schema-enforced).
  *  - `verification_attempts` defaults to `0`.
  *  - `last_attempt_at` and `cooldown_until` are NULL at registration.
  *
  * A `teacher` row is NOT created here — that only happens after the applicant
- * passes evaluation (B.7, FR-3.1), which is owned by DEV2-004+.
+ * passes evaluation, a flow owned by the applicant-lifecycle service.
  *
  * Conventions per `backend/db/repo/AGENTS.md`:
  *  - Reads use `queryDb` (raw parameterized SQL) on the non-transactional
@@ -44,8 +44,8 @@ function isDBTransaction(tx: DBQueryExecutor): tx is DBTransaction {
  * the `.release()` method that returns it to the pool. `isDBTransaction`
  * cannot recognize it (no `.select`), so without this guard a supplied
  * client would silently fall through to `queryDb` and execute on the GLOBAL
- * pool — outside the caller's session/transaction (CodeRabbit review of the
- * DEV2-004 PR, Data Integrity note).
+ * pool — outside the caller's session/transaction (a data-integrity hazard
+ * caught in code review).
  */
 function isPoolClient(tx: DBQueryExecutor): tx is PoolClient {
   return typeof tx === "object" && "release" in tx && typeof tx.release === "function";

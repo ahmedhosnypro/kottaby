@@ -1,6 +1,6 @@
 # Draft Academy — Delivery Roadmap
 
-> **Source of truth:** `docs/specs/`, `db/schema.dbml`, `docs/scenarios/user-story-map.md`
+> **Source of truth:** `docs/specs/`, `backend/db/schema/`, `docs/scenarios/user-story-map.md`
 > **Related:** `docs/planning/SPRINT_PLAN.md`, `docs/planning/TEAM_ALLOCATION.md`, `docs/planning/TICKETS.md`
 
 ---
@@ -26,14 +26,14 @@ Draft Academy is delivered across **5 milestones** (M0–M4) spanning **5 two-we
 **Goal:** Establish the shared infrastructure, database schema, authentication, role-based access control, CI/CD pipeline, and validation suite that all three streams depend on.
 
 **Scope:**
-- Database schema migration from `db/schema.dbml` (all 22 tables, 13 enums)
+- Database schema migration (all 22 tables, 13 enums) into `backend/db/schema/`
 - User registration with role-specific child table creation (admin, teacher, students, parents, applicants)
 - JWT-based authentication with role-based authorization middleware
-- CI/CD pipeline with automated DBML and Mermaid validation
+- CI/CD pipeline with automated Mermaid validation
 - Shared types, interfaces, and cross-stream contracts
 
 **Release Gate:** All three streams can register users, authenticate, and access role-specific endpoints. Schema validates clean. CI/CD green.
-Delivered checks (DEV3-001): the CI/CD-green criterion above is enforced by seven required status checks — `workflow-sanity`, `quality`, `dbml-validation`, `docs-validation`, `tests-db`, `tests-services`, `tests-ui` — specified in `docs/quality/ci-pipeline.md`.
+Delivered checks (DEV3-001): the CI/CD-green criterion above is enforced by six required status checks — `workflow-sanity`, `quality`, `docs-validation`, `tests-db`, `tests-services`, `tests-ui` — specified in `docs/quality/ci-pipeline.md`.
 
 **Key Decisions Incorporated:** A.1 (parents table), A.7 (governance fields on users), C.1 (parent role in enum), B.6/B.7 (applicants table, teacher record after verification)
 
@@ -197,7 +197,7 @@ Each milestone has a release gate that must be passed before the next milestone 
 
 | Gate | Criteria | Verification |
 |---|---|---|
-| **M0 Gate** | Schema validates, auth works, CI/CD green, all 3 streams can register users | `bun validate:dbml` passes; all role-based endpoints return correct data |
+| **M0 Gate** | Schema validates, auth works, CI/CD green, all 3 streams can register users | Drizzle schema (`backend/db/schema/`) type-checks; all role-based endpoints return correct data |
 | **M1 Gate** | Student can subscribe & book; applicant can complete evaluation loop; session lifecycle works | End-to-end demo of student subscription → session booking; teacher verification → certification |
 | **M2 Gate** | Student can browse, request, and complete session with escrow; notifications fire in real-time | End-to-end demo of matching → session → dual-confirmation → wallet credit; notification delivery verified |
 | **M3 Gate** | Parent can link & monitor child; admin can perform all governance operations with audit logging | End-to-end demo of parent handshake → monitoring; admin CRUD → audit log verification |

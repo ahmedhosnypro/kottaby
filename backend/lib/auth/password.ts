@@ -2,7 +2,7 @@
  * Password hashing utilities — wraps bcryptjs.
  *
  * Hashing happens BEFORE the registration transaction opens; plaintext never
- * crosses into repository/input types or logs (REQ-020).
+ * crosses into repository/input types or logs.
  *
  * Work factor: 12 rounds (industry-standard for bcrypt as of 2025; ~250ms hash
  * time on commodity hardware — balances security vs. registration latency).

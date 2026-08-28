@@ -21,7 +21,7 @@ interface AuthProviderProps {
 }
 
 /**
- * AuthProvider — real implementation (AUTH1 / DEV2-001 / DEV2-CORE).
+ * AuthProvider — real implementation.
  *
  * State machine:
  *  - On mount: query `me` (carrying the access token from React memory via
@@ -53,7 +53,7 @@ interface AuthProviderProps {
  * session (client-side navigation), the access token survives in React
  * memory and the `me` query restores the session on every mount.
  *
- * DEV2-CORE: `me` carries `authScopes: { authenticated: true }` — anonymous
+ * `me` carries `authScopes: { authenticated: true }` — anonymous
  * callers receive a GraphQL UNAUTHORIZED error instead of `null`. The
  * `restoreSession` effect catches the error and falls through to its
  * refresh-then-retry path (same UX as the prior return-null contract, but
@@ -212,7 +212,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [apolloClient, t.loginError, updateAuthToken]
   );
 
-  // DEV2-CORE: real `logout` — calls the `logout` mutation (public; clears
+  // Real `logout` — calls the `logout` mutation (public; clears
   // the httpOnly cookies server-side via `clearAuthCookies`), then clears
   // the access + refresh tokens from React memory, resets the user state,
   // resets the Apollo cache, and navigates to `/login`. The mutation call

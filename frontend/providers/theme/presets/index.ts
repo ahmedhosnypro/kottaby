@@ -2,8 +2,7 @@
  * Built-in Preset Themes Catalog — site-appearance customization.
  *
  * Six curated light/dark brand-color pairs (`default`, `ocean`, `emerald`,
- * `violet`, `crimson`, `slate`) per locked decision §13 ("Preset Theme
- * Catalog with Light/Dark Palette Pairs"). Each preset is a complete
+ * `violet`, `crimson`, `slate`). Each preset is a complete
  * `PerModeColors`-shaped pair — selecting it seeds both the light-mode and
  * dark-mode Kottaby color pairs in `appearancePreviewStore` (one click fills
  * `colors.light` + `colors.dark`).
@@ -15,11 +14,10 @@
  * NOT UI chrome tokens — they are user-selectable brand-color data shipped
  * as a static catalog (same exemption as `ColorEditorSection` swatches).
  *
- * Extensible structure (decision §13): future presets can be added by
+ * Extensible structure: future presets can be added by
  * appending to `APPEARANCE_PRESETS` and extending `AppearancePresetId`.
  *
- * File location: `frontend/common/providers/theme/presets/index.ts` per
- * `ai/plans/brand/tasks.md` Task 9.4. Sibling to `theme/palette/` (the
+ * Sibling to `theme/palette/` (the
  * base MUI palette modules) so the catalog imports cleanly from the
  * `ThemeProvider` tree without crossing module boundaries.
  */
@@ -29,8 +27,8 @@ import type { PerModeColors } from "@/backend/types/appearance.types";
  * Identifier union for the six built-in preset themes.
  *
  * Declared as a string-literal union (not an enum) to keep the catalog
- * JSON-serializable for `NEXT_PUBLIC_APP_BRANDING={"preset":"emerald"}`
- * (decision §13 — environment-variable hydration in Task 9.2). The union
+ * JSON-serializable for environment-variable hydration via
+ * `NEXT_PUBLIC_APP_BRANDING={"preset":"emerald"}`. The union
  * is exhaustive over `APPEARANCE_PRESETS` ids; new presets must extend
  * both this union and the array below.
  */
@@ -55,7 +53,7 @@ export type AppearancePresetId = "default" | "ocean" | "emerald" | "violet" | "c
  * `frontend/common/views/dashboard/components/customize/ColorEditorSection`).
  */
 export interface AppearancePreset {
-  /** Stable identifier (used in `APP_THEME_PRESET` env var, decision §13). */
+  /** Stable identifier (used in the `APP_THEME_PRESET` env var). */
   readonly id: AppearancePresetId;
   /** Human-readable label shown in the selector grid. */
   readonly name: string;
@@ -66,7 +64,7 @@ export interface AppearancePreset {
 }
 
 /**
- * The built-in preset catalog (decision §13).
+ * The built-in preset catalog.
  *
  * Order is significant — `default` is always first because it is the
  * factory reset target (`DEFAULT_APPEARANCE_Kottaby` in
@@ -126,7 +124,7 @@ export const APPEARANCE_PRESETS: ReadonlyArray<AppearancePreset> = [
  *
  * Returns `undefined` if no preset matches (e.g. an env-var preset id
  * that was renamed in a release). Callers in the resolution tier
- * (decision §14) fall back to `APPEARANCE_PRESETS[0]` (`default`) when
+ * fall back to `APPEARANCE_PRESETS[0]` (`default`) when
  * this returns `undefined`.
  *
  * Linear scan (6 entries) — no need for a `Record` lookup table; the

@@ -1,8 +1,8 @@
 /**
- * Error-code taxonomy tests — dev3-002 Task 2.1 paired suite.
+ * Error-code taxonomy tests.
  *
- * Coverage map (tasks.md 2.1.TE):
- *  - Tier 1: every REQ-010 code→status mapping asserted verbatim;
+ * Coverage map:
+ *  - Tier 1: every canonical code→status mapping asserted verbatim;
  *    `satisfies` exhaustiveness fixture proves no `ErrorCode` is unmapped
  *    (compile-time gate — adding a union member later breaks the fixture).
  *  - Tier 2: `isErrorCode` true/false boundaries — valid canonical codes,
@@ -45,10 +45,10 @@ function deriveStatus(code: string): number | null {
   return canonical === null ? null : ERROR_CODE_HTTP_STATUS[canonical];
 }
 
-describe("ERROR_CODE_HTTP_STATUS — REQ-010 table as data", () => {
+describe("ERROR_CODE_HTTP_STATUS — taxonomy table as data", () => {
   // ─── Tier 1: every mapping asserted ─────────────────────────────────
 
-  test("each of the nine category codes maps to its exact REQ-010 status", () => {
+  test("each of the nine category codes maps to its exact HTTP status", () => {
     expect(ERROR_CODE_HTTP_STATUS.BAD_REQUEST).toBe(400);
     expect(ERROR_CODE_HTTP_STATUS.UNAUTHORIZED).toBe(401);
     expect(ERROR_CODE_HTTP_STATUS.FORBIDDEN).toBe(403);
@@ -78,7 +78,7 @@ describe("isErrorCode / normalizeErrorCode — guard boundaries (Tier 2)", () =>
     }
   });
 
-  test("legacy alias RATE_LIMIT_EXCEEDED accepted → normalized to RATE_LIMITED family (BLT-08)", () => {
+  test("legacy alias RATE_LIMIT_EXCEEDED accepted → normalized to RATE_LIMITED family", () => {
     expect(isErrorCode("RATE_LIMIT_EXCEEDED")).toBe(true);
     expect(normalizeErrorCode("RATE_LIMIT_EXCEEDED")).toBe("RATE_LIMITED");
     expect(LEGACY_ERROR_CODE_ALIASES.RATE_LIMIT_EXCEEDED).toBe("RATE_LIMITED");
@@ -220,9 +220,9 @@ describe("purity & single-source guarantees (Tier 4 + SEC)", () => {
     expect(commentsStripped.match(/:\s*\d{3}\b/gu)?.length).toBe(9);
   });
 
-  test("derived-status composition recipe (canonical consumption pattern for Task 2.4)", () => {
+  test("derived-status composition recipe (canonical status-derivation pattern for boundary consumers)", () => {
     expect(deriveStatus("DUPLICATE_REQUEST")).toBe(409);
-    expect(deriveStatus("RATE_LIMIT_EXCEEDED")).toBe(429); // alias → REQ-010 row 8
+    expect(deriveStatus("RATE_LIMIT_EXCEEDED")).toBe(429); // alias → the 429 row
     expect(deriveStatus("USER_NOT_FOUND")).toBeNull(); // custom codes opt out
     expect(deriveStatus("toString")).toBeNull(); // prototype names opt out
   });

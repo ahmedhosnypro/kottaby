@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Docs-validation CI wrapper (plan DEV3-001 section 4.1 — REQ-017/027/035/051/053).
+ * Docs-validation CI wrapper.
  *
  * Workflow-callable composition around `scripts/validate-mermaid.ts`:
  *
@@ -10,39 +10,39 @@
  *   2. pr mode:  `git -c core.quotePath=false diff --name-only
  *      --diff-filter=ACMR -z origin/<BASE_REF>...HEAD` captured as TEXT; the ref
  *      enters the command as ONE ARGV ELEMENT of an argument ARRAY — it is never
- *      interpolated into a shell string (REQ-035). The `-z` output mode makes git
+ *      interpolated into a shell string. The `-z` output mode makes git
  *      emit NUL-terminated records with the pathname BYTE-VERBATIM — embedded
  *      LFs, spaces, quotes and non-ASCII survive intact with NO C-quoting at all,
  *      so a changed file such as `"path\nwith\nLF.md"` can no longer dissolve
  *      into ghost fragments that resolve to nonexistent paths and silently drop
- *      the change before the fence scan (the W4-F1 fail-open; `-c
- *      core.quotePath=false` from R3-H2 stays as defense-in-depth — quotePath
+ *      the change before the fence scan (the historic C-quoting fail-open; `-c
+ *      core.quotePath=false` stays as defense-in-depth — quotePath
  *      only exempts non-ASCII bytes, control characters still got C-quoted).
  *      `--diff-filter=ACMR` restricts to Added/Copied/Modified/Renamed records.
  *      Missing BASE_REF is a named fail-fast (`missing required CI env variable:
  *      BASE_REF`) with exit 1.
- *   3. pr mode files come from the PURE Task 2.1 core `computeDocsChangedSet`
+ *   3. pr mode files come from the PURE core `computeDocsChangedSet`
  *      (dedupe + sorted + deleted-file exclusion via a sync content reader) and
  *      are then filtered through the SAME skip-directory predicate the push walk
  *      enforces — `.agents` (and the other tooling/VCS dot-dirs) can never flip a
- *      PR red while its post-merge push stays green, or vice versa (R3-H1).
+ *      PR red while its post-merge push stays green, or vice versa.
  *   4. push mode falls back to the FULL documentation set: a filesystem walk over
  *      the repo rooted at this script location, classified by the SAME pure
  *      primitives (`WATCH_PATTERNS` + `needsMermaidValidation`, including the
- *      mermaid content-scan fallback for markdown outside the docs tree — REQ-063).
+ *      mermaid content-scan fallback for markdown outside the docs tree).
  *   5. Empty changed set: print the explicit no-op line (verbatim below), append
  *      the same line to `$GITHUB_STEP_SUMMARY` when the env var is present, exit 0.
  *   6. Non-empty set: spawn `["bun","run","scripts/validate-mermaid.ts", ...files]`
  *      with inherited stdio and EXIT WITH THE CHILD'S CODE EXACTLY — no `|| true`,
- *      no swallowing (REQ-051). Spawning preserves REQ-027 local↔CI parity: the
+ *      no swallowing. Spawning preserves local↔CI parity: the
  *      child is byte-identical to the command a developer types. Every path is
  *      passed as ITS OWN ARGV ELEMENT — never joined into one string — which is
  *      exactly what makes `-z` ingestion safe end-to-end: element boundaries are
- *      trustworthy even for names containing LFs/spaces (W4-F1).
+ *      trustworthy even for names containing LFs/spaces.
  *   7. If a parsed diff entry trips the pure core's loud-fail guard (a leading
  *      C-quote marker or control characters in newline mode), the wrapper
  *      surfaces the named `DocsDiffParseError` message under an attributed
- *      stderr prefix and exits 1 — fail-CLOSED, never a green empty set (W4-F1).
+ *      stderr prefix and exits 1 — fail-CLOSED, never a green empty set.
  *
  * DEFINED BEHAVIOR decisions (asserted in scripts/ci/validate-docs-ci.test.ts):
  *
@@ -50,7 +50,7 @@
  *   undefined, empty, unknown, and `pull_request_target` values all mean "push".
  * - Git failure in pr mode surfaces the child's stderr VERBATIM and UN-TRUNCATED
  *   under an attributed prefix line, then propagates the git exit code (nonzero)
- *   — a broken checkout can never masquerade as a green empty set (REQ-026).
+ *   — a broken checkout can never masquerade as a green empty set.
  * - The spawned validator receives the changed paths in deterministic UTF-16
  *   ascending order and runs with its working directory anchored at the repo
  *   root (this file lives at scripts/ci/, two levels deep) while stdio stays
@@ -58,11 +58,12 @@
  *   to running `bun validate:mermaid <files>` by hand.
  * - Push-mode discovery skips VCS/tooling directories (.git, node_modules,
  *   .next, .turbo) and dot-prefixed tooling libraries whose mermaid fences are
- *   instruction placeholders, NOT project documentation (.agents — deferred
- *   item D4); everything else in the working tree is eligible.
- * - Zero console.* (scripts exemption, plan section 4.2): output goes through
+ *   instruction placeholders, NOT project documentation); everything else in
+ *   the working tree is eligible.
+ * - Zero console.*: output goes through
  *   injected `process.stdout.write` / `process.stderr.write` writers. Operator
- *   messages are English-only per the REQ-002 YAML/script exemption.
+ *   messages are English-only — script/YAML output is exempt from the i18n
+ *   requirement.
  *
  * Every side effect is dependency-injected (spawners, directory listing, file
  * readers, writers) so unit tests exercise mode logic, no-op semantics, fail-fast
@@ -80,25 +81,25 @@ import {
   WATCH_PATTERNS,
 } from "@/scripts/ci/changed-docs";
 
-/** Verbatim passing-no-op line demanded by plan section 4.1 / REQ-017 (exact-match asserted). */
+/** Verbatim passing-no-op line printed on an empty changed set (exact-match asserted). */
 export const NOOP_MESSAGE = "No documentation changes — passing no-op (docs-validation)";
 
 /** Named fail-fast for a pr-mode run whose BASE_REF was not provided (materializer vocabulary parity). */
 export const MISSING_BASE_REF_MESSAGE = "missing required CI env variable: BASE_REF";
 
-/** Repo-relative validator invoked verbatim per plan section 4.1 step 5. */
+/** Repo-relative validator invoked verbatim for a non-empty changed set. */
 const VALIDATOR_SCRIPT_PATH = "scripts/validate-mermaid.ts";
 
 /**
  * Directories excluded from the push-mode filesystem walk. Deliberately narrow:
  * VCS internals, dependency/build caches that can never be documentation, and
- * the `.agents` tooling library (deferred item D4) whose fenced blocks are
- * skill-instruction placeholders outside the REQ-063 documentation surface.
+ * the `.agents` tooling library whose fenced blocks are
+ * skill-instruction placeholders, not project documentation.
  */
 const SKIP_DIRECTORY_NAMES: ReadonlySet<string> = new Set([".git", "node_modules", ".next", ".turbo", ".agents"]);
 
 /**
- * Pure decision used by BOTH discovery modes (R3-H1): true when one directory
+ * Pure decision used by BOTH discovery modes: true when one directory
  * segment names an excluded VCS/tooling directory ({@link SKIP_DIRECTORY_NAMES}).
  */
 export function isSkippedDirectoryName(segment: string): boolean {
@@ -106,7 +107,7 @@ export function isSkippedDirectoryName(segment: string): boolean {
 }
 
 /**
- * Pure decision used by BOTH discovery modes (R3-H1): true when any DIRECTORY
+ * Pure decision used by BOTH discovery modes: true when any DIRECTORY
  * segment (every path element except the file name itself) resolves to an
  * excluded directory. A changed path such as `.agents/skills/x/SKILL.md` is
  * therefore filtered out of the pr-mode diff exactly as the push-mode walk
@@ -138,7 +139,7 @@ export function resolveDocsCiMode(eventName: string | undefined): DocsCiMode {
  * Returns exactly `["git","-c","core.quotePath=false","diff","--name-only",
  * "--diff-filter=ACMR","-z","origin/<ref>...HEAD"]`.
  *
- * Pathname-fidelity contract (W4-F1, closing where R3-H2 left off):
+ * Pathname-fidelity contract:
  * - `-z` switches `--name-only` output to NUL-terminated records containing
  *   each path BYTE-VERBATIM — git performs NO C-quoting in this mode whatsoever,
  *   so filenames containing LF/space/quote/non-ASCII arrive as exactly one
@@ -151,7 +152,7 @@ export function resolveDocsCiMode(eventName: string | undefined): DocsCiMode {
  *
  * The composed `<ref>` comparison operand occupies ONE ELEMENT of the returned
  * array — callers MUST pass this array straight to a spawn API, never join it
- * into a shell string (Tier-4 injection defense, REQ-035).
+ * into a shell string (Tier-4 injection defense).
  */
 export function buildGitDiffArgv(baseRef: string): string[] {
   return [
@@ -172,7 +173,7 @@ export interface PipedProcessResult {
   readonly code: number;
   /** Full stdout payload. */
   readonly stdout: string;
-  /** Full stderr payload (surfaced verbatim on failure — REQ-026). */
+  /** Full stderr payload (surfaced verbatim on failure). */
   readonly stderr: string;
 }
 
@@ -205,13 +206,13 @@ export interface DocsCiIo {
   writeStderr(text: string): void;
   /** Spawn a child with BOTH pipes captured; resolves after exit. */
   spawnPiped(argv: readonly string[]): Promise<PipedProcessResult>;
-  /** Spawn a child with inherited stdio; resolves with its exit code (REQ-051). */
+  /** Spawn a child with inherited stdio; resolves with its exit code. */
   spawnInheritedExit(argv: readonly string[]): Promise<number>;
   /** List directory entries (unsorted consumer-side; order never assumed). */
   listDirectory(dir: string): Promise<readonly WalkEntry[]>;
   /** Read a text file under the walk root; null on any error/unreadable. */
   readFileOrNull(path: string): Promise<string | null>;
-  /** Synchronously read current content of a changed path; null ⇒ deleted (Task 2.1 contract). */
+  /** Synchronously read current content of a changed path; null ⇒ deleted. */
   readCurrentContentSync(path: string): string | null;
 }
 
@@ -240,8 +241,8 @@ async function walkRelativePaths(
 }
 
 /**
- * Classify walked paths into the full validation set using ONLY the Task 2.1
- * primitives: watch-pattern membership validates unconditionally; other
+ * Classify walked paths into the full validation set using ONLY the pure
+ * changed-docs primitives: watch-pattern membership validates unconditionally; other
  * markdown goes through the mermaid content-scan fallback (null content ⇒ not
  * selectable — unreadable files can't be validated). Result is sorted in
  * deterministic UTF-16 code-unit order (arithmetic comparator: relational
@@ -285,11 +286,11 @@ async function resolvePrChangedFiles(io: DocsCiIo, baseRef: string): Promise<{ c
     io.writeStderr(diff.stderr); // raw bytes-to-text passthrough, nothing trimmed
     return { code: diff.code };
   }
-  // Nul-mode ingestion (W4-F1): matches buildGitDiffArgv's `-z` payload so a
+  // Nul-mode ingestion: matches buildGitDiffArgv's `-z` payload so a
   // filename containing LF/spaces/non-ASCII arrives as ONE record instead of
-  // dissolving into C-quoted ghost lines that silently failed open (R3-H2 gap).
+  // dissolving into C-quoted ghost lines that silently failed open.
   // A guard trip throws DocsDiffParseError → attributed stderr + exit 1.
-  // R3-H1: enforce the push-walk skip set on diff output too — tooling docs
+  // Enforce the push-walk skip set on diff output too — tooling docs
   // (.agents/** skill placeholders) must not surface from either direction.
   try {
     return {
@@ -309,7 +310,7 @@ async function resolvePrChangedFiles(io: DocsCiIo, baseRef: string): Promise<{ c
  * Core orchestrator (injectable CLI shell target). Returns the process exit
  * code: 0 for a green validated set or the explicit no-op; the git child's
  * code when the pr diff fails; the spawned validator's code otherwise.
- * Never wraps failures into success — REQ-051 passthrough guarantee.
+ * Never wraps failures into success — the exit code always passes through.
  */
 export async function runValidateDocsCi(io: DocsCiIo): Promise<number> {
   const mode = resolveDocsCiMode(io.eventName);
@@ -369,7 +370,7 @@ export function createProductionIo(): DocsCiIo {
       ]);
       return { code, stdout, stderr };
     },
-    // Array form == plan's `stdio:"inherit"` shorthand (all three streams inherited);
+    // Array form spells out the `stdio:"inherit"` shorthand (all three streams inherited);
     // this Bun-types build requires the explicit 3-tuple.
     spawnInheritedExit: argv =>
       Bun.spawn([...argv], { cwd: REPO_ROOT, stdio: ["inherit", "inherit", "inherit"] }).exited,

@@ -1,10 +1,8 @@
 /**
- * Representative API-route envelope matrix for `/api/set-locale` —
- * dev3-002 Task 3.2.TE (REQ-072 representative-route matrix).
+ * Representative API-route envelope matrix for `/api/set-locale`.
  *
  * Pure-function tier: handlers are invoked directly with constructed
- * `NextRequest`s — NO server boot (the boot-tier lifecycle cascade noted in
- * outcome/3.1-outcome.md §6 stays out of scope here).
+ * `NextRequest`s — NO server boot.
  *
  * Coverage map:
  *  - 200 success envelope `{data, requestId}` with inbound `X-Request-Id`
@@ -14,8 +12,8 @@
  *    400 invalid-locale body/query (`BAD_REQUEST`);
  *  - masked unknown throw → 500 `INTERNAL_SERVER_ERROR` with
  *    `error.requestId` present in the body AND the identical id carried by
- *    exactly ONE correlated `logger.error` line (REQ-012/013 unit-tier
- *    parity; the lib-level masking machinery is exhaustively pinned by
+ *    exactly ONE correlated `logger.error` line (the lib-level masking
+ *    machinery is exhaustively pinned by
  *    backend/lib/api/test/api-response.test.ts and
  *    backend/graphql/test/error-finalizer.test.ts);
  *  - GET full-navigation success remains a documented EXEMPTION from the
@@ -25,12 +23,11 @@
  * Runs via `bun run test/scripts/run-test.ts
  * app/api/set-locale/test/set-locale-route.test.ts`.
  *
- * Phase-5 completion leg (Task ID 8-a / Task 5.2): appends the envelope-matrix
- * rows still open after Task 3.2 — header-fuzz × correlation fallbacks,
- * badRequest-shape breadth across methods and locales, precise request-id echo
- * isolation on the FORBIDDEN branch, the masked-500 log-parity twin for the
- * GET handler's catch-parity branch, and the executable zero-numeric-
- * error-status pin over the route source.
+ * Tail rows append the broader envelope-matrix coverage: header-fuzz ×
+ * correlation fallbacks, badRequest-shape breadth across methods and locales,
+ * precise request-id echo isolation on the FORBIDDEN branch, the masked-500
+ * log-parity twin for the GET handler's catch-parity branch, and the
+ * executable zero-numeric-error-status pin over the route source.
  */
 
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
@@ -38,7 +35,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 // Value import (NOT type-only): NextRequest is CONSTRUCTED below. The
 // type-only form detonates at runtime as `ReferenceError: NextRequest is not
-// defined` (exact trap root-caused in outcome/3.1-outcome.md §3).
+// defined`.
 import { NextRequest } from "next/server";
 import { GET, POST } from "@/app/api/set-locale/route";
 import { logger } from "@/backend/lib/logger";
@@ -52,7 +49,7 @@ const tAr = getServerTranslations("ar").errorsTranslations;
 
 const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-// ─── Assertion-free payload narrowing (mirrors api-response.test.ts §helpers) ──
+// ─── Assertion-free payload narrowing (mirrors api-response.test.ts) ─────────
 
 function isPlainJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -122,7 +119,7 @@ function makeAllowedPostRequest(extraHeaders: Record<string, string>, body?: str
   });
 }
 
-describe("set-locale route envelope adoption (dev3-002 Task 3.2)", () => {
+describe("set-locale route envelope adoption", () => {
   const errorSpy = spyOn(logger, "error");
   afterEach(() => {
     errorSpy.mockClear();
@@ -262,14 +259,14 @@ describe("set-locale route envelope adoption (dev3-002 Task 3.2)", () => {
       const error = memberRecord(body, "error");
       expect(error.code).toBe("INTERNAL_SERVER_ERROR");
       // Localized generic message — original throwable never reaches the wire
-      // (zero-leak scan of the CLIENT-facing body; REQ-030/033).
+      // (zero-leak scan of the CLIENT-facing body).
       expect(error.message).toBe(tEn.internalServerError);
       const wireJson = JSON.stringify(body) ?? "";
       expect(wireJson).not.toContain("simulated stream fault");
       expect(wireJson).not.toContain("stack");
 
-      // REQ-012/013 correlation parity: exactly ONE correlated redacted log
-      // line carrying the SAME requestId the body echoes. Whitelisted scalars
+      // Correlation parity: exactly ONE correlated redacted log line
+      // carrying the SAME requestId the body echoes. Whitelisted scalars
       // (errorName/errorMessage/errorKind) live HERE — server-side surface.
       expect(errorSpy).toHaveBeenCalledTimes(1);
       const firstCall: unknown = errorSpy.mock.calls[0];
@@ -308,11 +305,11 @@ describe("set-locale route envelope adoption (dev3-002 Task 3.2)", () => {
       expect(await response.text()).toBe("");
     });
 
-    test("open-redirect guard preserved verbatim (SEC behavior-preservation)", async () => {
+    test("open-redirect guard preserved verbatim (behavior-preservation)", async () => {
       await expectHostileRedirectFallsBackToRoot("//evil.example/x");
       await expectHostileRedirectFallsBackToRoot("https://evil.example/x");
-      // Task 10-d pentest regression: WHATWG URL parsing folds "\" into "/" —
-      // "/\\evil.example" resolves to protocol-relative //evil.example and
+      // Pentest regression: WHATWG URL parsing folds "\" into "/" — the
+      // "/\\evil.example" shape resolves to protocol-relative //evil.example and
       // MUST fall back to root exactly like its forward-slash twin.
       await expectHostileRedirectFallsBackToRoot("/\\evil.example/x");
       await expectHostileRedirectFallsBackToRoot("/\\/evil.example/x");
@@ -334,8 +331,9 @@ describe("set-locale route envelope adoption (dev3-002 Task 3.2)", () => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════
-// Phase-5 completion rows (Task ID 8-a / Task 5.2) — envelope-matrix cells
-// still open after Task 3.2 (3.2-outcome §2/§3 carry-forward).
+// Broader envelope-matrix rows: header-fuzz × correlation fallbacks,
+// badRequest-shape breadth, FORBIDDEN echo isolation, masked-500 GET parity,
+// and the executable taxonomy source pin.
 // ══════════════════════════════════════════════════════════════════════════
 
 /** One correlation header-fuzz probe: inbound value + expected disposition. */
@@ -354,7 +352,7 @@ const CORRELATION_PROBES: readonly CorrelationProbeSpec[] = [
   { label: "whitespace padding around a valid id trims", inboundValue: "  corr-pad-echo  ", expected: "echo" },
 ];
 
-describe("set-locale envelope matrix — header-fuzz × correlation (Task 5.2)", () => {
+describe("set-locale envelope matrix — header-fuzz × correlation", () => {
   for (const probe of CORRELATION_PROBES) {
     test(`X-Request-Id ${probe.label} → ${probe.expected}`, async () => {
       const response = await POST(
@@ -389,7 +387,7 @@ describe("set-locale envelope matrix — header-fuzz × correlation (Task 5.2)",
   });
 });
 
-describe("set-locale envelope matrix — badRequest-shape breadth (Task 5.2)", () => {
+describe("set-locale envelope matrix — badRequest-shape breadth", () => {
   test.each([
     ["JSON array root", "[]"],
     ["JSON null root", "null"],
@@ -419,7 +417,7 @@ describe("set-locale envelope matrix — badRequest-shape breadth (Task 5.2)", (
     expect(error.requestId).toBe("corr-get-nolocale");
   });
 
-  test("GET ar accept-language keeps its OWN localized badRequest text (REQ-002 both locales)", async () => {
+  test("GET ar accept-language keeps its OWN localized badRequest text (both locales)", async () => {
     const response = await GET(
       makeRouteRequest({ headers: { "accept-language": "ar", "x-request-id": "corr-get-ar-400" } })
     );
@@ -430,7 +428,7 @@ describe("set-locale envelope matrix — badRequest-shape breadth (Task 5.2)", (
   });
 });
 
-describe("set-locale envelope matrix — FORBIDDEN echo isolation (Task 5.2)", () => {
+describe("set-locale envelope matrix — FORBIDDEN echo isolation", () => {
   function makeForeignRequest(localeHeader: string, requestId: string): NextRequest {
     return makeRouteRequest({
       method: "POST",
@@ -460,7 +458,7 @@ describe("set-locale envelope matrix — FORBIDDEN echo isolation (Task 5.2)", (
   });
 });
 
-describe("set-locale envelope matrix — masked-500 parity twin for the GET handler (Task 5.2)", () => {
+describe("set-locale envelope matrix — masked-500 parity twin for the GET handler", () => {
   test("unexpected assembly fault inside GET try/catch masks with matching body↔log requestId", async () => {
     const faulted = makeRouteRequest({
       headers: { host: "localhost:3000", "accept-language": "en", "x-request-id": "corr-get-masked-500" },
@@ -491,7 +489,7 @@ describe("set-locale envelope matrix — masked-500 parity twin for the GET hand
       if (!Array.isArray(firstCall)) throw new Error("logger.error call was not captured");
       const logBag: unknown = firstCall[1];
       if (!isPlainJsonObject(logBag)) throw new Error("logger.error context bag was not a JSON object");
-      // REQ-013 both-sides parity (GET edition): the SAME id rides the error
+      // Both-sides parity (GET edition): the SAME id rides the error
       // envelope object and the single correlated log bag.
       expect(error.requestId).toBe("corr-get-masked-500");
       expect(memberString(logBag, "requestId")).toBe("corr-get-masked-500");
@@ -501,7 +499,7 @@ describe("set-locale envelope matrix — masked-500 parity twin for the GET hand
   });
 });
 
-describe("set-locale envelope matrix — executable taxonomy pin over route source (Task 5.2)", () => {
+describe("set-locale envelope matrix — executable taxonomy pin over route source", () => {
   test("route module contains ZERO numeric error-status literals (taxonomy-exclusive statuses)", () => {
     const source = readFileSync(join(process.cwd(), "app/api/set-locale/route.ts"), "utf8");
     const STATUS_LITERAL_RE = /\b(400|401|403|404|409|422|429|500|503)\b/u;

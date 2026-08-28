@@ -6,16 +6,15 @@
  *  - `with-input`  — enables `t.inputType(...)` / `t.arg({ type: ... })`
  *    patterns for mutation inputs.
  *  - `scope-auth`  — enables `authScopes: { ... }` on every field. Loaded
- *    here (DEV2-CORE) so DEV2-001 (auth gating) and DEV2-002 (RBAC) can
- *    apply `{ authenticated: true }`, `{ role: [...] }`, `{ permission:
- *    [...] }`, `{ superAdmin: true }`, and `{ notImpersonating: true }`
- *    scopes to resolvers. The `authScopes` initializer maps each scope key
- *    to a decision based on the GraphQL `Context` (populated by
- *    `createGraphQLContext` from the verified access token).
+ *    here so resolvers can apply `{ authenticated: true }`, `{ role: [...] }`,
+ *    `{ permission: [...] }`, `{ superAdmin: true }`, and
+ *    `{ notImpersonating: true }` scopes. The `authScopes` initializer maps
+ *    each scope key to a decision based on the GraphQL `Context` (populated
+ *    by `createGraphQLContext` from the verified access token).
  *
  * Other installed plugins (errors, dataloader, drizzle, directives,
  * simple-objects, tracing, add-graphql) are intentionally NOT loaded here —
- * they'll be added by the tickets that need them.
+ * they are added where the features that need them live.
  *
  * The `Context` slot is bound to the runtime context produced by
  * `createGraphQLContext` (imported type-only to avoid a runtime cycle).
@@ -25,14 +24,14 @@
  *    side-effect imports in `backend/graphql/mutation/` and
  *    `backend/graphql/query/`.
  *
- * Scope semantics (DEV2-002):
+ * Scope semantics:
  *  - `authenticated: true` — caller has a verified `ctx.user` (401 otherwise).
  *  - `role: [UserRole.Admin, ...]` — OR semantics over the role set (403
  *    otherwise). The role comes exclusively from `ctx.role` (sourced from
- *    the DB via DEV2-001's session/token resolution).
- *  - `permission: ["PERM.X"]` — placeholder for DEV2-002's permission
- *    scope. Always passes for now; DEV2-002 wires it to
- *    `PermissionsService.getUserContext`.
+ *    the DB during session/token resolution).
+ *  - `permission: ["PERM.X"]` — permission scope. Currently passes
+ *    unconditionally; wired to `PermissionsService.getUserContext` once the
+ *    permission layer lands.
  *  - `superAdmin: true` — true iff `ctx.isSuperAdmin` (admin role).
  *  - `notImpersonating: true` — placeholder (no impersonation surface yet).
  *
@@ -82,8 +81,8 @@ export const gqlSchemaBuilder = new SchemaBuilder<{
 }>({
   plugins: [WithInputPlugin, ScopeAuthPlugin],
   defaults: "v3",
-  // DEV3-002 Task 3.1 — authScopes failure→code mapping locked at the SOURCE
-  // (REQ-020, non-interchangeable; docs/auth/jwt-authentication-service.md
+  // authScopes failure→code mapping locked at the SOURCE
+  // (non-interchangeable; docs/auth/jwt-authentication-service.md
   // §"401-vs-403 decision state chart"):
   //   - `authenticated` misses THROW UnauthorizedError (UNAUTHORIZED/401) —
   //     explicit scope throws pass through VERBATIM below (no re-mapping).
@@ -107,7 +106,7 @@ export const gqlSchemaBuilder = new SchemaBuilder<{
     },
   },
   authScopes: ctx => ({
-    // 401 boundary — no verified ctx.user means UNAUTHORIZED (REQ-010).
+    // 401 boundary — no verified ctx.user means UNAUTHORIZED.
     // Throws UnauthorizedError (not ForbiddenError) so the client sees
     // `extensions.code = "UNAUTHORIZED"` (401 semantics) for unauthenticated
     // requests, vs `FORBIDDEN` (403) for insufficient role/permission.
@@ -117,10 +116,10 @@ export const gqlSchemaBuilder = new SchemaBuilder<{
       }
       return true;
     },
-    // OR semantics over the role set — `roles.includes(ctx.role)` (REQ-020).
+    // OR semantics over the role set — `roles.includes(ctx.role)`.
     role: (roles: UserRole[]) => (ctx.role ? roles.includes(ctx.role) : false),
-    // DEV2-002 placeholder — always passes; DEV2-002 wires to
-    // PermissionsService.getUserContext(ctx.user.id).
+    // Permission scope placeholder — always passes; wired to
+    // PermissionsService.getUserContext(ctx.user.id) later.
     permission: () => true,
     // Super-admin gate — `ctx.isSuperAdmin` is set iff role === UserRole.Admin.
     superAdmin: () => ctx.isSuperAdmin,
@@ -135,10 +134,9 @@ export const gqlSchemaBuilder = new SchemaBuilder<{
 // "Type Query must define one or more fields" is satisfied because the
 // assembler registers all domain query fields before the schema is
 // finalized. Mutation fields are added the same way via
-// `import "@/backend/graphql/mutation";` in `gqlSchema.ts`. dev3-003 Task
-// 3.1 removed this file's legacy inline health-check String! placeholder
-// (BLT-06 delete-before-register) — that probe root field is now a
-// HealthCheck! object query owned by `backend/graphql/query/health.query.ts`
-// together with its Pothos object ref in `pothos/shared/`.
+// `import "@/backend/graphql/mutation";` in `gqlSchema.ts`. The probe root
+// field is a HealthCheck! object query owned by
+// `backend/graphql/query/health.query.ts` together with its Pothos object
+// ref in `pothos/shared/`.
 gqlSchemaBuilder.queryType({});
 gqlSchemaBuilder.mutationType({});

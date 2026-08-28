@@ -1,22 +1,20 @@
 /**
- * `myApplicantProfile` query — the caller's own teacher-applicant profile
- * (dev2-004 Task 3.3 · REQ-017, REQ-030, REQ-031, REQ-035).
+ * `myApplicantProfile` query — the caller's own teacher-applicant profile.
  *
  * Contract:
  *  - ZERO arguments — identity is derived EXCLUSIVELY from the verified
- *    context (`ctx.user.id`, REQ-030). There is no caller-supplied lookup
+ *    context (`ctx.user.id`). There is no caller-supplied lookup
  *    surface of any kind: BOLA probes that attempt to address a foreign id
  *    die as GraphQL validation failures before a resolver ever runs.
  *  - `ApplicantProfile`, nullable — `null` answers BOTH "never applied" and
- *    "already certified" with ONE indistinguishable null (REQ-035
- *    no-oracle), produced by
+ *    "already certified" with ONE indistinguishable null (a no-oracle
+ *    response), produced by
  *    `ApplicantLifecycleService.getMyApplicantProfile`.
  *  - DomainErrors thrown deeper (`APPLICANT_NOT_FOUND`,
  *    `APPLICANT_COOLDOWN_ACTIVE`, `APPLICANT_STATUS_CORRUPT`) propagate
  *    uncaught to the masking boundary (no try/catch here by contract).
  *
- * authScopes decision (REQ-031 401/403 split — engine facts recorded in
- * outcome/3.3-outcome.md; verified against @pothos/plugin-scope-auth@4.1.7):
+ * authScopes 401/403 split (verified against @pothos/plugin-scope-auth@4.1.7):
  *  - `{ role: [UserRole.Teacher] }` ALONE yields FORBIDDEN for anonymous
  *    callers: the `role` scope returns `false` when `ctx.role` is null and
  *    `scopeAuthOptions.unauthorizedError` maps scope-return failures onto

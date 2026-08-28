@@ -1,7 +1,7 @@
 /**
- * Contract error-code catalog (REQ-050).
+ * Contract error-code catalog.
  * Keys === values for self-describing `extensions.code` in logs.
- * Messages are externalized to callers via translation bags (REQ-051).
+ * Messages are externalized to callers via translation bags.
  */
 export const ContractErrorCodes = {
   CONTRACT_SUBJECTS_PARSE_INVALID: "CONTRACT_SUBJECTS_PARSE_INVALID",

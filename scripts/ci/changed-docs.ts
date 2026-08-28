@@ -1,7 +1,7 @@
 /**
  * Changed-documentation detection core (PURE module).
  *
- * Plan DEV3-001 §4.2 contract (REQ-017, REQ-027, REQ-035, REQ-063, REQ-075):
+ * Exported contract:
  *
  * - `WATCH_PATTERNS` — repo-relative path patterns that always belong to the
  *   docs-validation watch set.
@@ -12,7 +12,7 @@
  *   changed documentation files that must be validated. `options.input`
  *   selects the record encoding: the legacy `"newline"` split or `"nul"`
  *   (`git … -z`) verbatim records; untrustworthy entries throw
- *   {@link DocsDiffParseError} (W4-F1 loud-fail, replaces the historical
+ *   {@link DocsDiffParseError} (loud-fail, replacing the historical
  *   silent fail-open on C-quoted control-character filenames).
  *
  * Purity rules enforced by this module's tests and audits:
@@ -21,16 +21,16 @@
  * - Every input is treated as an opaque string; no path resolution or
  *   normalization happens here (the caller owns all I/O).
  *
- * Consumed by `scripts/ci/validate-docs-ci.ts` (Task 2.3) and unit-tested by
+ * Consumed by `scripts/ci/validate-docs-ci.ts` and unit-tested by
  * `scripts/ci/changed-docs.test.ts` with dependency-injected `readContent`.
  */
 
 /**
  * Repo-relative path suffix/prefix patterns that ALWAYS require validation
- * when they appear in a change set (plan §4.2 literal members):
+ * when they appear in a change set:
  *
- * - `/\.mmd$/`       — standalone Mermaid diagram files (docs/architecture/ and
- *                      docs/domain/ `.mmd` assets at plan time).
+ * - `/\.mmd$/`       — standalone Mermaid diagram files (the live
+ *                      `docs/architecture/` and `docs/domain/` `.mmd` assets).
  * - `/^docs\/.+\.md$/`— every Markdown document under `docs/`, fence or not.
  *
  * These are tested against POSIX-style relative paths exactly as emitted by
@@ -40,7 +40,7 @@ export const WATCH_PATTERNS: readonly RegExp[] = [/\.mmd$/, /^docs\/.+\.md$/];
 
 /**
  * Raw substring searched inside Markdown content to detect a Mermaid code
- * fence (REQ-063 content-scan fallback).
+ * fence (content-scan fallback).
  *
  * DEFINED BEHAVIOR (deterministic, deliberately conservative):
  * - Detection is a raw `String.includes` of this exact 9-character sequence —
@@ -70,7 +70,7 @@ const MERMAID_FENCE = "```mermaid";
  *    markdown without a fence and without a pattern hit).
  *
  * `content === null` models an unreadable/deleted upstream file for
- * non-pattern paths (plan §4.2 signature). Deletion policy for change SETS
+ * non-pattern paths. Deletion policy for change SETS
  * lives in {@link computeDocsChangedSet}, not here.
  */
 export function needsMermaidValidation(path: string, content: string | null): boolean {
@@ -96,7 +96,7 @@ function compareUtf16(a: string, b: string): number {
  *   even under `core.quotePath=false`, because that config only exempts
  *   non-ASCII bytes ≥ 0x80 — verified against git's own output) so the guard in
  *   {@link assertSafeDiffEntry} rejects them LOUDLY instead of the historical
- *   silent fail-open (W4-F1).
+ *   silent fail-open.
  * - `"nul"`: what the wrapper feeds after spawning
  *   `git … --name-only --diff-filter=ACMR -z`. Every record is NUL-TERMINATED
  *   (`\u0000` after the last record too) and contains the path BYTE-VERBATIM —
@@ -128,7 +128,7 @@ export class DocsDiffParseError extends Error {
 }
 
 /**
- * Defense-in-depth entry validator (W4-F1 loud-fail guard).
+ * Defense-in-depth entry validator (loud-fail guard).
  *
  * Rules:
  * - A leading double-quote on an entry is ALWAYS fatal. In nul mode git never

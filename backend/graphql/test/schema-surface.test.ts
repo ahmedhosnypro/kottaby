@@ -1,23 +1,23 @@
 /**
- * GraphQL schema surface assertion suite — dev3-003 Task 3.1.TE (Tier 1)
- * · REQ-060 "exactly one addition" gate + codegen-sync proof.
+ * GraphQL schema surface assertion suite — "exactly one addition" gate +
+ * codegen-sync proof.
  *
- * What this locks down after the Task 3.1 change set:
+ * What this locks down:
  *  - **Retyped probe** — `Query._health: HealthCheck!` (the legacy inline
  *    `String!` placeholder from `builder.ts` was deleted BEFORE the new
- *    registration landed: BLT-06 delete-before-register; duplicate-field
- *    crash regression is therefore covered here permanently).
+ *    registration landed — the duplicate-field crash regression is
+ *    therefore covered here permanently).
  *  - **Shape closure** — `HealthCheck` exposes EXACTLY the four scalar
  *    fields (`status`, `service`, `version`, `timestamp`), each `String!`,
- *    and carries NO `id` field (D4 embedded value object — proven both at
+ *    and carries NO `id` field (embedded value object — proven both at
  *    the type level and behaviorally: selecting `id` fails validation).
- *  - **REQ-060 surface freeze** — against the PRE-3.1 inventory (captured at
- *    HEAD `8e5ebb8`, phases 0–2): ZERO new mutations, ZERO new enums, and a
+ *  - **Surface freeze** — against the frozen baseline inventory (captured
+ *    at HEAD `8e5ebb8`): ZERO new mutations, ZERO new enums, and a
  *    whole-schema named-type delta of EXACTLY `{HealthCheck}` while the
  *    query set grows only by the sanctioned probe re-registration.
  *  - **Allowlist agreement** — the scopeless `_health` field is present in
  *    the closed `PUBLIC_OPERATION_NAMES` tuple / `PUBLIC_OPERATIONS` set
- *    1:1 (SEC audit half enforced as code, REQ-017/072).
+ *    1:1 (schema↔allowlist agreement enforced as code).
  *  - **Anonymous reachability** — executing the probe document with an EMPTY
  *    context succeeds through the real production schema (public by design;
  *    also proves the resolver is delegation-only: no ctx/DB access exists
@@ -49,15 +49,15 @@ import {
 import { graphQLSchema } from "@/backend/graphql/gqlSchema";
 import { PUBLIC_OPERATION_NAMES, PUBLIC_OPERATIONS } from "@/backend/lib/gateway";
 
-// ─── Frozen PRE-3.1 inventory (captured @ HEAD 8e5ebb8, Phases 0–2) ─────────
+// ─── Frozen baseline inventory (captured @ HEAD 8e5ebb8) ─────────────────────
 
-/** Root query field names present BEFORE dev3-003 Phase 3. */
+/** Root query field names present before the probe re-registration. */
 const PRE_3_1_QUERY_FIELDS = ["me", "recitationReadings"] as const;
-/** Root mutation field names — must remain UNCHANGED forever by 3.x gateway tasks. */
+/** Root mutation field names — must remain UNCHANGED forever. */
 const PRE_3_1_MUTATION_FIELDS = ["login", "logout", "refreshToken", "registerUser"] as const;
-/** GraphQL enum type names — REQ-060 forbids any new Pothos enum. */
+/** GraphQL enum type names — the freeze forbids any new Pothos enum. */
 const PRE_3_1_ENUMS = ["Gender", "RecitationReading", "RegisterPublicRole", "UserRole"] as const;
-/** Non-root object/enum/scalar SDL type names pre-3.1 (introspection `__*` and spec scalars excluded). */
+/** Non-root object/enum/scalar SDL type names in the baseline (introspection `__*` and spec scalars excluded). */
 const PRE_3_1_TYPE_NAMES = [
   "Gender",
   "LoginPayload",
@@ -82,21 +82,21 @@ function sdlTypeNames(): string[] {
     .toSorted((a, b) => a.localeCompare(b));
 }
 
-describe("Query._health — retyped probe surface (dev3-003 Task 3.1)", () => {
+describe("Query._health — retyped probe surface", () => {
   const queryType = graphQLSchema.getQueryType();
 
   if (!queryType) {
     throw new Error("Schema must define a root Query type");
   }
 
-  test("root query retains EXACTLY the pre-3.1 fields plus the probe", () => {
+  test("root query retains EXACTLY the baseline fields plus the probe", () => {
     expect(queryType).toBeDefined();
     const fieldNames = Object.keys(queryType.getFields());
-    // Pre-3.1 survivors intact…
+    // Baseline survivors intact…
     for (const name of PRE_3_1_QUERY_FIELDS) {
       expect(fieldNames).toContain(name);
     }
-    // …and the ONLY addition beyond them is the probe itself (REQ-060).
+    // …and the ONLY addition beyond them is the probe itself.
     const additions = fieldNames.filter(name => !(PRE_3_1_QUERY_FIELDS as readonly string[]).includes(name));
     expect(additions.toSorted((a, b) => a.localeCompare(b))).toEqual(["_health"]);
   });
@@ -117,7 +117,7 @@ describe("Query._health — retyped probe surface (dev3-003 Task 3.1)", () => {
   });
 });
 
-describe("HealthCheck object shape — four scalar fields, no id (D4)", () => {
+describe("HealthCheck object shape — four scalar fields, no id", () => {
   const healthType = graphQLSchema.getType("HealthCheck");
 
   if (!(healthType instanceof GraphQLObjectType)) {
@@ -142,7 +142,7 @@ describe("HealthCheck object shape — four scalar fields, no id (D4)", () => {
     }
   });
 
-  test("carries NO `id` field — embedded value object per plan D4 / REQ-061", () => {
+  test("carries NO `id` field — embedded value object", () => {
     const fields = healthType.getFields();
 
     expect(Object.hasOwn(fields, "id")).toBe(false);
@@ -157,8 +157,8 @@ describe("HealthCheck object shape — four scalar fields, no id (D4)", () => {
   });
 });
 
-describe("REQ-060 — exactly one addition vs the pre-3.1 inventory", () => {
-  test("ZERO new mutations (frozen pre-3.1 mutation set unchanged)", () => {
+describe("Surface freeze — exactly one addition vs the baseline inventory", () => {
+  test("ZERO new mutations (frozen mutation set unchanged)", () => {
     const mutationFields = graphQLSchema.getMutationType()?.getFields() ?? {};
     const names = Object.keys(mutationFields).toSorted((a, b) => a.localeCompare(b));
 
@@ -166,7 +166,7 @@ describe("REQ-060 — exactly one addition vs the pre-3.1 inventory", () => {
     expect(names).not.toContain("_health");
   });
 
-  test("ZERO new enums (frozen pre-3.1 enum set unchanged)", () => {
+  test("ZERO new enums (frozen enum set unchanged)", () => {
     const enumNames = Object.values(graphQLSchema.getTypeMap())
       .filter(type => type instanceof GraphQLEnumType && !type.name.startsWith("__"))
       .map(type => type.name)
@@ -186,7 +186,7 @@ describe("REQ-060 — exactly one addition vs the pre-3.1 inventory", () => {
   });
 });
 
-describe("Public-operation allowlist agreement (REQ-017/072 — SEC twin)", () => {
+describe("Public-operation allowlist agreement", () => {
   test("`_health` is a member of the closed allowlist 1:1 with its scopeless schema posture", () => {
     expect(PUBLIC_OPERATION_NAMES).toContain("_health");
     expect(PUBLIC_OPERATIONS.has("_health")).toBe(true);

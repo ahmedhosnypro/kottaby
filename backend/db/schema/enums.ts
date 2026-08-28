@@ -2,8 +2,8 @@ import { pgEnum } from "drizzle-orm/pg-core";
 
 /**
  * pgEnum registry — single source of truth for all 15 PostgreSQL enums.
- * Values + order are derived directly from `db/schema.dbml` (the ground truth per
- * REQ-002) and mirrored in the matching TypeScript enums under `backend/enum/`.
+ * Values + order are canonical and mirrored in the matching
+ * TypeScript enums under `backend/enum/`.
  */
 
 export const userRole = pgEnum("user_role", ["admin", "teacher", "student", "parent"]);

@@ -10,7 +10,7 @@ export interface ErrorsLabels {
   readonly forbidden: string;
   readonly validation: string;
   readonly conflict: string;
-  /** "This value is already in use." — unique-constraint duplicate reject (REQ-051). */
+  /** "This value is already in use." — unique-constraint duplicate reject. */
   readonly duplicateRequest: string;
   readonly rateLimitExceeded: string;
   readonly notFound: string;
@@ -20,23 +20,23 @@ export interface ErrorsLabels {
   readonly invalidLocale: string;
   readonly invalidOrigin: string;
   readonly failedToSetLocale: string;
-  /** "This account has been deleted." — login governance deny (REQ-030). */
+  /** "This account has been deleted." — login governance deny. */
   readonly accountDeleted: string;
-  /** "This account has been blocked." — login governance deny (REQ-031). */
+  /** "This account has been blocked." — login governance deny. */
   readonly accountBlocked: string;
-  /** "This account is suspended." — login governance deny (REQ-032). */
+  /** "This account is suspended." — login governance deny. */
   readonly accountSuspended: string;
-  /** "Your session has expired. Please sign in again." — token-expired banner (REQ-022). */
+  /** "Your session has expired. Please sign in again." — token-expired banner. */
   readonly tokenExpired: string;
-  /** "You do not have permission to access this page." — role-mismatch deny (DEV2-002 REQ-011). */
+  /** "You do not have permission to access this page." — role-mismatch deny. */
   readonly forbiddenRole: string;
-  /** "Teacher application not found." — self-applicants lookup miss → NotFoundError("APPLICANT") (DEV2-004 REQ-050). */
+  /** "Teacher application not found." — self-applicants lookup miss → NotFoundError("APPLICANT"). */
   readonly applicantNotFound: string;
   /**
-   * Cooldown reject for `ValidationError("APPLICANT_COOLDOWN_ACTIVE", …)`
-   * (DEV2-004 REQ-015). Interpolates ONLY the re-application expiry moment
+   * Cooldown reject for `ValidationError("APPLICANT_COOLDOWN_ACTIVE", …)`.
+   * Interpolates ONLY the re-application expiry moment
    * via the single ICU placeholder `{cooldownUntil}` plus generic copy — no
-   * other user data may enter this message (REQ-035). The placeholder NAME is
+   * other user data may enter this message. The placeholder NAME is
    * pinned identical across both locales by the parity tests.
    */
   readonly applicantCooldownActive: string;

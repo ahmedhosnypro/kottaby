@@ -1,15 +1,15 @@
 /**
- * RequestId context-plumbing tests — dev3-002 Task 2.5 paired suite.
+ * RequestId context-plumbing tests.
  *
- * Coverage map (tasks.md 2.5.TE):
+ * Coverage map:
  *  - Tier 1: inbound `X-Request-Id` honored VERBATIM when within bounds;
  *    absent header produces a structurally valid UUID v4 (version nibble +
- *    variant bits asserted, REQ-013).
+ *    variant bits asserted).
  *  - Tier 2: consecutive anonymous constructions get DISTINCT ids validated
  *    against the format regex (no cache/collision).
  *  - Tier 3: two (and a small batch of) PARALLEL context constructions via
  *    `Promise.all` produce independent ids — proves no shared counter/module
- *    state behind the resolution point (Decision D4).
+ *    state behind the resolution point.
  *  - Tier 4: the header is an OPAQUE correlation string — a hostile oversized
  *    value LOSES entirely to a locally minted UUID v4 and its fragments are
  *    never reflected into ANY serialized context field beyond `requestId`;
@@ -129,9 +129,9 @@ describe("ctx.requestId — opaque correlation hygiene (Tier 4)", () => {
   });
 });
 
-// ─── Semantic-review pins: D4 single-resolution-site, module hygiene ────────
+// ─── Semantic pins: single resolution site, module hygiene ───────────────────
 
-describe("factory semantic review pins", () => {
+describe("factory semantic pins", () => {
   /** Reads the sibling factory relative to THIS test file (no cwd coupling). */
   const factorySource = readFileSync(new URL("../gqlContextFactory.ts", import.meta.url), "utf8");
 
@@ -139,7 +139,7 @@ describe("factory semantic review pins", () => {
     const compositionSites = factorySource.split("resolveRequestId(").length - 1;
     expect(compositionSites).toBe(1);
 
-    // Decision D4: zero independent mints may EVER appear in this module —
+    // Zero independent mints may EVER appear in this module —
     // generation belongs exclusively to @/backend/lib/api's resolver.
     expect(factorySource.includes("randomUUID")).toBe(false);
 

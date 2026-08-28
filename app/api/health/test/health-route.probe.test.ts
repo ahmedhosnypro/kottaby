@@ -1,27 +1,24 @@
 /**
- * `/api/health` HTTP probe suite — dev3-003 Task 3.4.TE (REQ-013; D2/D8;
- * REQ-036 introspection lock).
+ * `/api/health` HTTP probe suite.
  *
  * Pure-function tier: `GET` is invoked directly with constructed fetch
- * `Request`s — NO server boot (BLT-07: the dev-server singleton on :3000
- * makes any boot-tier lifecycle unrunnable headlessly; the live-wire tier for
- * this probe is exercised manually via curl and recorded in
- * outcome/3.4-outcome.md).
+ * `Request`s — NO server boot (the dev-server singleton on :3000 makes any
+ * boot-tier lifecycle unrunnable headlessly; the live-wire tier for this
+ * probe is exercised manually via curl).
  *
  * Coverage map:
- *  - Tier 1 — 200 + exact `{data, requestId}` envelope (DEV3-002 helpers),
+ *  - Tier 1 — 200 + exact `{data, requestId}` envelope (shared API helpers),
  *    four-field payload (`status/service/version/timestamp`), inbound
  *    `X-Request-Id` honored, UUID-v4 mint fallback (+ hostile-value
  *    suppression), fresh ids/timestamps across calls (zero module state).
  *  - Tier 2 — method surface: ONLY `GET` is exported, so every other verb
- *    rides Next.js' framework-default 405 Method Not Allowed (documented in
- *    the outcome; Next's dev runtime cannot be exercised headlessly in this
- *    suite).
+ *    rides Next.js' framework-default 405 Method Not Allowed (Next's dev
+ *    runtime cannot be exercised headlessly in this suite).
  *  - Tier 4 — payload-disclosure regex scan over the producer/envelope (no
  *    POSIX/drive-letter filesystem paths, no planted secret-shaped env
  *    decoys), runtime zero-`Access-Control-*` proof on responses, static
- *    wildcard-ACAO pin across all `/api` route sources (D8/REQ-053), and the
- *    REQ-036/D6 code-explicit introspection-gate source pins.
+ *    wildcard-ACAO pin across all `/api` route sources, and the code-explicit
+ *    introspection-gate source pins.
  *
  * Runs via the mandated runner:
  * `bun run test/scripts/run-test.ts app/api/health/test/health-route.probe.test.ts`
@@ -44,7 +41,7 @@ const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9
 const POSIX_PATH_RE = /\/(?:home|Users|root|var|tmp|etc|proc|opt|usr)\//u;
 const WINDOWS_DRIVE_RE = /[A-Za-z]:\\/u;
 
-// D8 static pin — a wildcard echo would violate the same-origin-first posture.
+// Static CORS pin — a wildcard echo would violate the same-origin-first posture.
 const WILDCARD_ACAO_RE = /Access-Control-Allow-Origin[^\n]*\*/u;
 
 // ─── Assertion-free narrowing helpers (mirrors set-locale-route.test.ts) ────
@@ -136,7 +133,7 @@ function restoreEnv(): void {
 
 // ─── Tier 1 — envelope + payload contract ───────────────────────────────────
 
-describe("/api/health GET — DEV3-002 envelope + single-producer payload (Tier 1)", () => {
+describe("/api/health GET — shared envelope + single-producer payload (Tier 1)", () => {
   afterEach(restoreEnv);
 
   test("answers 200 with the exact {data, requestId} envelope and JSON content type", async () => {
@@ -170,7 +167,7 @@ describe("/api/health GET — DEV3-002 envelope + single-producer payload (Tier 
     expect(timestamp.endsWith("Z")).toBe(true);
   });
 
-  test("payload is the SHARED producer output (D2/D3 identical-by-construction with _health)", async () => {
+  test("payload is the SHARED producer output (identical-by-construction with _health)", async () => {
     snapshotAndSeedEnv();
     const data = memberRecord(await readJson(await GET(makeProbeRequest())), "data");
     const producerPayload = HealthCheckService.getHealthStatus();
@@ -246,9 +243,9 @@ describe("/api/health method surface (Tier 2)", () => {
   test("ONLY GET is exported — every other verb rides Next.js' framework-default 405", () => {
     // Next.js App Router routes without an export for a verb answer that verb
     // with 405 Method Not Allowed (framework semantics — cannot be exercised
-    // headlessly here; live curl evidence recorded in outcome/3.4-outcome.md).
-    // This pin freezes the exported-surface half of that guarantee: no POST/
-    // PUT/DELETE/PATCH/OPTIONS escape hatch may ever appear silently.
+    // headlessly here; verified manually via curl). This pin freezes the
+    // exported-surface half of that guarantee: no POST/PUT/DELETE/PATCH/
+    // OPTIONS escape hatch may ever appear silently.
     expect(Object.keys(healthRouteModule).toSorted((a, b) => a.localeCompare(b))).toEqual(["GET"]);
   });
 
@@ -291,7 +288,7 @@ describe("Tier 4 — disclosure scan over the payload producer + envelope", () =
   });
 });
 
-describe("D8/REQ-053 CORS posture pins", () => {
+describe("same-origin-first CORS posture pins", () => {
   test("probe responses carry ZERO Access-Control-* headers at runtime", async () => {
     const response = await GET(makeProbeRequest({ origin: "https://evil.example" }));
 
@@ -316,7 +313,7 @@ describe("D8/REQ-053 CORS posture pins", () => {
   });
 });
 
-describe("REQ-036/D6 introspection gate — code-explicit constant lock", () => {
+describe("introspection gate — code-explicit constant lock", () => {
   test("gateway config derives isProduction from NODE_ENV explicitly and consumes it non-ambiently", () => {
     const source = readFileSync(join(process.cwd(), "app", "api", "graphql", "route.ts"), "utf8");
 
@@ -330,7 +327,7 @@ describe("REQ-036/D6 introspection gate — code-explicit constant lock", () => 
   });
 });
 
-describe("REQ-012/013 third-health-surface absence", () => {
+describe("third-health-surface absence", () => {
   test("exactly the three inventory routes exist and only the two sanctioned surfaces consume the producer", () => {
     const liveRoutePaths = listRoutePaths(join(process.cwd(), "app", "api"));
     expect(liveRoutePaths.toSorted((a, b) => a.localeCompare(b))).toEqual([

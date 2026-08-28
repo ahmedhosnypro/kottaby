@@ -2,7 +2,7 @@ import { index, integer, pgTable, timestamp, varchar } from "drizzle-orm/pg-core
 import { teacher } from "@/backend/db/schema/teachers/teacher";
 
 /**
- * Teacher verification audit table (DBML `teacher_verification`).
+ * Teacher verification audit table (`teacher_verification`).
  *
  * Each row records a verification attempt'stajweed_level` and `hifz_level`
  * outcomes for a teacher. Multiple rows per teacher are allowed (verification

@@ -1,27 +1,27 @@
 /**
  * RegistrationService — domain service for user registration.
  *
- * Responsibilities (per specs.md REQ-010..REQ-064):
+ * Responsibilities:
  *  1. Validate the public `RegistrationSubmitInput` (required fields, email
  *     shape, password ≥ 8 chars, country non-empty, role ∈ {student, teacher,
  *     parent}). Throws `ValidationError` with localized messages from
- *     `getServerTranslations(locale).authTranslations` (REQ-040..REQ-042).
+ *     `getServerTranslations(locale).authTranslations`.
  *  2. Hash the password via `hashPassword` BEFORE the transaction opens so
- *     plaintext never crosses into repository input types or logs (REQ-020).
+ *     plaintext never crosses into repository input types or logs.
  *  3. Open a single `db.transaction(async tx => …)` that orchestrates the
- *     `users` insert plus the role-specific child insert (atomicity — REQ-030).
+ *     `users` insert plus the role-specific child insert (atomicity).
  *     All repository calls inside the flow receive the same `tx`.
  *  4. Translate PostgreSQL `23505` on `users.email` into a localized
- *     `ConflictError` (REQ-021, REQ-032).
+ *     `ConflictError`.
  *  5. Generate `handshake_code` for student registrations with a bounded
  *     in-tx retry loop on unique-violation; log via `logger.logDomainError`
- *     on exhaustion (REQ-031).
+ *     on exhaustion.
  *  6. BOPLA defense: explicit field-by-field mapping — NEVER `{ ...input }`
- *     spread into `.values()` (REQ-023).
+ *     spread into `.values()`.
  *
- * BFLA defense (REQ-022): the public `registerUser` method only accepts
+ * BFLA defense: the public `registerUser` method only accepts
  * `RegisterPublicRole` (no `"admin"`). The privileged `createAdminUser`
- * method exists for DEV3-016/018 super-admin onboarding and is NOT exposed
+ * method exists for privileged super-admin onboarding and is NOT exposed
  * via any public Pothos mutation.
  *
  * i18n: all messages resolve through `getServerTranslations(locale)` — never
@@ -79,7 +79,7 @@ function isValidEmail(email: string): boolean {
   return true;
 }
 
-/** Minimum password length (REQ-041). */
+/** Minimum password length. */
 const MIN_PASSWORD_LENGTH = 8;
 
 /**
@@ -140,7 +140,7 @@ export namespace RegistrationService {
    *
    * Validates input, hashes the password, then opens a single transaction
    * that inserts the `users` row + role-specific child row. Returns the
-   * created user with `passwordHash` omitted (REQ-020).
+   * created user with `passwordHash` omitted (never exposed to callers).
    *
    * @param input  Public registration contract (whitelisted fields only).
    * @param locale Active request locale (for i18n error messages).
@@ -163,19 +163,19 @@ export namespace RegistrationService {
 
     validateInput(input, t);
 
-    // DEV1-003: validate preferredRecitation against the canonical catalog BEFORE
-    // any DB work (REQ-022). Contract metadata only — NOT persisted to `recitation`
-    // (C.5 guardrail: recitation is session-linked, 1:1 with `session`).
+    // Validate preferredRecitation against the canonical catalog BEFORE
+    // any DB work. Contract metadata only — NOT persisted to `recitation`
+    // (recitation is session-linked, 1:1 with `session`).
     const preferredRecitation = RecitationCatalogService.validateOptionalReading(input.preferredRecitation, locale);
 
-    // Hash BEFORE the transaction opens — plaintext never enters the tx (REQ-020).
+    // Hash BEFORE the transaction opens — plaintext never enters the tx.
     const passwordHash = await hashPassword(input.password);
 
     try {
       return await withTransaction(outerTx, async tx => {
         const created = await createUserRow(input, passwordHash, tx);
         await createRoleChild(created.id, input.role, tx);
-        // C.5 guardrail: ZERO recitation rows created during registration (REQ-023).
+        // Zero recitation rows are created during registration.
         return toReturnType(created, preferredRecitation);
       });
     } catch (error) {
@@ -187,7 +187,7 @@ export namespace RegistrationService {
 
   /**
    * Privileged admin-creation entry point (service-only, NOT exposed via any
-   * public Pothos mutation). Used by DEV3-016/018 super-admin onboarding.
+   * public Pothos mutation). Used by privileged super-admin onboarding.
    *
    * Same validation + hashing + atomicity guarantees as `registerUser`, but
    * accepts `role: "admin"` and creates an `admin` child row instead of a
@@ -207,7 +207,7 @@ export namespace RegistrationService {
     // only permitted role here (the type enforces it).
     validateInput({ ...input, role: "student" }, t);
 
-    // DEV1-003: validate preferredRecitation for admin path too (same C.5 guardrail).
+    // Validate preferredRecitation for the admin path too (same session-link guard).
     const preferredRecitation = RecitationCatalogService.validateOptionalReading(input.preferredRecitation, locale);
 
     const passwordHash = await hashPassword(input.password);
@@ -269,7 +269,7 @@ export namespace RegistrationService {
     }
   }
 
-  /** Inserts the `users` row with governance defaults set server-side (REQ-011). */
+  /** Inserts the `users` row with governance defaults set server-side. */
   async function createUserRow(
     input: RegistrationSubmitInput | AdminRegistrationSubmitInput,
     passwordHash: string,
@@ -289,7 +289,7 @@ export namespace RegistrationService {
       role,
       gender: input.gender ?? null,
       country: input.country,
-      // Governance defaults (REQ-011) — server-set, never client-controlled.
+      // Governance defaults — server-set, never client-controlled.
       isDeleted: false,
       deletedAt: null,
       suspended: false,
@@ -339,7 +339,7 @@ export namespace RegistrationService {
 
   /**
    * Inserts the `students` row, retrying handshake-code generation on
-   * unique-violation up to `HANDSHAKE_RETRY_LIMIT` times (REQ-031).
+   * unique-violation up to `HANDSHAKE_RETRY_LIMIT` times.
    *
    * On exhaustion, throws `ConflictError` and logs via
    * `logger.logDomainError` (never `console.*`).
@@ -394,7 +394,7 @@ export namespace RegistrationService {
     user: Awaited<ReturnType<typeof UserRepository.create>>,
     preferredRecitation: RecitationReading | null
   ): RegistrationReturnType {
-    // Omit passwordHash so it can never leak to resolvers or logs (REQ-020).
+    // Omit passwordHash so it can never leak to resolvers or logs.
     const { passwordHash: _omitted, ...rest } = user;
     return { ...rest, preferredRecitation };
   }

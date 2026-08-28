@@ -1,7 +1,7 @@
 /**
  * SessionType enum — mirrors the `session_type` pgEnum in
- * `backend/db/schema/enums.ts`. Values derived from `db/schema.dbml`
- * (ground truth per REQ-002). Distinguishes regular vs evaluation sessions.
+ * `backend/db/schema/enums.ts`. Values are canonical.
+ * Distinguishes regular vs evaluation sessions.
  */
 export enum SessionType {
   StudentSession = "student_session",

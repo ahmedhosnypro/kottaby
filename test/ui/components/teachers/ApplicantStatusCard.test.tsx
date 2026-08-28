@@ -1,24 +1,23 @@
 /**
- * ApplicantStatusCard — component suite (DEV2-004 Task 4.2.TE).
+ * ApplicantStatusCard — component suite.
  *
  * Happy DOM + Apollo `MockedProvider` tier (`test/ui/components`): every
- * render branch of the §5.5 visual state matrix gets ONE render case,
+ * render branch of the status-card visual state matrix gets ONE render case,
  * driven across BOTH locales:
  *
  *   loading · error-denied (FORBIDDEN) · generic-error · null-certified ·
  *   pending · in_evaluation · failed-active-cooldown (future ISO) ·
- *   failed-eligible · passed (DISP-6)
+ *   failed-eligible · passed
  *
- * REQ-074 discipline: assertions reference ONLY the PRELOADED label objects
+ * Translation discipline: assertions reference ONLY the PRELOADED label objects
  * resolved through `Applicant.getLabels(getTranslations(locale))` and
  * `Errors.getLabels(...)` — ZERO hardcoded Arabic/English copy lives here.
  * The one exception class is fixture DATA (ids, e-mail-free payloads, an
  * ASCII name) plus the cooldown timestamp, which is recomputed with a
  * local `Intl.DateTimeFormat` clone of the documented option set (the
- * byte-consistency technique established by Task 2.2's service suite).
+ * byte-consistency technique used by the service-layer suite).
  *
- * Static discipline verified alongside (grep, recorded in
- * outcome/4.2-outcome.md):
+ * Static discipline verified alongside (grep):
  *   - `useLazyQuery` appears NOWHERE in the component or its consumers;
  *   - no `.skip(`/`.only(` markers exist in this suite.
  */
@@ -133,7 +132,7 @@ for (const locale of ["ar", "en"] as AppLocale[]) {
       // `delay: Infinity` keeps the operation permanently in flight (MockLink
       // returns a never-settling Observable for it). An EMPTY mock list would
       // NOT leave the query pending — MockLink emits an async unmatched-
-      // operation error instead (CodeRabbit review of the DEV2-004 PR).
+      // operation error instead.
       const { container } = renderCard(
         [{ request: { query: myApplicantProfileQueryDocument }, delay: Infinity }],
         locale
@@ -240,7 +239,7 @@ for (const locale of ["ar", "en"] as AppLocale[]) {
       const reapplyButton = screen.getByRole("button", { name: t.reapplyCta });
       expect(reapplyButton.getAttribute("disabled")).not.toBeNull();
 
-      // REQ-honesty probe: the expired-cooldown invitation must NOT show
+      // Honesty probe: the expired-cooldown invitation must NOT show
       // while the waiting period runs.
       expect(container.textContent?.includes(t.eligibleToReapply)).toBe(false);
       // Raw ICU placeholder must never leak into DOM (parity pin echo).
@@ -265,7 +264,7 @@ for (const locale of ["ar", "en"] as AppLocale[]) {
       expect(container.textContent?.includes(cooldownPrefix)).toBe(false);
     });
 
-    test("branch 9 — DISP-6 Passed: passed chip + certified narrative", async () => {
+    test("branch 9 — Passed: passed chip + certified narrative", async () => {
       renderCard(
         [profileSuccessMock({ overrides: { status: ApplicantStatus.Passed, canPurchaseVerification: false } })],
         locale
@@ -277,7 +276,7 @@ for (const locale of ["ar", "en"] as AppLocale[]) {
       expect(screen.getByText(t.statusPassed)).toBeDefined();
       // No purchase/exam action copy inside the passed story.
       expect(screen.queryByRole("button", { name: t.reapplyCta })).toBeNull();
-      // REQ-063 honesty: pending/failed families stay out of this branch.
+      // Honesty: pending/failed families stay out of this branch.
       expect(screen.queryByText(t.statusFailed)).toBeNull();
       expect(screen.queryByText(t.statusPending)).toBeNull();
     });

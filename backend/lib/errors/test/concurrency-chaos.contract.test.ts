@@ -1,7 +1,5 @@
 /**
- * Concurrency & chaos contract tests — dev3-002 Phase 5, Task 5.4 (REQ-076).
- *
- * Chaos battery over the shared error-handling producers
+ * Concurrency & chaos contract tests over the shared error-handling producers
  * (`finalizeGraphqlErrors`, `apiErrorResponse`, `redactLogContext`,
  * `resolveRequestId`, taxonomy lookups). Zero DB / zero server boot — runs
  * via `bun run test/scripts/run-test.ts
@@ -12,7 +10,7 @@
  *    (N rounds × M way) over a six-class adversarial mix; parallel output is
  *    BYTE-EQUAL to the sequential twin and to every other round; zero
  *    shared-state drift proven by post-storm pristine replay plus frozen
- *    taxonomy lookups; caller inputs never mutated (REQ-040/REQ-076). The
+ *    taxonomy lookups; caller inputs never mutated. The
  *    declared logging channel stays exactly-once per masked element under
  *    full interleaving.
  *  - Tier 2 — adversarial throwables matrix: cyclic cause graphs
@@ -28,22 +26,20 @@
  *  - Tier 3 — `resolveRequestId` hostile-header battery + generation storm:
  *    multi-value smuggles, oversized values, control characters, non-string
  *    returns; honored values stay deterministic; generated ids stay valid,
- *    distinct across a 400-way burst (Decision D4 single-resolution path).
+ *    distinct across a 400-way burst (single-resolution path).
  *
- * Harness exclusions (recorded in outcome/5.4-outcome.md): only channels the
- * modules themselves GUARD are probed with hostile payloads — wire items
- * reaching the boundary are Apollo-authored plain records and header readers
- * are fetch `Headers` per the published `RequestHeaderReader` contract, so
- * unguarded-channel traps sit outside both the modules' promises and this
- * corpus.
+ * Harness exclusions: only channels the modules themselves GUARD are probed
+ * with hostile payloads — wire items reaching the boundary are Apollo-authored
+ * plain records and header readers are fetch `Headers` per the published
+ * `RequestHeaderReader` contract, so unguarded-channel traps sit outside both
+ * the modules' promises and this corpus.
  *
- * REQ-076's storage-bound cells (idempotency replay burst through the live
- * idempotency service, 5xx key-release retry semantics, transaction rollback
- * preservation) need DB-backed services and are consolidated in deferred-
- * items BLT-14 with exact CI commands. The error-path purity HALF of REQ-076
- * IS proven here: these suites import no DB surface at all, and Tier 1/Tier 2
- * pin deterministic replay across barrages (no writes emitted from
- * translation/masking utilities).
+ * Storage-bound concurrency concerns (idempotency replay bursts through the
+ * live idempotency service, 5xx key-release retry semantics, transaction
+ * rollback preservation) need DB-backed services and are intentionally ABSENT
+ * here. The error-path purity half IS proven: these suites import no DB
+ * surface at all, and Tier 1/Tier 2 pin deterministic replay across barrages
+ * (no writes emitted from translation/masking utilities).
  */
 
 import { describe, expect, jest, test } from "bun:test";
@@ -252,7 +248,7 @@ const MASKED_ELEMENTS_PER_ROUND = STORM_ELEMENTS_PER_ROUND / 6;
 
 // ─── Tier 1 — allSettled storms & shared-state drift ────────────────────────
 
-describe("Tier 1 · allSettled storms — parallel purity without shared-state drift (REQ-040/076)", () => {
+describe("Tier 1 · allSettled storms — parallel purity without shared-state drift", () => {
   test(`${STORM_ROUNDS} rounds × ${STORM_ELEMENTS_PER_ROUND} legs byte-equal the sequential twin`, async () => {
     const pristineCapture = withSilencedStreams(() => snapshotStormSerial().join("\u241E"));
     const pristineBaseline = pristineCapture.result;
@@ -365,7 +361,7 @@ function buildUniqueTailRingCarrier(): Record<string, unknown> {
   };
 }
 
-describe("Tier 2 · cyclic cause graphs terminate deterministically (REQ-042/076)", () => {
+describe("Tier 2 · cyclic cause graphs terminate deterministically", () => {
   test("self-loop / tangled pair / triple ring / UNIQUE-tail ring mask within budget", async () => {
     const cyclicCarriers: readonly unknown[] = [
       buildSelfLoopError(),
@@ -747,7 +743,7 @@ function readerReturning(returnedValue: unknown): { readonly get: (name: string)
   };
 }
 
-describe("Tier 3 · resolveRequestId hostile-header battery (Decision D4)", () => {
+describe("Tier 3 · resolveRequestId hostile-header battery", () => {
   test("every smuggle shape loses to a fresh UUIDv4; every accepted shape echoes verbatim", () => {
     for (const batteryRow of HEADER_BATTERY_ROWS) {
       const headerReader = readerReturning(batteryRow.returnedValue);

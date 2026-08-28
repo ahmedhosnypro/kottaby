@@ -1,5 +1,5 @@
 /**
- * Type-Level Conformance Suite (REQ-070).
+ * Type-Level Conformance Suite.
  * Validated by `bun tsgo` (the compiler is the test runner).
  * `.test-d.ts` suffix = outside bun test runner glob.
  *
@@ -44,7 +44,7 @@ const v = (x: unknown): boolean => Boolean(x);
 
 // ========== POSITIVES (must compile) ==========
 
-// Contract 1 — SessionRequest (A.8, A.10, B.2, B.3, B.4, INV-S4)
+// Positive — SessionRequest (Hifz)
 v({
   studentId: 1,
   teacherId: 2,
@@ -56,7 +56,7 @@ v({
   idempotencyKey: "sr-1",
 } satisfies SessionRequestContract);
 
-// Contract 1 — Tajweed
+// Positive — SessionRequest (Tajweed)
 v({
   studentId: 1,
   teacherId: 2,
@@ -68,7 +68,7 @@ v({
   idempotencyKey: "sr-2",
 } satisfies SessionRequestContract);
 
-// Contract 2 — TeacherAvailabilitySnapshot (B.10, B.15, B.16, INV-A1..A4)
+// Positive — TeacherAvailabilitySnapshot
 v({
   teacherId: 1,
   isOnline: true,
@@ -79,7 +79,7 @@ v({
   languages: { primaryLanguage: "ar", anotherLanguage: "en" },
 } satisfies TeacherAvailabilitySnapshotContract);
 
-// Contract 2 — null rating
+// Positive — TeacherAvailabilitySnapshot with null rating
 v({
   teacherId: 1,
   isOnline: false,
@@ -90,7 +90,7 @@ v({
   languages: { primaryLanguage: "ar", anotherLanguage: null },
 } satisfies TeacherAvailabilitySnapshotContract);
 
-// Contract 4 — EvaluationSession (C.3, A.8, A.10, INV-TV2)
+// Positive — EvaluationSession (TeacherEvaluation)
 v({
   sessionType: SessionType.TeacherEvaluation,
   intent: EVALUATION_SESSION_INTENT,
@@ -100,7 +100,7 @@ v({
   idempotencyKey: "eval-1",
 } satisfies EvaluationSessionContract);
 
-// Contract 4 — ReEvaluation
+// Positive — EvaluationSession (ReEvaluation)
 v({
   sessionType: SessionType.ReEvaluation,
   intent: EVALUATION_SESSION_INTENT,
@@ -110,7 +110,7 @@ v({
   idempotencyKey: "eval-2",
 } satisfies EvaluationSessionContract);
 
-// Contract 3 — DualConfirmationState
+// Positive — DualConfirmationState
 v({
   sessionId: 1,
   confirmedByTeacherAt: new Date(),
@@ -118,7 +118,7 @@ v({
   confirmationDeadline: new Date(),
 } satisfies DualConfirmationState);
 
-// Contract 3 — EscrowTrigger
+// Positive — EscrowTrigger
 v({
   sessionId: 1,
   confirmedByTeacherAt: new Date(),
@@ -126,7 +126,7 @@ v({
   idempotencyKey: "esc-1",
 } satisfies EscrowTriggerContract);
 
-// Contract 3 — WalletCredit (INV-W4/W7/W8)
+// Positive — WalletCredit
 v({
   walletId: 1,
   sessionId: 1,
@@ -136,7 +136,7 @@ v({
   idempotencyKey: "wc-1",
 } satisfies WalletCreditContract);
 
-// Contract 3 — EscrowRelease with hold (REQ-040)
+// Positive — EscrowRelease with hold reference
 v({
   sessionId: 1,
   releaseReason: "CancellationConfirmed" as const,
@@ -144,14 +144,14 @@ v({
   idempotencyKey: "er-1",
 } satisfies EscrowReleaseContract);
 
-// Contract 3 — EscrowRelease without hold
+// Positive — EscrowRelease without hold reference
 v({
   sessionId: 1,
   releaseReason: "ConfirmationTimeout" as const,
   idempotencyKey: "er-2",
 } satisfies EscrowReleaseContract);
 
-// Contract 5 — Notification with entityRef (Decision #4, A.4)
+// Positive — Notification with entityRef
 v({
   userId: 1,
   type: NotificationType.SessionRequest as SessionEventNotificationType,
@@ -161,7 +161,7 @@ v({
   entityRef: { relatedEntityType: "session", relatedEntityId: 1 },
 } satisfies SessionEventNotificationContract);
 
-// Contract 5 — Notification without entityRef
+// Positive — Notification without entityRef
 v({
   userId: 1,
   type: NotificationType.SessionCompletion as SessionEventNotificationType,
@@ -170,7 +170,7 @@ v({
   entityRef: {},
 } satisfies SessionEventNotificationContract);
 
-// Contract 6 — AuditWrite (A.5)
+// Positive — AuditWrite
 v({
   actorId: 1,
   actionType: AuditActionType.Create,
@@ -179,10 +179,10 @@ v({
   details: "{}",
 } satisfies AuditLogWriteContract);
 
-// Contract 6 — ActorContext (REQ-023)
+// Positive — ActorContext
 v({ userId: 1, role: UserRole.Admin } satisfies ActorContextRef);
 
-// B.16 anchor
+// Anchor — requestPreference: OfferAlternatives
 v({
   teacherId: 1,
   isOnline: true,
@@ -193,7 +193,7 @@ v({
   languages: { primaryLanguage: "ar", anotherLanguage: null },
 } satisfies TeacherAvailabilitySnapshotContract);
 
-// C.3 anchor
+// Anchor — evaluation FKs point to users.id
 v({
   sessionType: SessionType.TeacherEvaluation,
   intent: EVALUATION_SESSION_INTENT,
@@ -205,7 +205,7 @@ v({
 
 // ========== NEGATIVES (@ts-expect-error immediately before the error) ==========
 
-// REQ-030: passwordHash forbidden
+// Negative — passwordHash forbidden on SessionRequestContract
 v({
   studentId: 1,
   teacherId: 2,
@@ -215,11 +215,11 @@ v({
   feeHeld: true as const,
   confirmationDeadline: new Date(),
   idempotencyKey: "x",
-  // @ts-expect-error — REQ-030: credentials forbidden
+  // @ts-expect-error — credentials forbidden
   passwordHash: "hash",
 } satisfies SessionRequestContract);
 
-// REQ-030: isDeleted governance flag forbidden
+// Negative — isDeleted governance flag forbidden
 v({
   teacherId: 1,
   isOnline: true,
@@ -228,11 +228,11 @@ v({
   requestPreference: TeacherRequestPreference.Queue,
   country: "EG",
   languages: { primaryLanguage: "ar", anotherLanguage: "en" },
-  // @ts-expect-error — REQ-030: governance flags forbidden
+  // @ts-expect-error — governance flags forbidden
   isDeleted: false,
 } satisfies TeacherAvailabilitySnapshotContract);
 
-// REQ-014: balance excluded
+// Negative — balance excluded from session-request input
 v({
   studentId: 1,
   teacherId: 2,
@@ -242,35 +242,35 @@ v({
   feeHeld: true as const,
   confirmationDeadline: new Date(),
   idempotencyKey: "x",
-  // @ts-expect-error — REQ-014: balance excluded
+  // @ts-expect-error — balance excluded
   balanceHifz: 5,
 } satisfies SessionRequestContract);
 
-// REQ-030: passwordHash on AuditLogWriteContract
+// Negative — passwordHash on AuditLogWriteContract
 v({
   actorId: 1,
   actionType: AuditActionType.Create,
   entityType: "session",
   entityId: 1,
   details: "{}",
-  // @ts-expect-error — REQ-030: credentials forbidden
+  // @ts-expect-error — credentials forbidden
   passwordHash: "hash",
 } satisfies AuditLogWriteContract);
 
-// REQ-023: email on ActorContextRef
+// Negative — email on ActorContextRef
 v({
   userId: 1,
   role: UserRole.Student,
-  // @ts-expect-error — REQ-023: only userId + role
+  // @ts-expect-error — only userId + role
   email: "test@test.com",
 } satisfies ActorContextRef);
 
-// A.8: wrong session type family
+// Negative — wrong session type family
 v({
   studentId: 1,
   teacherId: 2,
   intent: SessionIntent.Hifz,
-  // @ts-expect-error — A.8: StudentSession only
+  // @ts-expect-error — StudentSession only
   sessionType: SessionType.TeacherEvaluation,
   fee: "25.00",
   feeHeld: true as const,
@@ -278,11 +278,11 @@ v({
   idempotencyKey: "x",
 } satisfies SessionRequestContract);
 
-// A.10: Evaluation intent forbidden
+// Negative — Evaluation intent forbidden on session request
 v({
   studentId: 1,
   teacherId: 2,
-  // @ts-expect-error — A.10: evaluation intent forbidden
+  // @ts-expect-error — evaluation intent forbidden
   intent: SessionIntent.Evaluation,
   sessionType: SESSION_REQUEST_SESSION_TYPE,
   fee: "25.00",
@@ -291,67 +291,67 @@ v({
   idempotencyKey: "x",
 } satisfies SessionRequestContract);
 
-// A.4: isRead forbidden on notification
+// Negative — isRead forbidden on notification
 v({
   userId: 1,
   type: NotificationType.SessionRequest as SessionEventNotificationType,
   title: "T",
   body: "B",
-  // @ts-expect-error — A.4: isRead system-managed
+  // @ts-expect-error — isRead system-managed
   isRead: false,
   entityRef: {},
 } satisfies SessionEventNotificationContract);
 
-// A.5: id forbidden on audit write
+// Negative — id forbidden on audit write
 v({
   actorId: 1,
   actionType: AuditActionType.Create,
   entityType: "session",
   entityId: 1,
   details: "{}",
-  // @ts-expect-error — A.5: id system-set
+  // @ts-expect-error — id system-set
   id: 999,
 } satisfies AuditLogWriteContract);
 
-// A.5: createdAt forbidden on audit write
+// Negative — createdAt forbidden on audit write
 v({
   actorId: 1,
   actionType: AuditActionType.Update,
   entityType: "user",
   entityId: 1,
   details: "{}",
-  // @ts-expect-error — A.5: createdAt system-set
+  // @ts-expect-error — createdAt system-set
   createdAt: new Date(),
 } satisfies AuditLogWriteContract);
 
-// INV-S3: null timestamp on EscrowTrigger
+// Negative — null timestamp on EscrowTrigger
 v({
   sessionId: 1,
-  // @ts-expect-error — INV-S3: both must be non-null
+  // @ts-expect-error — both confirmations must be non-null
   confirmedByTeacherAt: null,
   confirmedByStudentAt: new Date(),
   idempotencyKey: "x",
 } satisfies EscrowTriggerContract);
 
-// REQ-040: amount on release
+// Negative — amount on release
 v({
   sessionId: 1,
   releaseReason: "CancellationConfirmed" as const,
-  // @ts-expect-error — REQ-040: no amount
+  // @ts-expect-error — no amount
   amount: "25.00",
   idempotencyKey: "x",
 } satisfies EscrowReleaseContract);
 
-// REQ-040: walletId on release
+// Negative — walletId on release
 v({
   sessionId: 1,
   releaseReason: "ConfirmationTimeout" as const,
-  // @ts-expect-error — REQ-040: no walletId
+  // @ts-expect-error — no walletId
   walletId: 1,
   idempotencyKey: "x",
 } satisfies EscrowReleaseContract);
 
-// REQ-016: inSession forbidden
+// Negative — inSession forbidden
 v({
   teacherId: 1,
   isOnline: true,
@@ -360,36 +360,36 @@ v({
   requestPreference: TeacherRequestPreference.Queue,
   country: "EG",
   languages: { primaryLanguage: "ar", anotherLanguage: "en" },
-  // @ts-expect-error — REQ-016: no inSession
+  // @ts-expect-error — no inSession
   inSession: false,
 } satisfies TeacherAvailabilitySnapshotContract);
 
-// Decision #4: half-populated entityRef
+// Negative — half-populated entityRef
 const halfRef: SessionEventNotificationContract = {
   userId: 1,
   type: NotificationType.SessionCancellation,
   title: "Cancel",
   body: "Cancelled",
-  // @ts-expect-error — Decision #4: both-or-neither
+  // @ts-expect-error — both-or-neither
   entityRef: { relatedEntityType: "session" },
 };
 v(halfRef);
 
-// B.4: feeHeld must be true
+// Negative — feeHeld must be true
 v({
   studentId: 1,
   teacherId: 2,
   intent: SessionIntent.Hifz,
   sessionType: SESSION_REQUEST_SESSION_TYPE,
   fee: "25.00",
-  // @ts-expect-error — B.4: feeHeld must be true
+  // @ts-expect-error — feeHeld must be true
   feeHeld: false,
   confirmationDeadline: new Date(),
   idempotencyKey: "x",
 } satisfies SessionRequestContract);
 
-// REQ-027: missing idempotencyKey (use type annotation so error is on const line)
-// @ts-expect-error — REQ-027: idempotencyKey mandatory
+// Negative — missing idempotencyKey (use type annotation so error is on const line)
+// @ts-expect-error — idempotencyKey mandatory
 const noKey: SessionRequestContract = {
   studentId: 1,
   teacherId: 2,
@@ -401,7 +401,7 @@ const noKey: SessionRequestContract = {
 };
 v(noKey);
 
-// B.2: deadline non-null (confirmationDeadline cannot be null)
+// Negative — confirmationDeadline cannot be null
 v({
   studentId: 1,
   teacherId: 2,
@@ -409,7 +409,7 @@ v({
   sessionType: SESSION_REQUEST_SESSION_TYPE,
   fee: "25.00",
   feeHeld: true as const,
-  // @ts-expect-error — B.2: deadline must be non-null
+  // @ts-expect-error — deadline must be non-null
   confirmationDeadline: null,
   idempotencyKey: "x",
 } satisfies SessionRequestContract);
@@ -418,8 +418,8 @@ v({
 // @ts-expect-error — readonly arrays are immutable (push is rejected)
 ([1, 2] as readonly number[]).push(3);
 
-// INV-W7: missing sessionId
-// @ts-expect-error — INV-W7
+// Negative — missing sessionId on wallet credit
+// @ts-expect-error — sessionId mandatory
 const noSid: WalletCreditContract = {
   walletId: 1,
   amount: "25.00",
@@ -429,19 +429,19 @@ const noSid: WalletCreditContract = {
 };
 v(noSid);
 
-// INV-W4: wrong transaction type
+// Negative — wrong transaction type on wallet credit
 v({
   walletId: 1,
   sessionId: 1,
   amount: "25.00",
-  // @ts-expect-error — INV-W4: type must be Earning
+  // @ts-expect-error — type must be Earning
   type: TransactionType.Withdrawal,
   status: WALLET_CREDIT_TRANSACTION_STATUS,
   idempotencyKey: "x",
 } satisfies WalletCreditContract);
 
-// C.3: missing evaluatorId
-// @ts-expect-error — C.3: evaluatorId mandatory
+// Negative — missing evaluatorId
+// @ts-expect-error — evaluatorId mandatory
 const noEvalId: EvaluationSessionContract = {
   sessionType: SessionType.TeacherEvaluation,
   intent: EVALUATION_SESSION_INTENT,
@@ -451,21 +451,21 @@ const noEvalId: EvaluationSessionContract = {
 };
 v(noEvalId);
 
-// REQ-021: wrong notification type
+// Negative — wrong notification type
 v({
   userId: 1,
-  // @ts-expect-error — REQ-021: only session event types
+  // @ts-expect-error — only session event types
   type: NotificationType.PaymentConfirmation,
   title: "Pay",
   body: "Paid",
   entityRef: {},
 } satisfies SessionEventNotificationContract);
 
-// REQ-011: averageRating as number
+// Negative — averageRating as number
 const badRating: TeacherAvailabilitySnapshotContract = {
   teacherId: 1,
   isOnline: true,
-  // @ts-expect-error — REQ-011: preserve string | null
+  // @ts-expect-error — preserve string | null
   averageRating: 4.5,
   subjects: [] as TeacherSubjectsParsed,
   requestPreference: TeacherRequestPreference.Queue,
@@ -474,17 +474,17 @@ const badRating: TeacherAvailabilitySnapshotContract = {
 };
 v(badRating);
 
-// REQ-027: missing idempotencyKey on release
-// @ts-expect-error — REQ-027
+// Negative — missing idempotencyKey on release
+// @ts-expect-error — idempotencyKey mandatory on release
 const releaseNoKey: EscrowReleaseContract = {
   sessionId: 1,
   releaseReason: "CancellationConfirmed" as const,
 };
 v(releaseNoKey);
 
-// A.8: StudentSession on evaluation
+// Negative — StudentSession on evaluation
 v({
-  // @ts-expect-error — A.8: StudentSession forbidden
+  // @ts-expect-error — StudentSession forbidden
   sessionType: SessionType.StudentSession,
   intent: EVALUATION_SESSION_INTENT,
   evaluatedId: 5,
@@ -493,10 +493,10 @@ v({
   idempotencyKey: "x",
 } satisfies EvaluationSessionContract);
 
-// A.10: Hifz intent forbidden on evaluation contract (2.3.TE)
+// Negative — Hifz intent forbidden on evaluation contract
 v({
   sessionType: SessionType.TeacherEvaluation,
-  // @ts-expect-error — A.10: Hifz intent forbidden on evaluation
+  // @ts-expect-error — Hifz intent forbidden on evaluation
   intent: SessionIntent.Hifz,
   evaluatedId: 5,
   evaluatorId: 6,
@@ -504,10 +504,10 @@ v({
   idempotencyKey: "x",
 } satisfies EvaluationSessionContract);
 
-// 2.6.TE: actionType must use enum member, not string literal
+// Negative — actionType must use enum member, not string literal
 v({
   actorId: 1,
-  // @ts-expect-error — 2.6.TE: must use AuditActionType enum member
+  // @ts-expect-error — must use AuditActionType enum member
   actionType: "admin_override",
   entityType: "session",
   entityId: 1,

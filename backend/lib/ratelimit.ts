@@ -1,17 +1,17 @@
 /**
- * Rate-limit helper — minimal stub for DEV1-002.
+ * Rate-limit helper — minimal fail-open stub.
  *
  * Real rate-limiting (per-IP Redis counters, sliding-window quotas, lockout
- * periods) is owned by a later ticket (DEV2-002 auth gating + abuse defense).
- * For DEV1-002 (registration — a public mutation), this stub provides the
- * contract the GraphQL route (`app/api/graphql/route.ts`) expects so the
- * endpoint can ship without blocking on the full limiter implementation.
+ * periods) is future hardening work. For registration — a public mutation —
+ * this stub provides the contract the GraphQL route
+ * (`app/api/graphql/route.ts`) expects so the endpoint can ship without
+ * blocking on the full limiter implementation.
  *
  * Contract:
  *  - `checkRateLimit(identifier, limiter)` — returns `{ success: true, … }`
  *    unconditionally (fail-open). The `fail-open` posture mirrors the login
  *    cold-start resilience pattern: a transient limiter error must NOT block
- *    a legitimate registration. Abuse-limit counters (DEV2-002) will record
+ *    a legitimate registration. Abuse-limit counters will record
  *    attempts here once wired.
  *  - `getClientIdentifier(request)` — extracts the client IP from
  *    `x-forwarded-for` (or falls back to a constant for local dev).
@@ -73,7 +73,7 @@ export function getClientIdentifier(request: NextRequest | Request): string {
  * Checks the rate limit for the given identifier + limiter config.
  *
  * Fail-open: ALWAYS returns `success: true` in this stub. The real limiter
- * (DEV2-002) will hit Redis and may return `success: false` with the
+ * will query Redis and may return `success: false` with the
  * `RATE_LIMIT_EXCEEDED` semantics — callers must handle that path.
  *
  * Transient limiter errors (Redis offline, network blip) will also be

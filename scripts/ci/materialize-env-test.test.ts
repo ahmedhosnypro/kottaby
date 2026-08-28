@@ -260,7 +260,7 @@ describe("Tier 3 — chaos / robustness", () => {
   );
 });
 
-describe("Tier 4 — REQ-038 security: values never echo to stdout/stderr", () => {
+describe("Tier 4 — secret hygiene: values never echo to stdout/stderr", () => {
   test("successful CLI run exposes key NAMES but none of the resolved VALUES", async () => {
     const fixtureValue = "fixture-literal-VALUE-do-not-print";
     await templatePathInSandbox(`FIXED=${fixtureValue}\nDATABASE_URL=overridden-by-ci\n`);
@@ -338,10 +338,10 @@ describe("parseEnvTemplate — DEFINED parsing behavior", () => {
 });
 
 /* ==================================================================== */
-/* R3 fixes — M7 newline injection · M6 perms TOCTOU · L8 visibility    */
+/* Newline injection, perms TOCTOU, and malformed-line visibility       */
 /* ==================================================================== */
 
-describe("R3-M7 — newline-bearing override values are rejected before any write", () => {
+describe("newline-bearing override values are rejected before any write", () => {
   const INJECTING_URL = ["postgres://ci-bot@db.invalid:5432/kottaby_test", "INJECTED_KEY=pwn"].join("\n");
 
   test("LF override ⇒ InvalidCiEnvValueError names the key via the pinned constant", async () => {
@@ -389,9 +389,9 @@ describe("R3-M7 — newline-bearing override values are rejected before any writ
     const exitCode = await runMaterializeEnvTestCli(captures.cliIo);
     expect(exitCode).toBe(1);
     expect(captures.stderrText()).toBe(`${INVALID_CI_ENV_VALUE_PREFIX}DATABASE_URL\n`);
-    expect(captures.stdoutText()).toBe(""); // REQ-038 flow stops entirely on failure
+    expect(captures.stdoutText()).toBe(""); // stdout stays silent on failure
     const leftovers = (await readdir(sandboxDir)).filter(name => name.includes(".tmp-"));
-    expect(leftovers).toStrictEqual([]); // M6 hygiene holds on failure paths too
+    expect(leftovers).toStrictEqual([]); // no temp-file residue even on failure paths
   });
 
   test("legit punctuated URL values keep passing byte-for-byte (only LF/CR are hostile)", async () => {
@@ -406,7 +406,7 @@ describe("R3-M7 — newline-bearing override values are rejected before any writ
   });
 });
 
-describe("R3-M6 — mode-before-write + atomic publish", () => {
+describe("mode-before-write + atomic publish", () => {
   test("pre-existing LAX .env.test is tightened to 0600 by atomic replacement", async () => {
     const outputPath = outputPathInSandbox();
     const templatePath = await templatePathInSandbox("ONLY_KEY=solo\n");
@@ -440,7 +440,7 @@ describe("R3-M6 — mode-before-write + atomic publish", () => {
   // consequence of that invariant instead.
 });
 
-describe("R3-L8 — malformed-line visibility (non-fatal diagnostic)", () => {
+describe("malformed-line visibility (non-fatal diagnostic)", () => {
   test("skipped structural lines are counted and reported exactly once via writeStderr", async () => {
     const templatePath = await templatePathInSandbox(
       ["GOOD=1", "broken line without separator", "=empty-key", "# comment", "", "FINE=2", "\talsobroken"].join("\n")
@@ -478,7 +478,7 @@ describe("R3-L8 — malformed-line visibility (non-fatal diagnostic)", () => {
     expect(exitCode).toBe(0); // non-fatal: run stays green
     expect(captures.stdoutText()).toContain("OK"); // normal success summary unaffected
     expect(captures.stderrText()).toContain("template: ignored 1 malformed lines");
-    expect(captures.stderrText()).not.toContain(secretish); // REQ-038 guard holds
+    expect(captures.stderrText()).not.toContain(secretish); // no value leaks to stderr
     expect(captures.stdoutText()).not.toContain(secretish);
   });
 

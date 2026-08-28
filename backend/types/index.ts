@@ -7,17 +7,17 @@
  *     no explicit per-export `export type { ... }`.
  *   - Each domain sub-directory has its own index.ts barrel that uses
  *     `export * from "./<entity>.types";`.
- *   - The `errors` domain (dev3-002) holds transport-contract types
+ *   - The `errors` domain holds transport-contract types
  *     (non-entity API error/envelope shapes), not `$inferSelect` pairs.
  *   - `DBTransaction` and `DBQueryExecutor` live in `@/backend/types`
  *     (top-level db.types.ts, re-exported below; migrated from
  *     `@/backend/db/db.types`).
  *
- * Canonical Select/Insert type inventory (DEV1-001): 22 entity type pairs
+ * Canonical Select/Insert type inventory: 22 entity type pairs
  * across 8 entity domain sub-directories — users, students, parents,
  * teachers, billing, classes, notifications, audit — plus the non-entity
- * transport-contract sub-directories `errors` (dev3-002 error envelopes)
- * and `gateway` (dev3-003 health-check / gateway-context contracts).
+ * transport-contract sub-directories `errors` (error envelopes)
+ * and `gateway` (health-check / gateway-context contracts).
  */
 
 export * from "./audit";

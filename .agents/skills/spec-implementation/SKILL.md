@@ -99,7 +99,10 @@ If the plan directory contains a `prototype/` subdirectory (typically produced b
 
 Dispatch the executing subagent with the matching prototype artifacts attached to its prompt:
 
-1. **Screenshot first (`*.png`)** — the subagent reads the screenshot to form a visual imagination of the target: layout structure, hierarchy, section ordering, density, and interaction affordances.
+1. **Screenshot first (`*.png`) — Single / Sequential Inspection (CRITICAL)**:
+   - The subagent reads ONLY the specific screenshot for the active UI surface (e.g., via `ReadMediaFile`) to form a visual imagination of the target: layout structure, hierarchy, section ordering, density, and interaction affordances.
+   - **NEVER batch-load multiple screenshots concurrently** (e.g., calling `ReadMediaFile` on 5–10+ images at once). Batching images creates multi-megabyte vision payloads that exceed upstream provider limits, triggering keepalive stream timeouts (`Stream ended before producing a non-ping SSE event`).
+   - If multiple variant screenshots must be viewed (e.g., desktop vs mobile modal), inspect them **sequentially, 1–2 at a time**.
 2. **HTML second (`*.html`)** — extract concrete details: element order, labels/copy, colors, spacing rhythm, component structure. Strip the Tailwind-CDN classes mentally; translate to the project's MUI + theme-palette conventions (never hardcode prototype colors; map to `theme.palette` tokens per `frontend/THEME_PALETTE.md`).
 3. **Spec remains the authority** — prototype vs. spec conflicts are always resolved in favor of the plan's specs/design. The prototype is a visualization of the spec, not a source of new requirements.
 
@@ -117,7 +120,7 @@ For every UI task, add to the per-subagent prompt:
 
 ```
 Prototype reference (visual imagination aid — final must be equal or better, translated to MUI/theme/i18n conventions):
-- Screenshot: .ai/plans/<feature-name>/prototype/<screen>.png (READ FIRST)
+- Screenshot: .ai/plans/<feature-name>/prototype/<screen>.png (READ FIRST — inspect only this specific image; never batch-load multiple images in a single turn)
 - HTML: .ai/plans/<feature-name>/prototype/<screen>.html
 - State variants if present: <screen>-modal, <screen>-drawer, <screen>-mobile
 ALL data in prototypes is fake placeholder content — implement real data flows only; zero hardcoded fixtures in components/stores.
@@ -677,7 +680,9 @@ After each phase or logical task group completes:
 
 12. **Letting prototype fake data leak into code**: Every row/name/amount in a prototype is invented. Hardcoding any of it into components, stores, or "temporary" fixtures is a critical defect — wire real data flows (GraphQL → hook → resolver → service → repository) from the start or use approved loading/empty/error scaffolding states only.
 
-12. **Treating prototypes as spec**: The prototype visualizes the spec; it does not extend it. New fields/buttons seen only in a prototype are not requirements — check specs/`implementation.md` first.
+13. **Treating prototypes as spec**: The prototype visualizes the spec; it does not extend it. New fields/buttons seen only in a prototype are not requirements — check specs/`implementation.md` first.
+
+14. **Batch-loading prototype images (`ReadMediaFile`)**: Reading all prototype screenshots (e.g. 5–11+ images) simultaneously in a single turn blows up prompt/vision payloads to 8MB+ and causes upstream inference timeouts or stream connection drops (`Error: Stream ended before producing a non-ping SSE event`). Always inspect screenshots sequentially or 1–2 at a time strictly as needed for the active subtask.
 
 ## Execution Summary Template
 

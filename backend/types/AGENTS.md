@@ -94,7 +94,7 @@ Completed migrations:
 
 ## DEV1-001 Schema Footprint
 
-DEV1-001 established the 15-enum registry (`backend/db/schema/enums.ts`) + 22-table canonical types. All `$inferSelect`/`$inferInsert` types derive from `backend/db/schema/<domain>/`. See `docs/drizzle/dbml-to-drizzle-schema-migration.md`.
+DEV1-001 established the 15-enum registry (`backend/db/schema/enums.ts`) + 22-table canonical types. All `$inferSelect`/`$inferInsert` types derive from `backend/db/schema/<domain>/`, which is the sole structural ground truth.
 
 ## Contracts Subtree
 

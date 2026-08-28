@@ -1,13 +1,13 @@
 /**
  * `me` query — returns the authenticated user (or `null` for anonymous).
  *
- * Contract (DEV2-001 REQ-060 — `me` SHALL require an authenticated context):
+ * Contract (`me` SHALL require an authenticated context):
  *  - `me: User` (nullable — `null` when no `access_token` is present or the
  *    token is invalid/expired). Anonymous callers receive `null` (not an
  *    `UNAUTHORIZED` error) so the AuthProvider can quietly restore the
  *    session via `refreshToken` without surfacing an error to the user.
  *
- * authScopes (DEV2-CORE task #12):
+ * authScopes:
  *  - The `me` query carries `authScopes: { authenticated: true }`. With
  *    Pothos scope-auth, anonymous callers (no `ctx.user`) receive a
  *    GraphQL `UNAUTHORIZED` error instead of `null`. The AuthProvider's
@@ -35,7 +35,7 @@ gqlSchemaBuilder.queryField("me", t =>
     nullable: true,
     description:
       "Returns the authenticated user (or null for anonymous). Anonymous callers receive null — the AuthProvider uses this to detect expired access tokens and silently restore the session via `refreshToken`.",
-    // DEV2-CORE: require an authenticated context. Anonymous callers receive
+    // Requires an authenticated context. Anonymous callers receive
     // a GraphQL UNAUTHORIZED error (401 semantics); the AuthProvider's
     // restoreSession catches it and falls through to refresh-then-retry.
     authScopes: {

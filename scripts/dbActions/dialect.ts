@@ -5,8 +5,8 @@ import { config } from "dotenv";
 /**
  * Database dialect resolution for the db CLI.
  *
- * The db CLI historically assumed PostgreSQL. Phase 1c added SQLite
- * (libsql) support via DB_PROVIDER=sqlite + a separate drizzle config
+ * The db CLI historically assumed PostgreSQL; SQLite
+ * (libsql) support is provided via DB_PROVIDER=sqlite + a separate drizzle config
  * (drizzle.config.sqlite.ts) and migrations folder (backend/drizzle-sqlite).
  *
  * This helper resolves the active dialect from a given env file so the CLI

@@ -29,47 +29,45 @@ import type { ErrorsLabels } from "@/shared/locale/types/errors";
 
 /**
  * ICU placeholder contract with `applicant.cooldownExpiryLine`
- * (`{cooldownUntil}` — exactly one token per locale, pinned by the 1.3
- * parity suites). Expansion happens HERE, client-side, through
+ * (`{cooldownUntil}` — exactly one token per locale, pinned by the
+ * server/client parity suites). Expansion happens HERE, client-side, through
  * {@link formatApplicantDate} so stamps stay byte-consistent with the
- * server-side lifecycle formatter (1.3 CF-1 procedure).
+ * server-side lifecycle formatter.
  */
 const COOLDOWN_PLACEHOLDER = "{cooldownUntil}";
 
-/** Shared CTA metrics — comfortable ≥44px touch target (plan §5.5). */
+/** Shared CTA metrics — comfortable ≥44px touch target. */
 const reapplyButtonSx = { minHeight: 44, px: 3 } as const;
 
 /**
  * ApplicantStatusCard — the teacher-applicant verification-lifecycle status
- * card mounted above the fold on `/teacher/dashboard` (DEV2-004 Tasks 4.2 +
- * 4.3, plan §5.3/§5.4/§5.5).
+ * card mounted above the fold on `/teacher/dashboard`.
  *
  * Self-contained client component: NO props, NO client-side role logic and
- * NO locally derived lifecycle booleans — the page-level server guards from
- * DEV2-001/002 remain the ONLY authorization boundary and the
- * `myApplicantProfile` zero-argument query answers identity server-side
- * (REQ-030/062); every rendered fact comes straight from the payload.
+ * NO locally derived lifecycle booleans — the page-level server guards remain
+ * the ONLY authorization boundary and the `myApplicantProfile` zero-argument
+ * query answers identity server-side; every rendered fact comes straight from
+ * the payload.
  *
- * Render branches (plan §5.5 visual state matrix + review DISP-6):
+ * Render branches (visual state matrix):
  *
  * | # | Condition | Surface |
  * |---|-----------|---------|
  * | 1 | query in flight | Skeleton card (`aria-busy`) |
  * | 2 | error code `UNAUTHORIZED` / `FORBIDDEN` | shared `PermissionDeniedFallback` — never bare `null` |
  * | 3 | any other transport error | inline `Alert` carrying `errors.internalServerError` |
- * | 4 | `myApplicantProfile === null` (one answer for never-applied + certified — REQ-035) | certified summary + informational teaching-surfaces hint |
- * | 5 | `Pending` | pending chip + awaiting-purchase prompt (purchase flow = DEV2-005) |
+ * | 4 | `myApplicantProfile === null` (one answer for never-applied + certified) | certified summary + informational teaching-surfaces hint |
+ * | 5 | `Pending` | pending chip + awaiting-purchase prompt (purchase flow not yet implemented) |
  * | 6 | `InEvaluation` | info chip + attempt counter + progress hint |
  * | 7 | `Failed` + `cooldownActive` | warning chip + `{cooldownUntil}` expanded via {@link formatApplicantDate} + DISABLED re-apply CTA; `eligibleToReapply` deliberately suppressed — the truthful message is WHEN re-application unlocks |
- * | 8 | `Failed` + `canPurchaseVerification` | success affordance + ENABLED re-apply CTA (intentional no-op until DEV2-005 ships the purchase route) |
- * | 9 | `Passed` (DISP-6 explicit branch) | passed chip + certified-summary narrative |
+ * | 8 | `Failed` + `canPurchaseVerification` | success affordance + ENABLED re-apply CTA (intentional no-op until the purchase route ships) |
+ * | 9 | `Passed` (explicit truthfulness branch) | passed chip + certified-summary narrative |
  * | — | unknown status value (defensive; server fails closed) | inline `Alert` carrying `errors.applicantStatusCorrupt` — never crashes |
  *
  * The enabled re-apply CTA is an informational AFFORDANCE only: it renders
  * truthful localized copy with a ≥44px hit area but navigates nowhere until
- * DEV2-005 delivers the verification-plan purchase surface (decision
- * recorded in `outcome/4.2-outcome.md`; INV-TV1 truthfulness preserved
- * because no branch claims an action the product cannot perform yet).
+ * the verification purchase surface exists; no branch claims an action the
+ * product cannot perform yet.
  *
  * MUI v9 discipline: `sx`-only styling (no direct style props), colors
  * exclusively through `theme.palette.*` callbacks, `*Outlined` icons only,
@@ -111,7 +109,7 @@ export function ApplicantStatusCard(): ReactNode {
 
   const profile: MyApplicantProfileQuery_myApplicantProfile | null = data.myApplicantProfile;
 
-  // Branch 4 — the REQ-035 single-null answer: a verified teacher with no
+  // Branch 4 — the single-null answer: a verified teacher with no
   // applicants row sees the certified summary. NEVER pending/evaluation
   // copy, and NEVER a "passed" claim — null does not distinguish the two.
   if (profile === null) {
@@ -189,8 +187,8 @@ function resolveStatusBody(
         ),
       };
     case ApplicantStatus.Failed:
-      // Sub-branches keyed off SERVER-COMPUTED flags (INV-TV3/TV4): clients
-      // never re-derive cooldown math locally (REQ-015/016).
+      // Sub-branches keyed off SERVER-COMPUTED flags: clients
+      // never re-derive cooldown math locally.
       if (profile.cooldownActive && profile.cooldownUntil !== null) {
         return {
           chipLabel: t.statusFailed,
@@ -217,7 +215,7 @@ function resolveStatusBody(
           content: null,
         };
       }
-      // Eligible re-application affordance (DEV2-005 owns the route).
+      // Eligible re-application affordance (purchase route not wired yet).
       return {
         chipLabel: t.statusFailed,
         chipIcon: ErrorIcon,
@@ -226,7 +224,7 @@ function resolveStatusBody(
         content: <EligibleZone eligibleText={t.eligibleToReapply} reapplyLabel={t.reapplyCta} />,
       };
     case ApplicantStatus.Passed:
-      // DISP-6 — explicit truthfulness branch instead of fall-through.
+      // Explicit truthfulness branch instead of fall-through.
       return {
         chipLabel: t.statusPassed,
         chipIcon: SchoolIcon,
@@ -236,7 +234,7 @@ function resolveStatusBody(
       };
     default:
       // Defensive corruption arm — unreachable behind the service boundary,
-      // yet never crashes if reached (DEV3-002 mapped copy).
+      // yet never crashes if reached (standard mapped error copy).
       return {
         chipLabel: t.statusFailed,
         chipIcon: ErrorIcon,
@@ -249,7 +247,7 @@ function resolveStatusBody(
 
 /**
  * Expands the localized `cooldownExpiryLine` ICU template with the
- * locale-formatted re-application instant (1.3 CF-1). The token replace is
+ * locale-formatted re-application instant. The token replace is
  * safe on FIRST occurrence only because both parity suites pin exactly one
  * `{cooldownUntil}` placeholder per locale.
  */
@@ -258,13 +256,12 @@ function expandCooldownUntil(cooldownUntil: string, t: ApplicantLabels, locale: 
 }
 
 /**
- * Re-apply click intent — INTENTIONAL no-op placeholder. The verification-
- * plan purchase route is DEV2-005 scope; until it exists, clicking must not
- * navigate anywhere or claim an action the product cannot perform yet
- * (INV-TV1). Documented in `outcome/4.2-outcome.md` + plan §5.5.
+ * Re-apply click intent — INTENTIONAL no-op placeholder. The verification
+ * purchase route does not exist yet; until it ships, clicking must not
+ * navigate anywhere or claim an action the product cannot perform yet.
  */
 function handleReapplyIntent(): void {
-  // No navigation, no state change — affordance only (DEV2-005 pending).
+  // No navigation, no state change — affordance only (purchase route pending).
 }
 
 // ----------------------------------------------------------------------------
@@ -316,7 +313,7 @@ interface EligibleZoneProps {
 /**
  * Failed + eligible body (branch 8): success-tinted explanatory copy plus
  * the ENABLED re-apply CTA whose click stays a documented intentional no-op
- * until DEV2-005 ships the purchase surface.
+ * until the purchase surface ships.
  */
 function EligibleZone({ eligibleText, reapplyLabel }: Readonly<EligibleZoneProps>): ReactNode {
   return (
@@ -332,7 +329,7 @@ function EligibleZone({ eligibleText, reapplyLabel }: Readonly<EligibleZoneProps
 interface CertifiedBranchProps {
   readonly t: ApplicantLabels;
   /**
-   * Renders the informational teaching-surfaces hint. Only the REQ-035
+   * Renders the informational teaching-surfaces hint. Only the
    * null-payload branch sets it — the explicit `Passed` row does not need
    * surface guidance beyond its known-good narrative.
    */
@@ -356,7 +353,7 @@ function CertifiedBranch({ t, showHint }: Readonly<CertifiedBranchProps>): React
   );
 }
 
-/** Corrupt-status notice — DEV3-002 mapped copy; alerts but never crashes. */
+/** Corrupt-status notice — standard mapped error copy; alerts but never crashes. */
 function CorruptStatusNotice({ te }: { readonly te: ErrorsLabels }): ReactNode {
   return (
     <Alert severity="error" variant="outlined">

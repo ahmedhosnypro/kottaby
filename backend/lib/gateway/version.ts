@@ -1,7 +1,6 @@
 /**
- * Application version resolver for the gateway health surfaces
- * (dev3-003 Task 2.1 → consumed by `HealthCheckService` / REQ-003,
- * REQ-012, REQ-037).
+ * Application version resolver for the gateway health surfaces —
+ * consumed by `HealthCheckService` and the health probe payloads.
  *
  * Resolution chain (frozen contract — mirrors the docblock on
  * `HealthCheckReturnType.version` in `backend/types/gateway/
@@ -9,16 +8,14 @@
  *
  *  1. `APP_VERSION`        — explicit deployment override. Owners set this
  *     at the platform layer (e.g. Vercel build env) so a probe can pin the
- *     exact deployed revision. Phase 0 decision (#13): there is no
- *     `env-config-keys.ts` registry in this tree and nothing rejects unknown
- *     keys ⇒ registering `APP_VERSION` is NOT mandatory; this module reads
- *     `process.env` directly.
+ *     exact deployed revision. There is no `env-config-keys.ts` registry in
+ *     this tree and nothing rejects unknown keys ⇒ registering `APP_VERSION`
+ *     is NOT mandatory; this module reads `process.env` directly.
  *  2. `npm_package_version`— injected automatically by Bun/npm when the
  *     process is started through a package script; reflects
  *     `package.json#version` without any filesystem I/O.
  *  3. `"dev"`              — safe terminal fallback so a probe NEVER surfaces
- *     `undefined`. Operator-facing machine constant (REQ-002 exemption:
- *     untranslated by design).
+ *     `undefined`. Operator-facing machine constant, untranslated by design.
  *
  * Purity: env-only reads, zero filesystem/network access, no module-level
  * mutable state, deterministic per environment snapshot — safe to call on

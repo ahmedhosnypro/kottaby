@@ -21,7 +21,7 @@ Automates the generation of complete, production-grade Implementation Plans for 
 
 Generating an implementation plan in this codebase requires full awareness of:
 - **All Layer AGENTS.md files** (`AGENTS.md`, `backend/AGENTS.md`, `frontend/AGENTS.md`, `shared/AGENTS.md`, etc.)
-- **Project Documentation** (`docs/**`, `db/schema.dbml`, `docs/planning/TICKETS.md`, etc.)
+- **Project Documentation** (`docs/**`, `docs/planning/TICKETS.md`, etc.)
 - **Domain Skills & Conventions** (`spec-driven-development`, `spec-implementation`, `plan-review`, `drizzle-best-practices`, etc.)
 - **Canonical Type Systems** (`backend/types/`, `backend/enum/`, `backend/db/schema/`)
 

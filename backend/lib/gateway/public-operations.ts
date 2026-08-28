@@ -1,32 +1,31 @@
 /**
- * Closed public-operation allowlist for the GraphQL gateway
- * (dev3-003 Task 2.2 · plan §3.3 / Decision D3 / REQ-017, REQ-072).
+ * Closed public-operation allowlist for the GraphQL gateway.
  *
- * SECURITY POSTURE (D3 — closed-set rule):
+ * SECURITY POSTURE (closed-set rule):
  *  - This constant is the ONLY registry of anonymous (scope-free) operations.
  *    Any new entry MUST land here WITH a security rationale comment BEFORE its
  *    resolver can ship scopeless — an undocumented public operation is a BFLA
- *    finding by definition (REQ-017).
+ *    finding by definition.
  *  - Membership is EXACT-MATCH on the GraphQL operation name; case variants,
  *    whitespace padding and prefix/suffix collisions never match
  *    (`isPublicOperation("Login") === false`).
  *  - `me` is deliberately ABSENT: it is a gated `authenticated` query, not a
  *    public surface (401 semantics at the schema layer). `demoLogin` /
- *    `IS_DEMO` do not exist anywhere in this tree (plan-review-R1 F3 — N/A;
- *    correctly omitted rather than stubbed).
+ *    `IS_DEMO` do not exist anywhere in this tree and are correctly omitted
+ *    rather than stubbed.
  *
- * Per-entry rationale (REQ-017):
+ * Per-entry rationale:
  *  - `login`              → auth bootstrap; must be callable without cookies.
  *  - `refreshToken`       → session restoration when the access token expired.
  *  - `logout`             → cookie clearing is intentionally anonymous ("you
  *                            can always log out"); fails closed safely.
  *  - `registerUser`       → public sign-up; admin-role exclusion enforced at
- *                            the schema layer (`RegisterPublicRole`, REQ-022).
+ *                            the schema layer (`RegisterPublicRole`).
  *  - `recitationReadings` → public reference catalog (pure, no DB, no user
  *                            data) feeding the registration selector.
  *  - `_health`            → LB/CI probe object payload — operator-facing
- *                            machine constants only (REQ-002 exemption);
- *                            ships with Tasks 3.1/3.4 (1:1 agreement REQ-072).
+ *                            machine constants only, untranslated by design;
+ *                            mirrors the REST `/api/health` probe 1:1.
  */
 
 /**
@@ -55,15 +54,16 @@ export type PublicOperationName = (typeof PUBLIC_OPERATION_NAMES)[number];
  * Runtime membership set derived ONCE from the frozen tuple at module load.
  * Typed `ReadonlySet<string>` so consumers cannot mutate it at compile time;
  * construction is bounded (module init) and no runtime code path writes to it
- * afterwards (2.2.SR immutable-after-load clause).
+ * afterwards (immutable-after-load invariant).
  */
 export const PUBLIC_OPERATIONS: ReadonlySet<string> = new Set<string>(PUBLIC_OPERATION_NAMES);
 
 /**
  * Exact-match membership guard for operation names.
  *
- * Deliberately case-sensitive and whitespace-sensitive (D3): `"Login"`,
- * `"login "` and `""` are ALL false — only byte-equal tuple members pass.
+ * Deliberately case-sensitive and whitespace-sensitive (exact-match rule):
+ * `"Login"`, `"login "` and `""` are ALL false — only byte-equal tuple members
+ * pass.
  * Type predicate lets TypeScript treat passing names as
  * {@link PublicOperationName} at call sites.
  *

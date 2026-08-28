@@ -13,9 +13,9 @@ import { Common, Errors, useAppTranslation } from "@/shared/locale";
 
 /**
  * GraphQLErrorSurfaceHost — the app-scope owner of the single-slot
- * `registerGraphQLErrorActionListener` seam (dev3-002 Task 4.1 §dispatch).
+ * `registerGraphQLErrorActionListener` seam.
  *
- * Before this host existed the REQ-061 error link published its typed
+ * Without this host the error link would publish its typed
  * actions into the void: mutation-context `FORBIDDEN`/`VALIDATION` toasts,
  * inline notices (CONFLICT / DUPLICATE_REQUEST / RATE_LIMITED /
  * SERVICE_UNAVAILABLE / not-found family) and query-context
@@ -29,7 +29,7 @@ import { Common, Errors, useAppTranslation } from "@/shared/locale";
  *  - `toast` / `notice`  → bottom-center severity Snackbar stack (MUI Alert;
  *    duplicate-replay rows render neutral `info` per docs/IDEMPOTENCY.md §3,
  *    masked INTERNAL_SERVER_ERROR rows append the correlation id so support
- *    reports can quote it — REQ-011/013).
+ *    reports can quote it).
  *  - `permission-fallback` → non-blocking pinned banner built on the shared
  *    `PermissionDeniedFallback` copy (LockOutlined + `errors.forbiddenRole`),
  *    dismissible; page-level role gating itself stays owned by
@@ -46,7 +46,7 @@ import { Common, Errors, useAppTranslation } from "@/shared/locale";
  *
  * All copy resolves through the compile-time `errors` namespace via the
  * action's `messageKey` handle — no server `message` and no hardcoded
- * strings are ever rendered (REQ-002/051/075). Colors come exclusively from
+ * strings are ever rendered. Colors come exclusively from
  * the theme palette through MUI severity slots.
  */
 

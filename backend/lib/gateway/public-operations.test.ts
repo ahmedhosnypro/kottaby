@@ -1,17 +1,17 @@
 /**
- * Public-operation allowlist tests — dev3-003 Task 2.2 paired suite.
+ * Public-operation allowlist tests.
  *
- * Coverage map (tasks.md 2.2.TE):
+ * Coverage:
  *  - Tier 1: `isPublicOperation` true for all six entries; false for gated /
  *    phantom / malformed names.
  *  - Tier 2 (boundary): exact-match discipline — case variants (`"Login"`),
  *    whitespace padding, empty string, prefix collisions must ALL be FALSE.
  *  - Tier 3: registry cardinality invariants (bounded construction: 6 members,
  *    no duplicates, tuple length === set size).
- *  - Tier 4 (security · REQ-032 assertion constant): the closed allowlist
- *    contains ZERO write-capable or privileged-looking operations; the four
- *    anonymous auth lifecycle ops + public catalog + probe surface are
- *    exactly the documented anonymous set (BFLA posture).
+ *  - Tier 4 (security): the closed allowlist contains ZERO write-capable or
+ *    privileged-looking operations; the four anonymous auth lifecycle ops +
+ *    public catalog + probe surface are exactly the documented anonymous set
+ *    (BFLA posture).
  *
  * Pure unit tier — NO server boot. Runs via the mandated runner.
  */
@@ -25,7 +25,7 @@ import {
 } from "@/backend/lib/gateway";
 
 describe("PUBLIC_OPERATION_NAMES — frozen closed-set registry", () => {
-  test("contains exactly the six documented entries in plan §3.3 order", () => {
+  test("contains exactly the six documented entries in their frozen order", () => {
     expect([...PUBLIC_OPERATION_NAMES]).toEqual([
       "login",
       "refreshToken",
@@ -45,7 +45,7 @@ describe("PUBLIC_OPERATION_NAMES — frozen closed-set registry", () => {
     expect(PUBLIC_OPERATIONS.has("me")).toBe(false);
   });
 
-  test("phantom `demoLogin` stays absent (plan-review-R1 F3 — operation does not exist)", () => {
+  test("phantom `demoLogin` stays absent (operation does not exist)", () => {
     expect(PUBLIC_OPERATIONS.has("demoLogin")).toBe(false);
   });
 });
@@ -84,9 +84,9 @@ describe("isPublicOperation — Tier 2 exact-match boundary", () => {
   });
 });
 
-// ─── Tier 4: REQ-032 write-capability assertion constant ─────────────────
+// ─── Tier 4: write-capability assertions on the closed allowlist ──────────
 
-describe("REQ-032 security assertions on the allowlist contents", () => {
+describe("write-capability security assertions on the allowlist contents", () => {
   test("zero write-capable operation names (no mutating verb prefixes)", () => {
     const WRITE_PREFIXES =
       /^(create|update|upsert|delete|remove|set|grant|revoke|approve|cancel|submit|trigger|execute)/i;

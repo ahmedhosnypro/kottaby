@@ -2,9 +2,9 @@
  * ParentRepository — data-access layer for the `parents` role-child table.
  *
  * The `parents` row shares its PK with `users.id` (FK ON DELETE CASCADE).
- * Parent-child linking happens later via the `students.parent_id` FK
- * (DEV1-013+); at registration time we only create the empty parent row to
- * establish the persistence home (A.1, C.1).
+ * Parent-child linking happens later via the `students.parent_id` FK; at
+ * registration time we only create the empty parent row to
+ * establish the persistence home.
  */
 import { parents } from "@/backend/db/schema/parents/parents";
 import type { DBTransaction, ParentSelectType } from "@/backend/types";

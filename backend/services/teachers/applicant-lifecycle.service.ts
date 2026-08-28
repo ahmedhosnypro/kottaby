@@ -1,20 +1,20 @@
 /**
  * ApplicantLifecycleService — business-logic hub for the teacher-applicant
- * lifecycle domain (DEV2-004 Task 2.2).
+ * lifecycle domain.
  *
- * Responsibilities (plan §4.1):
+ * Responsibilities:
  *  1. `getMyApplicantProfile` — shape the canonical closed
  *     `ApplicantProfileReturnType` from ONE repository read plus pure
  *     compute. A missing applicants row answers `null` for BOTH
  *     never-applied and already-certified users — the SAME null answer, no
- *     distinction ever leaks to callers (REQ-035 no-oracle).
+ *     distinction ever leaks to callers (no-oracle guarantee).
  *  2. `assertCanPurchaseVerification` — pure read + compute guard for
  *     buying verification sessions. Rejects with a localized
  *     `NotFoundError` (`APPLICANT_NOT_FOUND`) on a missing row and a
  *     localized custom-code `ValidationError` (`APPLICANT_COOLDOWN_ACTIVE`)
- *     while a cooldown is active (INV-TV3). The cooldown decision reads
+ *     while a cooldown is active. The cooldown decision reads
  *     `applicants.cooldown_until` ONLY — never `users.suspended` or any
- *     governance field (REQ-015/REQ-016).
+ *     governance field.
  *  3. `recordReapplication` — delegates the single atomic attempt-increment
  *     to `ApplicantRepository.recordVerificationAttempt` and maps its
  *     `null` miss onto a localized `NotFoundError` (the returned updated row
@@ -24,18 +24,18 @@
  *  - Captured-now: wall clock is read ONCE per invocation; every cooldown
  *    comparison is pure compute against that single instant.
  *  - Duration-agnostic cooldown math — no hardcoded 30d/90d windows
- *    (INV-TV4 durations belong to the DEV2-008 write side).
+ *    (cooldown durations belong to the write side, which this service is not).
  *  - Logging: `logger.logDomainError` fires ONLY on the enumerated expected
  *    domain rejections (missing-row guard/reapplication misses, active-
  *    cooldown block). Every happy path — including the profile `null`
- *    answer and the whole of `getMyApplicantProfile` — emits NOTHING
- *    (REQ-052/REQ-053). Unexpected internals bubble up unswallowed to the
+ *    answer and the whole of `getMyApplicantProfile` — emits NOTHING.
+ *    Unexpected internals bubble up unswallowed to the
  *    GraphQL masking boundary.
  *  - Zero writes outside the delegated re-application increment; no locks;
- *    no teacher-table or governance-field contact (REQ-033, REQ-016).
+ *    no teacher-table or governance-field contact.
  *  - All user-facing strings resolve through
- *    `getServerTranslations(locale)` (DISP-4 lens: one-arg bundle +
- *    property access); no hardcoded messages, no `console.*`.
+ *    `getServerTranslations(locale)` (one-arg bundle + property access);
+ *    no hardcoded messages, no `console.*`.
  */
 import { ApplicantRepository } from "@/backend/db/repo";
 import { ApplicantStatus, isApplicantStatus } from "@/backend/enum/teachers/applicant-status.enum";
@@ -74,8 +74,7 @@ function resolveLocaleTag(locale: string): "ar" | "en" {
  * month order follow the runtime's ICU data: Arabic-Indic digits under
  * `"ar"`, Latin digits under `"en"`.
  *
- * Rationale (recorded in outcome/2.2-outcome.md): no shared date-util exists
- * yet (0.2 finding #19 — Task 4.2 ships the FRONTEND one); this table keeps
+ * Rationale: no shared server-side date-util exists yet; this table keeps
  * the single server-side consumer self-contained instead of scattering
  * ad-hoc `toLocaleString` calls.
  */
@@ -111,10 +110,10 @@ function formatCooldownExpiry(cooldownUntil: Date, locale: string): string {
 
 /**
  * Expands the single ICU `{cooldownUntil}` placeholder of a translated
- * cooldown template (REQ-015). The repo has NO runtime ICU expander yet
- * (1.3 outcome CF-1) — consumers interpolate via simple typed replacement;
- * the placeholder NAME is pinned identical across ar/en by the locale
- * parity suites, so a bare `replace` cannot leave residue behind.
+ * cooldown template. The repo has NO runtime ICU expander yet — consumers
+ * interpolate via simple typed replacement; the placeholder NAME is pinned
+ * identical across ar/en by the locale parity suites, so a bare `replace`
+ * cannot leave residue behind.
  */
 function expandCooldownTemplate(template: string, cooldownUntil: Date, locale: string): string {
   return template.replace("{cooldownUntil}", formatCooldownExpiry(cooldownUntil, locale));
@@ -130,10 +129,10 @@ export namespace ApplicantLifecycleService {
    *
    * @returns The canonical closed profile shape, or `null` when no
    *     applicants row exists (never-applicant and certified share the one
-   *     null answer — REQ-035 no-oracle).
+   *     null answer — no-oracle guarantee).
    * @throws ValidationError  with code `APPLICANT_STATUS_CORRUPT` when the
    *     stored varchar status fails `isApplicantStatus` — fail closed, the
-   *     row is never interpreted loosely (REQ-012/REQ-075).
+   *     row is never interpreted loosely.
    */
   export async function getMyApplicantProfile(
     userId: number,
@@ -145,7 +144,7 @@ export namespace ApplicantLifecycleService {
     // Single authoritative read — everything below is compute-only.
     const row = await ApplicantRepository.findByUserId(userId, tx);
     if (!row) {
-      // Certified / never-applicant — the SAME null answer (REQ-035).
+      // Certified / never-applicant — the SAME null answer.
       return null;
     }
 
@@ -177,17 +176,16 @@ export namespace ApplicantLifecycleService {
   }
 
   /**
-   * Cooldown guard for purchasing verification sessions (INV-TV3): a
+   * Cooldown guard for purchasing verification sessions: a
    * cooldown must have fully expired before any purchase may proceed.
    *
    * Reads `applicants.cooldown_until` via the same single `findByUserId`
    * read pattern and compares STRICTLY (`cooldownUntil > capturedNow`) — a
-   * cooldown that expires exactly NOW no longer blocks (INV-TV3 boundary).
-   * Duration-agnostic: whatever instant DEV2-008 wrote is honored verbatim.
+   * cooldown that expires exactly NOW no longer blocks (strict boundary).
+   * Duration-agnostic: whatever instant the write side stored is honored verbatim.
    *
-   * This guard performs NO writes and introduces NO lock (REQ-043 documents
-   * the advisory-at-isolation-level decision); TOCTOU is resolved upstream
-   * by the purchase flow owning its transaction.
+   * This guard performs NO writes and introduces NO lock; TOCTOU is
+   * resolved upstream by the purchase flow owning its transaction.
    *
    * @throws NotFoundError    code `APPLICANT_NOT_FOUND` when no applicants
    *     row exists (localized).
@@ -226,7 +224,7 @@ export namespace ApplicantLifecycleService {
       });
       throw new ValidationError("APPLICANT_COOLDOWN_ACTIVE", message);
     }
-    // Eligible — deliberate silent no-op (REQ-053).
+    // Eligible — deliberate silent no-op.
   }
 
   /**
@@ -235,7 +233,7 @@ export namespace ApplicantLifecycleService {
    * (single statement, no application-level read-modify-write).
    *
    * @param tx  Optional transaction — propagated verbatim so a caller-owned
-   *     atomic flow stays atomic (REQ-041).
+   *     atomic flow stays atomic.
    * @returns The post-update audit row for downstream audit-log use.
    * @throws NotFoundError  code `APPLICANT_NOT_FOUND` when the delegate
    *     reports a miss (zero rows matched).

@@ -6,9 +6,9 @@ import type { ReactNode } from "react";
 import { Common, Errors, useAppTranslation } from "@/shared/locale";
 
 /**
- * Canonical taxonomy kinds this inline notice covers (REQ-010 rows 8/9).
- * The legacy producer alias `RATE_LIMIT_EXCEEDED` is normalized upstream by
- * the error-code taxonomy before the frontend sees `"RATE_LIMITED"` (Task 2.1).
+ * Canonical taxonomy kinds this inline notice covers. The legacy producer
+ * alias `RATE_LIMIT_EXCEEDED` is normalized upstream by the error-code
+ * taxonomy before the frontend sees `"RATE_LIMITED"`.
  */
 export type RetryableNoticeKind = "RATE_LIMITED" | "SERVICE_UNAVAILABLE";
 
@@ -33,17 +33,17 @@ interface RetryableNoticeProps {
 
 /**
  * RetryableNotice — inline retry affordance for `RATE_LIMITED` and
- * `SERVICE_UNAVAILABLE` failures (REQ-061). Localized copy comes from the
- * `errors` namespace (`rateLimitExceeded` / `serviceUnavailable` — canonical
- * names per the 1.2-outcome; there is NO `rateLimited` key) and the button
+ * `SERVICE_UNAVAILABLE` failures. Localized copy comes from the
+ * `errors` namespace (`rateLimitExceeded` / `serviceUnavailable` — the
+ * canonical key names; there is NO `rateLimited` key) and the button
  * label from `common.retry`.
  *
- * Announce semantics: root IS a MUI v9 `Alert` (internally `role="alert"` —
- * plan-review-R1 correction #8); no literal `role` prop. While a retry is in
+ * Announce semantics: root IS a MUI v9 `Alert` (internally `role="alert"`);
+ * no literal `role` prop. While a retry is in
  * flight the root also carries `aria-busy` so assistive tech can follow the
  * transition.
  *
- * Rate-limit copy intentionally surfaces NO thresholds/counters (SEC — REQ-021).
+ * Rate-limit copy intentionally surfaces NO thresholds/counters.
  * Styling: `sx`-only, severity colors come from the theme palette via the
  * `severity` prop — `*Outlined` icon only.
  */

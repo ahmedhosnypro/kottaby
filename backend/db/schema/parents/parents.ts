@@ -2,11 +2,11 @@ import { integer, pgTable, timestamp } from "drizzle-orm/pg-core";
 import { users } from "@/backend/db/schema/users/users";
 
 /**
- * Parent role-child table (DBML `parents`).
+ * Parent role-child table (`parents`).
  *
  * Shared PK = FK to users.id with cascade delete (no auto-increment; the row
  * is created only after a users row with role 'parent' is inserted). A parent
- * can link to multiple children (B.13) via students.parent_id → users.id.
+ * can link to multiple children via students.parent_id → users.id.
  */
 export const parents = pgTable("parents", {
   id: integer("id")

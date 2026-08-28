@@ -6,8 +6,7 @@
  * enum value arrays are duplicated here intentionally and serve as the
  * single conceptual source. The backend TS enums under `backend/enum/` and
  * the pgEnum registry under `backend/db/schema/enums.ts` are typed mirrors
- * that must stay in sync with this file. Values + order are derived from
- * `db/schema.dbml` (the ground truth per REQ-002).
+ * that must stay in sync with this file. Values + order are canonical.
  *
  * When updating an enum: change it here, in `backend/db/schema/enums.ts`,
  * AND in the matching `backend/enum/<subdir>/<entity>.enum.ts` file.

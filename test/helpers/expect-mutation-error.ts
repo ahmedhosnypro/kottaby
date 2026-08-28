@@ -2,12 +2,10 @@
  * `expectMutationError(result.error, expectedCode?)` — the canonical
  * failure-side assertion helper for GraphQL integration suites.
  *
- * Closes deferred-items ledger row **BLT-04** (dev3-002 Phase-3 prerequisite;
- * plan-review-R1 §(d) correction #6): the helper documented at
- * `docs/graphql/domain-error-extensions-code.md` §"Testing Error Codes" did
- * not exist in the tree — it lives HERE now (test-centralization rule: shared
- * harness helpers belong under `test/helpers/`, re-exported through the
- * `@/test/helpers` barrel).
+ * The helper documented at
+ * `docs/graphql/domain-error-extensions-code.md` §"Testing Error Codes" —
+ * shared harness helpers belong under `test/helpers/`, re-exported through
+ * the `@/test/helpers` barrel.
  *
  * Contract:
  *  - asserts the value IS an Apollo Client v4 {@link CombinedGraphQLErrors}

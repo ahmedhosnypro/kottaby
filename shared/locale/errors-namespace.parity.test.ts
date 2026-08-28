@@ -1,6 +1,6 @@
 /**
- * dev3-003 Task 4.2.TE — `errors`-namespace transport-message key verification
- * · ar+en parity gate (REQ-051) + REQ-002 machine-constant exemption pinning.
+ * `errors`-namespace transport-message key verification
+ * · ar+en parity gate + machine-constant exemption pinning.
  *
  * WHAT THIS LOCKS
  *   1. RUNTIME PARITY BELT — the ar/en `errors` leaf maps expose IDENTICAL key
@@ -11,12 +11,12 @@
  *      typing later).
  *   2. ROUTE EMITTER COVERAGE — EVERY message key the GraphQL gateway transport
  *      actually emits is enumerated DYNAMICALLY from the route SOURCE DISK
- *      (`app/api/graphql/route.ts`, the seven-step pipeline of C2-phase3b)
+ *      (`app/api/graphql/route.ts` seven-step gateway pipeline)
  *      by scanning its `errorsTranslations.<key>` consumption sites — both the
  *      direct-chain and held-variable realization forms — so any new emitter
  *      auto-enters this gate without editing the suite — and every discovered
- *      key MUST exist on BOTH locales (REQ-051).
- *   3. REQ-002 EXEMPTION (negative space) — ZERO locale keys are minted for the
+ *      key MUST exist on BOTH locales.
+ *   3. MACHINE-CONSTANT EXEMPTION (negative space) — ZERO locale keys are minted for the
  *      `_health` payload constants: the operator-facing machine payload
  *      (`status/service/version/timestamp`) is deliberately i18n-exempt, so no
  *      `*health*` key may EVER appear in either locale's `errors` map.
@@ -46,7 +46,7 @@ import type { ErrorsLabels } from "@/shared/locale/types/errors";
 // ─── Route-source emission discovery ─────────────────────────────────────────
 
 /** Consumption-site scanner: every `errorsTranslations.<key>` use in route.ts.
- *  Matches BOTH realization forms C2-phase3b shipped: direct chains
+ *  Matches BOTH realization forms the gateway ships: direct chains
  *  (`getServerTranslations(…).errorsTranslations.<key>`) and the held-variable
  *  form (`const t = …errorsTranslations; message: t.<key>`). */
 function routeEmittedErrorsKeys(): string[] {
@@ -95,11 +95,11 @@ describe("compile-time parity mirror — ar/en key sets agree", () => {
 });
 
 // ===========================================================================
-describe("route emitters — every transport key exists in BOTH locales (REQ-051)", () => {
+describe("route emitters — every transport key exists in BOTH locales", () => {
   const emitted = routeEmittedErrorsKeys();
 
   test("discovery actually found the known pipeline emitters (suite cannot rot green)", () => {
-    // The C2-phase3b seven-step pipeline emits at least these three sites:
+    // The gateway's seven-step pipeline emits at least these three sites:
     // step-1 transport rejections, the 429 limiter branch, and the POST catch
     // fallback. If even ONE disappears from route.ts the scan itself failed.
     for (const required of ["badRequest", "rateLimitExceeded", "internalServerError"]) {
@@ -117,7 +117,7 @@ describe("route emitters — every transport key exists in BOTH locales (REQ-051
 });
 
 // ===========================================================================
-describe("REQ-002 exemption — `_health` payload constants stay OUT of locale files", () => {
+describe("machine-constant exemption — `_health` payload constants stay OUT of locale files", () => {
   test("ZERO health-flavored keys exist in either locale's errors map", () => {
     for (const key of [...Object.keys(errorsAr), ...Object.keys(errorsEn)]) {
       expect(key.toLowerCase().includes("health")).toBe(false);

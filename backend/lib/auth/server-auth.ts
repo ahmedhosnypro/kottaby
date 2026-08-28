@@ -24,8 +24,8 @@
  *    `verifyAccessToken` helper the GraphQL context factory uses.
  *
  * Governance: if the DB row shows the user is `isDeleted` / `isBlocked` /
- * `suspended`, this function returns null — fail-closed at the SSR boundary
- * (REQ-033). The GraphQL context factory mirrors this on its own path.
+ * `suspended`, this function returns null — fail-closed at the SSR boundary.
+ * The GraphQL context factory mirrors this on its own path.
  */
 
 import { cookies } from "next/headers";
@@ -95,7 +95,7 @@ export const getServerUserContext = cache(async (): Promise<ServerUserContext> =
     }
 
     // Governance: fail-closed for deleted / blocked / suspended accounts.
-    // Mirrors the GraphQL context factory's behavior (REQ-030..REQ-033).
+    // Mirrors the GraphQL context factory's behavior.
     if (fetched.isDeleted || fetched.isBlocked || fetched.suspended) {
       logger.logDomainError("SSR auth: governed account denied", {
         code: "SSR_GOVERNED_ACCOUNT",

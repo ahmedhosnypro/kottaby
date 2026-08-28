@@ -50,7 +50,7 @@ The executing agent MUST follow this protocol for **every task** — no exceptio
 ### Task 0.2 — Prerequisite & Dependency Guard Verification
 
 - [ ] 0.2 Verify all blocking-dependency artifacts exist before domain work starts
-  - Files to read (no modification): `backend/db/schema/billing/plans.ts`, `db/schema.dbml`, `backend/types/billing/plan.types.ts`, `backend/services/` (registration service from DEV1-002), `backend/graphql/gqlSchemaBuilder.ts`, `shared/locale/` structure
+  - Files to read (no modification): `backend/db/schema/billing/plans.ts`, `backend/types/billing/plan.types.ts`, `backend/services/` (registration service from DEV1-002), `backend/graphql/gqlSchemaBuilder.ts`, `shared/locale/` structure
   - _Requirements: REQ-004_
   - [ ] 0.2.1 Verify DEV1-001 artifacts: `plans` table present with `plans_session_count_check`, `plans_price_check`, `plans_interval_days_check`; `paymentGateway`/`subscriptionStatus` enums exist; `PlanSelectType`/`PlanInsertType` exist in `backend/types/billing/plan.types.ts`
   - [ ] 0.2.2 Verify DEV1-002 artifacts: `registerUser`/`createAdminUser` service paths exist; `isUniqueViolation`-style cause-chain translation precedent located for reuse pattern (REQ-052)
@@ -79,18 +79,15 @@ The executing agent MUST follow this protocol for **every task** — no exceptio
 - [ ] 1.1 Implement the `plans` table schema delta (`is_active`, `deactivated_at`)
   - Files to modify:
     - `backend/db/schema/billing/plans.ts` (add two columns; CHECK constraints untouched)
-    - `db/schema.dbml` (same unit of work; decision-referenced notes per REQ-010)
   - Applicable AGENTS.md: `backend/db/AGENTS.md`, `backend/db/schema/AGENTS.md`; instruction docs: `docs/DATABASE_MIGRATIONS.md`
   - _Requirements: REQ-010, REQ-042_
   - [ ] 1.1.1 Add `isActive: boolean("is_active").notNull().default(true)` and `deactivatedAt: timestamp("deactivated_at")` to `pgTable("plans", ...)` — NO new enums, NO new indexes (no-index ruling per REQ-010 decision note)
-  - [ ] 1.1.2 Update `db/schema.dbml` `Table plans` block with `is_active` and `deactivated_at` entries including INV-PC1 decision-referenced notes
-  - [ ] 1.1.3 Apply via `bun run db push` ONLY (`db reset` / `db cleanGenerate` permanently disabled); capture the push log
-  - [ ] 1.1.4 Run `bun validate:dbml` — MUST stay green
-  - [ ] 1.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/schema/billing/plans.ts --lifecycle duplicates` (exit 0); also verify DBML validation exit 0
+  - [ ] 1.1.2 Apply via `bun run db push` ONLY (`db reset` / `db cleanGenerate` permanently disabled); capture the push log
+  - [ ] 1.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/schema/billing/plans.ts --lifecycle duplicates` (exit 0)
   - [ ] 1.1.TE **Test Engineering**: DB column-presence test in `backend/db/test/logic/billing/plan-catalog-schema.test.ts` asserting `is_active` (NOT NULL, default true) and `deactivated_at` (NULL default) via information_schema probes inside `runInRollback`; assert existing CHECK constraints still reject invalid direct writes (Tier 2 boundary + Tier 3 chaos entry-point for 1.2)
   - [ ] 1.1.SEC **Security & Tenancy Audit**: confirm default `true` backfills existing rows non-destructively (zero data-loss); confirm no new writable surface exposed (columns server-controlled only)
-  - [ ] 1.1.SR **Semantic Review**: schema and DBML changed in the same commit set (no drift); no raw SQL migration; `$inferSelect`/`$inferInsert` automatically flow the new fields (verify via tsgo downstream)
-  - [ ] 1.1.IV **Instruction Verification**: `docs/DATABASE_MIGRATIONS.md` compliance (push-only, no custom SQL); DBML skill same-unit-of-work rule honored
+  - [ ] 1.1.SR **Semantic Review**: schema change and runtime code land in the same commit set (no drift); no raw SQL migration; `$inferSelect`/`$inferInsert` automatically flow the new fields (verify via tsgo downstream)
+  - [ ] 1.1.IV **Instruction Verification**: `docs/DATABASE_MIGRATIONS.md` compliance (push-only, no custom SQL)
   - [ ] 1.1.OD **Outcome**: `outcome/1.1-schema-delta-outcome.md`
 
 ### Task 1.2 — Canonical Types Extension
@@ -514,7 +511,7 @@ The executing agent MUST follow this protocol for **every task** — no exceptio
   - _Requirements: REQ-070, REQ-077, REQ-083 (partial), REQ-023_
   - [ ] 5.3.1 `bun test --coverage` on ALL new/modified backend suites — assert 100% statements/branches on new service/repo files (incl. both zero-row guard branches)
   - [ ] 5.3.2 Run full impacted suites: `bun run scripts/run-test/run-test.ts` for every new test file; assert DEV1-002/DEV2-001 auth suites REMAIN GREEN (registration/refresh contract untouched, REQ-023)
-  - [ ] 5.3.3 Run `bun tsgo`, `bun biome:check`, `bun validate:dbml` — compare to Phase 0 baseline: zero NEW errors
+  - [ ] 5.3.3 Run `bun tsgo`, `bun biome:check` — compare to Phase 0 baseline: zero NEW errors
   - [ ] 5.3.4 Re-run REQ-020 no-delete grep + REQ-016 single-predicate grep + REQ-031 no-spread grep as the verification bundle
   - [ ] 5.3.QL **Quality Loop**: sub-loop across every created/modified file in the change set (final sweep, exit 0 each)
   - [ ] 5.3.TE **Test Engineering**: differential report written (baseline counts vs final counts) into the outcome
@@ -604,7 +601,7 @@ The executing agent MUST follow this protocol for **every task** — no exceptio
 
 - [ ] 7.4 Final closure: baseline comparison, outcome index, deferred-ledger attestation
   - _Requirements: REQ-001, REQ-083_
-  - [ ] 7.4.1 Re-run `bun tsgo`, `bun biome:check`, `bun run scripts/lint-service.ts --json`, `bun validate:dbml` — prove zero NEW errors versus the Phase 0 baseline (numbers recorded side-by-side)
+  - [ ] 7.4.1 Re-run `bun tsgo`, `bun biome:check`, `bun run scripts/lint-service.ts --json` — prove zero NEW errors versus the Phase 0 baseline (numbers recorded side-by-side)
   - [ ] 7.4.2 Verify every task has its `outcome/<task-id>-outcome.md`; produce the outcome index
   - [ ] 7.4.3 Final deferred-items attestation: only D1 (→ DEV3-020) and D2 (→ DEV1-006) remain, both non-blocking with owners
   - [ ] 7.4.4 Synthesize `outcome/7.4-plan-closure-outcome.md`: REQ-by-REQ satisfaction table (REQ-001..REQ-083), quality-gate evidence bundle (sub-loop exits, coverage report, SDL grep assertions, role-matrix proof, browser-loop screenshot archive references), and forward handoff notes to DEV1-006 / DEV1-009 / DEV2-005 / DEV3-020

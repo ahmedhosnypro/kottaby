@@ -61,9 +61,9 @@ function redactEmail(email: string): string {
  * raw-SQL `queryDb` path (which casts the result to `UserSelectType`).
  */
 function stripPasswordHash(user: UserSelectType): RegistrationReturnType {
-  // Omit passwordHash so it can never leak to resolvers or logs (REQ-020).
-  // DEV1-003: preferredRecitation is null for the login/me path (only
-  // registration echoes the validated selection as contract metadata).
+  // Omit passwordHash so it can never leak to resolvers or logs.
+  // preferredRecitation is null for the login/me path (only registration
+  // echoes the validated selection as contract metadata).
   const { passwordHash: _omitted, ...rest } = user;
   return { ...rest, preferredRecitation: null };
 }
@@ -192,11 +192,11 @@ export namespace AuthService {
       throw new UnauthorizedError(t.invalidCredentials);
     }
 
-    // (DEV2-001) Trust the token signature — no server-side session store yet.
-    // DEV2-002 will look up the session by `payload.sessionId` and reject
-    // rotated/revoked tokens. We DO fetch the user to (a) confirm they still
-    // exist + are active, and (b) pick up any role changes since the
-    // refresh token was issued.
+    // Trust the token signature — no server-side session store yet; the
+    // session lookup by `payload.sessionId` (rejecting rotated/revoked
+    // tokens) is not yet implemented. We DO fetch the user to (a) confirm
+    // they still exist + are active, and (b) pick up any role changes
+    // since the refresh token was issued.
     const user = await UserRepository.findById(payload.userId);
     if (!user) {
       logger.logDomainError("Failed refreshToken: user not found", {
@@ -231,9 +231,9 @@ export namespace AuthService {
  *
  * NOTE: the `role` claim on the rotated access token is set to a literal
  * "student" because we don't have the user's role in the refresh-token
- * payload. DEV2-002 will fix this by either (a) including the role in the
- * refresh-token payload, or (b) fetching the user from the DB on refresh.
- * For DEV2-001 the role claim is unused (the context factory fetches the
+ * payload. A future fix can either (a) include the role in the
+ * refresh-token payload, or (b) fetch the user from the DB on refresh.
+ * Today the role claim is unused (the context factory fetches the
  * user from DB by id), so this is a known cosmetic issue, not a security
  * regression.
  */

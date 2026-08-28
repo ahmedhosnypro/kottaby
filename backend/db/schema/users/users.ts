@@ -2,12 +2,11 @@ import { boolean, date, integer, pgTable, timestamp, unique, varchar } from "dri
 import { gender, userRole } from "@/backend/db/schema/enums";
 
 /**
- * Central user table (DBML `users`).
+ * Central user table (`users`).
  *
  * Governance fields (is_deleted, suspended, is_blocked) apply to all roles.
  * Role-specific data lives in admin/teacher/students/parents child tables via
- * shared PK. Column names + types mirror `db/schema.dbml` (ground truth per
- * REQ-002).
+ * shared PK. Column names + types are the canonical contract across layers.
  */
 export const users = pgTable(
   "users",

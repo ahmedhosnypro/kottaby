@@ -1,31 +1,31 @@
 /**
- * ApplicantLifecycleService tests (DEV2-004 Task 2.2) — profile shaping,
+ * ApplicantLifecycleService tests — profile shaping,
  * cooldown guard, and the re-application contract against the live
  * `kottab_test` PostgreSQL instance.
  *
- * Per tasks.md 2.2.TE + `backend/db/test/AGENTS.md`:
+ * Per `backend/db/test/AGENTS.md`:
  *  - 4-Tier mixed suite. Every case runs inside `runInRollback`; `tx` is
  *    passed to EVERY service/repo/entity-setup call. The "pure tier" is
- *    exercised through the real repository (mocked-repo tier rejected — see
- *    outcome/2.2-outcome.md: `mock.module` pollutes the bun module registry
- *    shared by the parallel services runner's workers, which its own header
- *    exists to prevent; DB-backed rows reach every branch deterministically).
+ *    exercised through the real repository (mocked-repo tier rejected:
+ *    `mock.module` pollutes the bun module registry shared by the parallel
+ *    services runner's workers; DB-backed rows reach every branch
+ *    deterministically).
  *  - Entities ONLY via `entity-setup.ts` helpers (randomized-UUID emails);
  *    corrupt/junk statuses are seeded via `createTestApplicant` overrides.
  *  - All rejection assertions use `expectRepoError` (try/catch) —
  *    `expect(...).rejects.toThrow()` is prohibited and appears nowhere.
  *  - Translated-message assertions use template anchors / formatter clones /
  *    translated literals computed in-file — NEVER raw keys, never hardcoded
- *    UI copy (each suite is self-contained per Task 2.1 CF-2).
+ *    UI copy (each suite is self-contained).
  *
  * Coverage map:
- *  - Tier 1 (branch/stmt, REQ-100%-branch on new logic): profile null path +
+ *  - Tier 1 (branch/stmt, full-branch coverage on new logic): profile null path +
  *    pending / in_evaluation / failed(active|expired|null) / passed shapes;
  *    guard allow / block / missing-row; reapplication success / missing-row.
  *  - Tier 2 (boundary): cooldownUntil NULL ⇒ allowed; future ⇒ blocked with
  *    code APPLICANT_COOLDOWN_ACTIVE and message asserted against the
  *    TRANSLATED template (anchor prefix/suffix + formatted timestamp
- *    substring); EXACTLY now ⇒ ALLOWED (strict `>`, REQ-072); past ⇒
+ *    substring); EXACTLY now ⇒ ALLOWED (strict `>`); past ⇒
  *    allowed; missing applicant ⇒ APPLICANT_NOT_FOUND.
  *  - Tier 3 (chaos/concurrency): stored status junk ("hacked", "%", RTL)
  *    fail closed with APPLICANT_STATUS_CORRUPT; rapid repeated guard calls
@@ -35,11 +35,8 @@
  *    (signatures expose no other channel — by-construction note +
  *    runtime cross-subject leak probe); error messages carry no foreign-user
  *    data; localized denials resolve distinctly in BOTH "ar" and "en";
- *    REQ-052 logging contract verified via a logDomainError spy, and the
- *    REQ-053 happy-path silence verified as ZERO log calls.
- *
- * Requirements: REQ-012, REQ-013, REQ-015, REQ-016, REQ-035, REQ-041,
- * REQ-050, REQ-051, REQ-052, REQ-053, REQ-072.
+ *    the domain-rejection logging contract is verified via a logDomainError
+ *    spy, and happy-path silence is verified as ZERO log calls.
  */
 
 import { describe, expect, spyOn, test } from "bun:test";
@@ -62,7 +59,7 @@ const PAST_COOLDOWN_OFFSET_MS = -7 * 24 * 60 * 60 * 1000;
 
 /**
  * Byte-parity clone of the service module's deterministic UTC formatter
- * options (both suites stay self-contained per Task 2.1 CF-2). Because the
+ * options (both suites stay self-contained). Because the
  * fixed option set matches exactly, this renders any given instant to the
  * identical string the service interpolates into `{cooldownUntil}`.
  */
@@ -95,7 +92,8 @@ function cooldownTemplateAnchors(locale: string): readonly [string, string] {
 
 /**
  * Installs a recording stub over `logger.logDomainError` so domain-rejection
- * logs never reach test stdout AND can be counted per REQ-052/REQ-053.
+ * logs never reach test stdout AND can be counted by the logging-contract
+ * assertions.
  */
 function silenceDomainLog(): DomainLogSpy {
   return spyOn(logger, "logDomainError").mockImplementation(() => {});
@@ -145,7 +143,7 @@ describe("ApplicantLifecycleService.getMyApplicantProfile", () => {
 
       expect(profile).not.toBeNull();
       if (!profile) throw new Error("expected shaped profile");
-      // Closed-shape check — EXACTLY the canonical seven keys (REQ-017).
+      // Closed-shape check — EXACTLY the canonical seven keys.
       expect(Object.keys(profile).toSorted((a, b) => a.localeCompare(b))).toEqual([
         "canPurchaseVerification",
         "cooldownActive",
@@ -286,7 +284,7 @@ describe("ApplicantLifecycleService.getMyApplicantProfile", () => {
     });
   });
 
-  // ─── Tier 4/REQ-053: the whole function stays silent on the log ─────
+  // ─── Tier 4: the whole function stays silent on the log ──────────────
 
   test("profile paths emit NOTHING to the domain log (null, shaped happy path, corrupt throw)", async () => {
     await runInRollback(async tx => {
@@ -314,7 +312,7 @@ describe("ApplicantLifecycleService.getMyApplicantProfile", () => {
 });
 
 describe("ApplicantLifecycleService.assertCanPurchaseVerification", () => {
-  // ─── Tier 1: allow arm — silent no-op (REQ-053) ─────────────────────
+  // ─── Tier 1: allow arm — silent no-op ──────────────────────────────
 
   test("resolves silently for an eligible failed applicant whose cooldown expired", async () => {
     await runInRollback(async tx => {
@@ -377,7 +375,7 @@ describe("ApplicantLifecycleService.assertCanPurchaseVerification", () => {
         expect(error).toBeInstanceOf(ValidationError);
 
         // Fully-translated assertion via template anchors + formatter clone —
-        // never a raw key, never hardcoded copy (REQ-051 discipline).
+        // never a raw key, never hardcoded copy.
         const [prefix, suffix] = cooldownTemplateAnchors(locale);
         const expectedStamp = formatCooldownExpectation(cooldownUntil, locale);
         expect(error.message.startsWith(prefix)).toBe(true);
@@ -385,7 +383,7 @@ describe("ApplicantLifecycleService.assertCanPurchaseVerification", () => {
         expect(error.message.includes(expectedStamp)).toBe(true);
         expect(error.message.includes("{cooldownUntil}")).toBe(false);
 
-        // REQ-052: this domain rejection WAS logged, with canonical context.
+        // This domain rejection WAS logged, with canonical context.
         expect(logSpy).toHaveBeenCalledTimes(1);
         const [, ctxArg] = logSpy.mock.calls[0] ?? [];
         expect(ctxArg).toMatchObject({
@@ -532,7 +530,7 @@ describe("ApplicantLifecycleService.recordReapplication", () => {
     });
   });
 
-  test("maps a missing applicants row onto APPLICANT_NOT_FOUND (byte-equal localized message + REQ-052 log)", async () => {
+  test("maps a missing applicants row onto APPLICANT_NOT_FOUND (byte-equal localized message + logged domain rejection)", async () => {
     await runInRollback(async tx => {
       const locale = "en";
       const missingId = await absentApplicantId(tx);
@@ -559,7 +557,7 @@ describe("ApplicantLifecycleService.recordReapplication", () => {
     });
   });
 
-  // ─── Tier 3: repeat accumulation + concurrency (REQ-042/REQ-072) ────
+  // ─── Tier 3: repeat accumulation + concurrency ──────────────────────
 
   test("repeat re-applications accumulate deterministically (0→1→2)", async () => {
     await runInRollback(async tx => {
@@ -605,7 +603,7 @@ describe("ApplicantLifecycleService.recordReapplication", () => {
 });
 
 describe("ApplicantLifecycleService bilingual deny surface (ar/en)", () => {
-  // ─── Tier 4: REQ-051 — both locales resolve, distinctly, w/o residue ─
+  // ─── Tier 4: both locales resolve, distinctly, without residue ───────
 
   test("cooldown denial interpolates the FORMATTED stamp per locale with zero placeholder residue", async () => {
     await runInRollback(async tx => {

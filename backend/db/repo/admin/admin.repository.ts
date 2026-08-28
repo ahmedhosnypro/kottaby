@@ -4,7 +4,7 @@
  * The `admin` row shares its PK with `users.id` (FK ON DELETE CASCADE) and
  * exists for governance tooling. Creating one is a privileged operation
  * reachable ONLY through `RegistrationService.createAdminUser` (the public
- * mutation rejects `role: "admin"` per BFLA — REQ-022).
+ * mutation rejects `role: "admin"` per the BFLA defense).
  */
 import { admin } from "@/backend/db/schema/users/admin";
 import type { AdminSelectType, DBTransaction } from "@/backend/types";

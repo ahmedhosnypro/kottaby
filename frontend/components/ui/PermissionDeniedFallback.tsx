@@ -9,20 +9,18 @@ import { Errors, useAppTranslation } from "@/shared/locale";
  * PermissionDeniedFallback — page/section-level `FORBIDDEN` error surface.
  *
  * Rendered when the active role is not permitted to access a gated route
- * (mapGraphQLErrorByCode `FORBIDDEN` branch, REQ-061) so the user ALWAYS gets
+ * (mapGraphQLErrorByCode `FORBIDDEN` branch) so the user ALWAYS gets
  * an explanatory surface — this component never returns bare `null`.
  *
  * Announce semantics: the root IS a MUI v9 `Alert`, whose root element
  * defaults to `role="alert"` internally (`Alert.js` line 165 in v9.3.1) —
- * per plan-review-R1 correction #8 ("or an actual MUI Alert") and
- * `frontend/AGENTS.md` ("Use `<Box component="alert">` instead of
+ * per `frontend/AGENTS.md` ("Use `<Box component="alert">` instead of
  * `role="alert"` on NON-Alert elements"), no literal `role` prop and no
  * `component="alert"` override are added on top of it.
  *
- * Copy: defaults come from the `errors` namespace handle (property access,
- * REQ-002). Per the 1.2-outcome carry-forward, the page-deny key
- * `forbiddenRole` titles the fallback; callers may pass explicit localized
- * overrides for query-level vs page-level contexts.
+ * Copy: defaults come from the `errors` namespace handle (property access).
+ * The page-deny key `forbiddenRole` titles the fallback; callers may pass
+ * explicit localized overrides for query-level vs page-level contexts.
  *
  * Styling: `sx`-only; colors resolve through the MUI theme palette
  * (`error` severity family ONLY) via theme callbacks — no hex, no rgb, no

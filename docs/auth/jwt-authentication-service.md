@@ -1,8 +1,7 @@
 # JWT Authentication Service — Canonical Reference
 
-**Owner:** DEV2 stream
-**Plans:** DEV2-001 (JWT Authentication Service) + DEV2-002 (Role-Based Authorization Middleware)
-**Status:** Implemented (DEV2-001 closed; DEV2-002 closed with deferred items)
+**Owner:** Auth/RBAC domain
+**Status:** Implemented and verified
 **Last updated:** 2026-08-26
 
 > This is the canonical reference for the JWT authentication service and the RBAC middleware contract layered on top of it. All implementation work in the auth/RBAC surface MUST consult this doc before modifying `backend/lib/auth/*`, `backend/services/auth/*`, `backend/graphql/pothos/builder.ts`, `backend/graphql/gqlContextFactory.ts`, or `frontend/lib/auth/*`.
@@ -60,7 +59,7 @@ Server (Next.js)
 **Verification contract:**
 - `verifyAccessToken(token)` and `verifyRefreshToken(token)` return `null` on ANY failure (invalid signature, expired, wrong issuer, wrong type, malformed). They NEVER throw.
 - The context factory and SSR boundary treat `null` as "anonymous" — no 500, no oracle leak.
-- The same `UnauthorizedError(t.invalidCredentials)` is thrown for unknown email, wrong password, expired token, and tampered token (oracle equality — REQ-041).
+- The same `UnauthorizedError(t.invalidCredentials)` is thrown for unknown email, wrong password, expired token, and tampered token (oracle equality).
 
 ### 2.3 Cookie matrix
 
@@ -102,7 +101,7 @@ The Pothos `SchemaBuilder` declares five `AuthScopes` (in `backend/graphql/potho
 AuthScopes: {
   authenticated: boolean;        // 401 boundary — throws UnauthorizedError when !ctx.user
   role: UserRole[];              // OR semantics over the role set; returns false (403) on miss
-  permission: string[];          // OR semantics over permission codes; placeholder (D1) — currently always true
+  permission: string[];          // OR semantics over permission codes; placeholder — currently always true
   superAdmin: boolean;           // ctx.isSuperAdmin (true iff role === UserRole.Admin)
   notImpersonating: boolean;     // placeholder (no impersonation surface yet); always true
 }
@@ -117,7 +116,7 @@ authScopes: ctx => ({
     return true;
   },
   role: (roles: UserRole[]) => (ctx.role ? roles.includes(ctx.role) : false),
-  permission: () => true,                       // D1 — replace with PermissionsService.getUserContext call
+  permission: () => true,                       // placeholder — replace with PermissionsService.getUserContext call
   superAdmin: () => ctx.isSuperAdmin,
   notImpersonating: true,                       // placeholder
 })
@@ -129,7 +128,7 @@ authScopes: ctx => ({
 |---|---|---|---|
 | `authenticated: true` | throws `UnauthorizedError` when `!ctx.user` | `UNAUTHORIZED` (401) | 401 boundary — checked first |
 | `role: [UserRole.X, ...]` | `roles.includes(ctx.role)` (OR) | `FORBIDDEN` (403) | returns `false` (not throw) on miss → Pothos converts to `FORBIDDEN` |
-| `permission: ["PERM.X", ...]` | placeholder — always `true` | (n/a — D1) | when wired: `perms.some(p => ctx.permissions.includes(p))` (OR) |
+| `permission: ["PERM.X", ...]` | placeholder — always `true` | (n/a) | when wired: `perms.some(p => ctx.permissions.includes(p))` (OR) |
 | `superAdmin: true` | `ctx.isSuperAdmin` | `FORBIDDEN` (403) | independent axis; `role` scope does NOT weaken |
 | `notImpersonating: true` | `true` (placeholder) | (n/a) | no impersonation surface yet |
 
@@ -138,7 +137,7 @@ authScopes: ctx => ({
 - `{ role: [UserRole.Admin], permission: ["users.update"] }` requires BOTH admin role AND the `users.update` permission.
 - `{ superAdmin: true }` is an independent axis — `{ role: [UserRole.Admin], superAdmin: true }` is satisfied iff `ctx.role === Admin` AND `ctx.isSuperAdmin === true` (which is the same condition, but the composition is preserved).
 
-**Fail-closed rule (REQ-032):** every scope evaluator MUST fail-closed (throw or return `false`) on missing context or unexpected error. The `permission` placeholder MUST be replaced by a fail-closed evaluator when wired (D1).
+**Fail-closed rule:** every scope evaluator MUST fail-closed (throw or return `false`) on missing context or unexpected error. The `permission` placeholder MUST be replaced by a fail-closed evaluator when wired.
 
 ### 2.6 SSR auth (`getServerUserContext`)
 
@@ -183,13 +182,13 @@ Sister helper to `withPageAuth`, focused on role checking. Same redirect semanti
 | `/teacher/dashboard` | `withPageAuth({ roles: [UserRole.Teacher], redirectTo: "/teacher/dashboard" })` | `/login?redirect=/teacher/dashboard` | `/dashboard` |
 | `/parent/dashboard` | `withPageAuth({ roles: [UserRole.Parent], redirectTo: "/parent/dashboard" })` | `/login?redirect=/parent/dashboard` | `/dashboard` |
 | `/admin/dashboard` | `withPageAuth({ roles: [UserRole.Admin], redirectTo: "/admin/dashboard" })` | `/login?redirect=/admin/dashboard` | `/dashboard` |
-| `/dashboard` | (role-aware redirect entrypoint — shipped by DEV2-001) | `/login` | (per-role redirect) |
+| `/dashboard` | (role-aware redirect entrypoint) | `/login` | (per-role redirect) |
 
 All four role-specific routes render the `DashboardView` client component (role-aware stat cards + nav). Metadata generated per-locale via `generateMetadata()` reading `getLocaleFromCookie()`.
 
 ### 2.9 `me` query authScope
 
-The `me` query carries `authScopes: { authenticated: true }` (shipped by DEV2-001 / DEV2-CORE). Anonymous callers receive a GraphQL `UNAUTHORIZED` error instead of `null`. The AuthProvider's `restoreSession` catches the error and falls through to its refresh-then-retry path — same UX as the prior return-null contract, but with explicit 401 semantics at the schema layer.
+The `me` query carries `authScopes: { authenticated: true }`. Anonymous callers receive a GraphQL `UNAUTHORIZED` error instead of `null`. The AuthProvider's `restoreSession` catches the error and falls through to its refresh-then-retry path — same UX as the prior return-null contract, but with explicit 401 semantics at the schema layer.
 
 `me` does NOT carry `role` or `permission` scopes — every authenticated user can read their own profile.
 
@@ -201,47 +200,47 @@ The `me` query carries `authScopes: { authenticated: true }` (shipped by DEV2-00
 
 - **Access token claims** are exactly `{ sub, role, type: "access", iss, iat, exp }`. Do NOT add custom claims without updating this doc + the verification contract.
 - **Refresh token claims** are exactly `{ sub, sessionId, type: "refresh", iss, iat, exp }`. The `sessionId` correlates with the httpOnly `session_id` cookie.
-- **The `role` claim is sourced exclusively from `users.role` in the DB.** `AuthService.login` reads `user.role` from the DB-fetched user row before `signAccessToken({ userId, role: user.role })`. The caller cannot inject a role via input (BFLA defense — REQ-052).
+- **The `role` claim is sourced exclusively from `users.role` in the DB.** `AuthService.login` reads `user.role` from the DB-fetched user row before `signAccessToken({ userId, role: user.role })`. The caller cannot inject a role via input (BFLA defense).
 - **`verifyAccessToken` / `verifyRefreshToken` return `null` on any failure.** They NEVER throw. The context factory and SSR boundary treat `null` as anonymous.
-- **Oracle equality (REQ-041):** unknown email and wrong password produce the identical `UnauthorizedError(t.invalidCredentials)`. No distinguishing client-visible error.
+- **Oracle equality:** unknown email and wrong password produce the identical `UnauthorizedError(t.invalidCredentials)`. No distinguishing client-visible error.
 
 ### 3.2 Cookies
 
 - **All three auth cookies are `HttpOnly; SameSite=Strict; Path=/; Max-Age=<ttl>; Secure-in-prod`.** No exceptions.
 - **`access_token` is set as a cookie (the redirect-loop fix).** Do NOT remove this — SSR (`getServerUserContext`) depends on it.
 - **`logout` clears all three cookies** via `clearAuthCookies` (`Max-Age=0` + empty value). `logout` is public (callable with an expired token) so the cookies always clear.
-- **Token storage discipline (REQ-063):** access token in React memory (Apollo `authLink`) + httpOnly cookie (SSR). Refresh token in React memory only. NEVER persist tokens to `localStorage` / `sessionStorage` / Zustand `persist` store.
+- **Token storage discipline:** access token in React memory (Apollo `authLink`) + httpOnly cookie (SSR). Refresh token in React memory only. NEVER persist tokens to `localStorage` / `sessionStorage` / Zustand `persist` store.
 
 ### 3.3 authScopes
 
-- **401-vs-403 exclusivity (REQ-010/011/012):** `authenticated` throws `UnauthorizedError` (401) on `!ctx.user`. `role` / `permission` / `superAdmin` return `false` (403) on miss. No fourth ad-hoc state.
+- **401-vs-403 exclusivity:** `authenticated` throws `UnauthorizedError` (401) on `!ctx.user`. `role` / `permission` / `superAdmin` return `false` (403) on miss. No fourth ad-hoc state.
 - **`role` scope uses OR semantics** over the role set (`roles.includes(ctx.role)`).
 - **AND-composition across scopes:** declaring `{ role: [...], permission: [...] }` requires both (Pothos authScope conjunction).
-- **`superAdmin` is an independent axis.** The `role` scope does NOT weaken, bypass, or replace the `superAdmin` gate (REQ-021).
-- **Fail-closed (REQ-032):** every scope evaluator MUST fail-closed (throw or return `false`) on missing context or unexpected error.
-- **`ctx.role` is sourced exclusively from the verified JWT** (`verifyAccessToken` → `payload.role` → `toUserRole(payload.role)` runtime guard). NEVER from client-supplied headers, arguments, localStorage claims, or JWT payload without server verification (REQ-013).
-- **Role↔certification boundary (REQ-023):** `role=teacher` does NOT imply certification. Certification remains `teacher.is_approved` and IS enforced by domain services (DEV2/DEV3 era). The `role` scope stops at role fit.
+- **`superAdmin` is an independent axis.** The `role` scope does NOT weaken, bypass, or replace the `superAdmin` gate.
+- **Fail-closed:** every scope evaluator MUST fail-closed (throw or return `false`) on missing context or unexpected error.
+- **`ctx.role` is sourced exclusively from the verified JWT** (`verifyAccessToken` → `payload.role` → `toUserRole(payload.role)` runtime guard). NEVER from client-supplied headers, arguments, localStorage claims, or JWT payload without server verification.
+- **Role↔certification boundary:** `role=teacher` does NOT imply certification. Certification remains `teacher.is_approved` and IS enforced by domain services. The `role` scope stops at role fit.
 
 ### 3.4 SSR
 
 - **`getServerUserContext` is the canonical SSR auth entry point.** Server Components + layouts + `withPageAuth` / `requireRoleForPage` all call it.
 - **`react.cache()` deduplicates calls within a single request.** Do NOT bypass the cache.
 - **Governance fail-closed at SSR:** `if (fetched.isDeleted || fetched.isBlocked || fetched.suspended) return null` — the SSR boundary treats governed accounts as anonymous.
-- **`withPageAuth` / `requireRoleForPage` are the server-side security boundary.** Container-level client wrappers (`<RequirePermission>`) are UX-only — bypassable (REQ-040). Do NOT introduce container-level full-page client gates as a substitute for server guards.
-- **`requireRoleForPage` consumes `UserPermissionContext.role` without extra DB reads** (serverless cold-start rule — REQ-041).
+- **`withPageAuth` / `requireRoleForPage` are the server-side security boundary.** Container-level client wrappers (`<RequirePermission>`) are UX-only — bypassable. Do NOT introduce container-level full-page client gates as a substitute for server guards.
+- **`requireRoleForPage` consumes `UserPermissionContext.role` without extra DB reads** (serverless cold-start rule).
 
 ### 3.5 Login flow
 
 - **`AuthService.login(email, password, locale)`** verifies credentials → checks governance → signs JWT pair → returns `AuthSession`. The resolver pushes cookies via `setAuthCookies(ctx.authCookieOut, ...)`.
 - **Governance gate runs AFTER password verification** (prevents oracle leak) and BEFORE token issuance. `assertUserActive(user, t.accountBlocked)` throws `ForbiddenError` if `isDeleted || isBlocked || suspended`.
-- **`last_active_at` bump is fire-and-forget.** `touchLastActiveAt(user.id)` runs outside the critical path; transient DB errors are swallowed + logged via `logger.logDomainError`. Never blocks authentication (REQ-034).
+- **`last_active_at` bump is fire-and-forget.** `touchLastActiveAt(user.id)` runs outside the critical path; transient DB errors are swallowed + logged via `logger.logDomainError`. Never blocks authentication.
 - **LoginForm calls `loginContext()` from `useAuth()` only** — no direct `loginMutationDocument` call (double-login fix). The AuthProvider's `login()` owns the single `loginMutation` call.
 - **AuthProvider `login()` rethrows errors** so the LoginForm can perform granular error-code mapping (`UNAUTHORIZED` → `t.invalidCredentials`, `FORBIDDEN` → `t.accountBlocked`).
 
 ### 3.6 Refresh + logout
 
 - **`AuthService.refreshToken(token, locale)`** verifies the refresh token → fetches the user from DB → re-checks governance → issues a fresh pair + new `session_id`. The resolver pushes fresh cookies via `setAuthCookies`.
-- **Rotation is by issuance** (new refresh token supersedes old). Strict JTI equality vs stale-JTI race (REQ-021) is NOT enforced yet — the server-side session store for JTI rotation is deferred item D1 (DEV2-001). The current contract trusts the refresh-token signature.
+- **Rotation is by issuance** (new refresh token supersedes old). Strict JTI equality vs stale-JTI race is NOT enforced yet — the server-side session store for JTI rotation is a deferred item. The current contract trusts the refresh-token signature.
 - **`logout` is public** (no `authScope`). A caller with an expired access token (or no token at all) MUST still be able to log out so the cookies clear. The resolver always calls `clearAuthCookies` and returns `{ success: true }`.
 - **AuthProvider `logout()` calls `logoutMutation` (fire-and-forget), then clears React-memory tokens, resets user state, resets Apollo cache (`client.resetStore()`), and navigates to `/login`.**
 
@@ -263,14 +262,14 @@ The `me` query carries `authScopes: { authenticated: true }` (shipped by DEV2-00
 - **Do NOT remove the `access_token` httpOnly cookie.** It is the redirect-loop fix. SSR (`getServerUserContext`) depends on it.
 - **Do NOT persist tokens to `localStorage` / `sessionStorage` / Zustand `persist` store.** React memory only (access + refresh tokens) + httpOnly cookie (access token, SSR-only).
 - **Do NOT trust client-supplied role claims.** The `role` scope evaluator reads `ctx.role` exclusively (server-sourced from the verified JWT). Never read `role` from request inputs, headers, or localStorage.
-- **Do NOT create parallel auth helpers.** Extend the existing substrate in place (`backend/lib/auth/*`, `backend/services/auth/auth.service.ts`, `backend/graphql/gqlContextFactory.ts`, `backend/graphql/mutation/auth.mutation.ts`, `backend/graphql/query/auth.query.ts`, `frontend/providers/apollo/AuthProvider.tsx`, `frontend/lib/auth/*`). REQ-004.
-- **Do NOT create parallel authorization helpers.** `gqlSchemaBuilder.ts`'s `buildAuthScopes` initializer is the single authorization decision point. REQ-004.
+- **Do NOT create parallel auth helpers.** Extend the existing substrate in place (`backend/lib/auth/*`, `backend/services/auth/auth.service.ts`, `backend/graphql/gqlContextFactory.ts`, `backend/graphql/mutation/auth.mutation.ts`, `backend/graphql/query/auth.query.ts`, `frontend/providers/apollo/AuthProvider.tsx`, `frontend/lib/auth/*`).
+- **Do NOT create parallel authorization helpers.** `gqlSchemaBuilder.ts`'s `buildAuthScopes` initializer is the single authorization decision point.
 - **Do NOT weaken the `superAdmin` gate.** `{ superAdmin: true }` is an independent axis; the `role` scope does NOT bypass it.
 - **Do NOT introduce container-level full-page client gates as a substitute for server guards.** `<RequirePermission>` is UX-only — bypassable. `withPageAuth` / `requireRoleForPage` are the server-side security boundary.
 - **Do NOT log plaintext tokens or passwords.** Use `redactEmail(email)` for log redaction. `passwordHash` structurally omitted from `RegistrationReturnType`.
-- **Do NOT distinguish "email doesn't exist" from "wrong password" in error messages.** Both produce the identical `UnauthorizedError(t.invalidCredentials)` (oracle equality — REQ-041).
-- **Do NOT patch the `users` schema inline.** Governance fields are owned by DEV1-001. Any schema gap → escalate to `deferred-items.md`.
-- **Do NOT add a `grantRole*` / `assignRole*` / `elevate*` mutation.** Privilege grant is categorically absent by construction (REQ-074). Role assignment happens only at registration (DEV1-002, `RegisterPublicRole` enum excludes `admin`) or admin paths (DEV3-016, owned by a future ticket).
+- **Do NOT distinguish "email doesn't exist" from "wrong password" in error messages.** Both produce the identical `UnauthorizedError(t.invalidCredentials)` (oracle equality).
+- **Do NOT patch the `users` schema inline.** Governance fields are owned by the user-schema layer. Any schema gap must be escalated, not patched in place.
+- **Do NOT add a `grantRole*` / `assignRole*` / `elevate*` mutation.** Privilege grant is categorically absent by construction. Role assignment happens only at registration (the `RegisterPublicRole` enum excludes `admin`) or via dedicated admin paths.
 - **Do NOT use `as UserRole` narrowing casts.** Use the `toUserRole(value)` runtime guard.
 - **Do NOT use `import type` for runtime-used enums.** Value imports where the enum is used at runtime (dashboard pages, `gqlContextFactory`, `server-auth`).
 - **Do NOT call `loginMutation` directly from the LoginForm.** Use `loginContext()` from `useAuth()` (double-login fix).
@@ -278,22 +277,22 @@ The `me` query carries `authScopes: { authenticated: true }` (shipped by DEV2-00
 
 ---
 
-## 5. DEV2-002 Consumption Guide
+## 5. RBAC Consumption Guide
 
-DEV2-002 consumes the auth context produced by DEV2-001 and layers the RBAC contract on top. The contract is documented in this section.
+The RBAC middleware consumes the auth context produced by the JWT authentication service and layers the authorization contract on top. The contract is documented in this section.
 
 ### 5.1 Consume `ctx.user`, `ctx.role`, `ctx.isSuperAdmin`
 
 `gqlContextFactory.ts` populates (after `verifyAccessToken` + DB fetch):
-- `ctx.user: RegistrationReturnType | null` — password-stripped, `preferredRecitation: null` on the me/login path (DEV1-003).
+- `ctx.user: RegistrationReturnType | null` — password-stripped, `preferredRecitation: null` on the me/login path.
 - `ctx.safeUser: RegistrationReturnType | null` — alias for `ctx.user`.
 - `ctx.role: UserRole | null` — from `toUserRole(payload.role)`. Invalid/tampered role claim yields `null` (anonymous treatment).
 - `ctx.isSuperAdmin: boolean` — `role === UserRole.Admin`.
-- `ctx.permissions: unknown[]` — currently `[]` (placeholder; D1 will wire to `PermissionsService.getUserContext`).
+- `ctx.permissions: unknown[]` — currently `[]` (placeholder, deferred until wired to `PermissionsService.getUserContext`).
 
-DEV2-002's `role` authScope evaluator consumes `ctx.role` directly — no DB refetch needed.
+The `role` authScope evaluator consumes `ctx.role` directly — no DB refetch needed.
 
-### 5.2 Wire the `permission` authScope (deferred item D1)
+### 5.2 Wire the `permission` authScope
 
 The current `permission: () => true` placeholder MUST be replaced by a fail-closed evaluator:
 
@@ -301,7 +300,7 @@ The current `permission: () => true` placeholder MUST be replaced by a fail-clos
 permission: (perms: string[]) => {
   if (!ctx.user) return false;                    // fail-closed for anonymous
   if (ctx.isSuperAdmin) return true;              // superAdmin bypasses permission checks
-  // D1: replace with ctx.permissions (populated by PermissionsService.getUserContext)
+  // replace with ctx.permissions (populated by PermissionsService.getUserContext)
   return perms.some(p => ctx.permissions.includes(p));
 }
 ```
@@ -318,7 +317,7 @@ return {
 };
 ```
 
-The evaluator MUST fail-closed on `PermissionsService.getUserContext` throw (REQ-032):
+The evaluator MUST fail-closed on `PermissionsService.getUserContext` throw:
 
 ```typescript
 permission: (perms: string[]) => {
@@ -333,9 +332,9 @@ permission: (perms: string[]) => {
 }
 ```
 
-### 5.3 Implement `assertNotSuspended` (deferred item D2)
+### 5.3 Implement `assertNotSuspended`
 
-`AuthService.assertUserActive` currently denies ALL `suspended = true` accounts at login (fail-closed — stricter than REQ-031). DEV2-002 ships the lapsed-suspension helper for session-creation-class operations (DEV3-004 consumer):
+`AuthService.assertUserActive` currently denies ALL `suspended = true` accounts at login (fail-closed — stricter than the active-window contract). The lapsed-suspension helper for session-creation-class operations:
 
 ```typescript
 // backend/services/auth/assert-not-suspended.ts (canonical service placement)
@@ -380,7 +379,7 @@ function throwSuspendedError(locale: string): never {
 }
 ```
 
-DEV3-004 (session creation) will consume this helper to enforce REQ-031's active-suspension-window deny on session-creation-class operations.
+The session-creation service consumes this helper to enforce the active-suspension-window deny on session-creation-class operations.
 
 ### 5.4 SSR parity
 
@@ -389,8 +388,8 @@ DEV3-004 (session creation) will consume this helper to enforce REQ-031's active
 | Helper | Signature | Use case |
 |---|---|---|
 | `requirePermissionForPage(userId, perms, locale, context)` | (existing — substrate) | Permission-gated SSR pages |
-| `withPageAuth({ roles?, redirectTo? })` | (shipped by DEV2-001) | Optional role-whitelist SSR pages |
-| `requireRoleForPage(roles, redirectTo?)` | (shipped by DEV2-001) | Role-required SSR pages (sister to `requirePermissionForPage`) |
+| `withPageAuth({ roles?, redirectTo? })` | (JWT auth service) | Optional role-whitelist SSR pages |
+| `requireRoleForPage(roles, redirectTo?)` | (JWT auth service) | Role-required SSR pages (sister to `requirePermissionForPage`) |
 
 All three use the same redirect semantics: anonymous → `/login?redirect=...`; role/permission mismatch → `/dashboard` (canonical fallback).
 
@@ -405,39 +404,35 @@ login, refreshToken, logout, registerUser, _health, recitationReadings
 // Authenticated only:
 me (authScopes: { authenticated: true })
 
-// Role-gated (example — DEV3-016 admin CRUD):
+// Role-gated (example — admin CRUD):
 someAdminMutation(authScopes: { role: [UserRole.Admin], permission: ["users.update"] })
 
 // SuperAdmin-only (example — impersonation, permission-group editing):
 someSuperAdminMutation(authScopes: { superAdmin: true, notImpersonating: true })
 ```
 
-When the schema-coverage assertion test (D3) lands, it will introspect the built schema and assert (a) the public set is exactly the unscoped set, (b) representative protected ops carry auth/scope, (c) NO mutation matching `grantRole*`/`assignRole*`/`elevate*` exists under any non-admin scope.
+The schema-coverage assertion test introspects the built schema and asserts (a) the public set is exactly the unscoped set, (b) representative protected ops carry auth/scope, (c) NO mutation matching `grantRole*`/`assignRole*`/`elevate*` exists under any non-admin scope.
 
 ### 5.6 Role↔certification boundary
 
-`role=teacher` does NOT imply certification. Certification remains `teacher.is_approved` and IS enforced by domain services (DEV2/DEV3 era). The `role` scope stops at role fit — it does NOT pretend to gate certification.
+`role=teacher` does NOT imply certification. Certification remains `teacher.is_approved` and IS enforced by domain services. The `role` scope stops at role fit — it does NOT pretend to gate certification.
 
 When implementing teacher surfaces:
 - Use `{ role: [UserRole.Teacher] }` to gate teacher-only surfaces (applicant flows, teacher dashboard).
 - Use a separate `is_approved` check (in the resolver or service layer) to gate certified-sheikh-only surfaces (session creation, recitation approval).
 
-### 5.7 Deferred items (DEV2-002)
+### 5.7 Deferred items
 
-| ID | Item | Owner |
-|---|---|---|
-| D1 | `permission` authScope wiring to `PermissionsService.getUserContext(ctx.user.id)` | Future ticket |
-| D2 | `assertNotSuspended` helper implementation (active-suspension-window calculation) | Future ticket (DEV3-004 era) |
-| D3 | Schema-coverage assertion test (`rbac-schema-coverage.test.ts`) | Future ticket (test runner env unblock) |
-| D4 | GraphQL context factory fail-closed hardening for governed accounts | Future ticket (defense-in-depth) |
-
-See `ai/plans/dev2-002-role-based-authorization-middleware/deferred-items.md` for the full ledger.
+| Item | Owner |
+|---|---|
+| `permission` authScope wiring to `PermissionsService.getUserContext(ctx.user.id)` | Future work |
+| `assertNotSuspended` helper implementation (active-suspension-window calculation) | Session-creation work |
+| Schema-coverage assertion test (`rbac-schema-coverage.test.ts`) | Test-runner environment unblock |
+| GraphQL context factory fail-closed hardening for governed accounts | Defense-in-depth follow-up |
 
 ---
 
-## 6. Rollout Summary
-
-### 6.1 DEV2-001 (JWT Authentication Service) — closed
+## 6. Shipped Surface Summary
 
 - Token claims contract (access 15m + refresh 7d, HS256 via `jose`, `null`-on-failure verification).
 - Cookie matrix (three httpOnly cookies, `SameSite=Strict`, `Secure` in production, cleared on logout).
@@ -450,32 +445,13 @@ See `ai/plans/dev2-002-role-based-authorization-middleware/deferred-items.md` fo
 - SSR auth (`getServerUserContext` cached via `react.cache()`).
 - Page guards (`withPageAuth`, `requireRoleForPage`).
 - Role-based dashboards (`/student/dashboard`, `/teacher/dashboard`, `/parent/dashboard`, `/admin/dashboard`).
+- `role` authScope contract (OR semantics, AND-composition with `permission`/`superAdmin`/`notImpersonating`, superAdmin composition preserved).
+- SSR parity contract (`requireRoleForPage` next to `requirePermissionForPage` / `withPageAuth`).
+- Endpoint role-coverage rule.
+- Role↔certification boundary.
+- No `grantRole*`/`assignRole*`/`elevate*` mutation exists (schema introspection confirms).
 
-Deferred: D1 (server-side session store for JTI rotation), D2 (real rate limiter), D3 (`permission` scope wiring — restated as DEV2-002 D1).
-
-### 6.2 DEV2-002 (Role-Based Authorization Middleware) — closed
-
-- `role` authScope contract verified (OR semantics, AND-composition with `permission`/`superAdmin`/`notImpersonating`, superAdmin composition preserved).
-- 401-vs-403 decision state chart documented.
-- Fail-closed rule documented for every scope evaluator.
-- SSR parity contract documented (`requireRoleForPage` next to `requirePermissionForPage` / `withPageAuth`).
-- Endpoint role-coverage rule documented.
-- Role↔certification boundary documented.
-- No `grantRole*`/`assignRole*`/`elevate*` mutation exists (schema introspection confirmed).
-- Canonical reference doc (this file) extended with the DEV2-002 consumption guide.
-- Layer `AGENTS.md` files updated with one-line references.
-
-Deferred: D1 (`permission` scope wiring), D2 (`assertNotSuspended` helper), D3 (schema-coverage assertion test), D4 (GraphQL context factory fail-closed hardening).
-
-### 6.3 Quality gates (verified live)
-
-| Gate | Result |
-|---|---|
-| `bun tsgo` | **0 errors** |
-| `bun biome:check` | **376 files, 0 fixes applied** |
-| `bun run oxlint` | **0 warnings, 0 errors** — 356 files, 301 rules |
-| `bun run lint:type-aware` | **0** |
-| `bun validate:dbml` | **GREEN** — 22 tables, 15 enums |
+Deferred: server-side session store for JTI rotation; real rate limiter; `permission` scope wiring; `assertNotSuspended` helper; schema-coverage assertion test; GraphQL context factory fail-closed hardening.
 
 ---
 
@@ -483,15 +459,13 @@ Deferred: D1 (`permission` scope wiring), D2 (`assertNotSuspended` helper), D3 (
 
 - `docs/auth/REDIRECT_LOOP_FIX.md` — redirect-loop root cause + fix contract (the load-bearing detail behind the `access_token` httpOnly cookie).
 - `docs/auth/REDIRECT_LOOP_FIX_OPENCODE2.md` — follow-up notes on the redirect-loop fix.
-- `docs/auth/user-registration.md` — DEV1-002 canonical reference (registration surface, role→child mapping, handshake generation, atomicity pattern, BOPLA/BFLA defenses, JWT auth flow tail).
-- `docs/auth/qiraah-selection-and-c5.md` — DEV1-003 canonical reference (Qira'ah selection + C.5 invariant; `preferredRecitation` is contract metadata only, not persistence).
+- `docs/auth/user-registration.md` — canonical reference for user registration (registration surface, role→child mapping, handshake generation, atomicity pattern, BOPLA/BFLA defenses, JWT auth flow tail).
+- `docs/auth/qiraah-selection-and-c5.md` — canonical reference for Qira'ah selection and its registration contract invariant (`preferredRecitation` is contract metadata only, not persistence).
 - `docs/auth/permission-architecture.md` — client-side permission architecture (3-tier model: server / container / element; wrapper removal rationale).
 - `docs/auth/supervisor-permissions.md` — supervisor permission model (authScope pattern; `permission` vs `superAdmin` usage rule).
 - `docs/auth/manager-role-mapping.md` — manager role mapping architecture + permission group slug convention.
-- `docs/graphql/error-handling-contract.md` — `SERVICE_UNAVAILABLE` transport semantics, masking pipeline, envelope/client mapping (the login cold-start resilience doc cited by DEV2-001's deferred item D2 does not exist in-tree; its fail-open limiter / `retryTransient` rule text lives in `backend/graphql/AGENTS.md` §Serverless Cold-Start Optimization).
+- `docs/graphql/error-handling-contract.md` — `SERVICE_UNAVAILABLE` transport semantics, masking pipeline, envelope/client mapping (a dedicated login cold-start resilience doc does not exist in-tree; its fail-open limiter / `retryTransient` rule text lives in `backend/graphql/AGENTS.md` §Serverless Cold-Start Optimization).
 - `docs/backend/serverless-cold-start-optimization.md` — permission context propagation, lazy scopeAuth, `safeUser` on `BaseContext`, session deduplication.
 - `docs/graphql/domain-error-extensions-code.md` — DomainError → GraphQLError `extensions.code` propagation pattern (`UNAUTHORIZED` / `FORBIDDEN` / `SERVICE_UNAVAILABLE`).
 - `docs/app/with-page-auth.md` — App router page auth wrapper pattern reference.
 - `app/AGENTS.md` — SSR usage contract + page-level access-control table.
-- `ai/plans/dev2-001-jwt-authentication-service/outcome/plan-completion-outcome.md` — DEV2-001 final outcome.
-- `ai/plans/dev2-002-role-based-authorization-middleware/outcome/plan-completion-outcome.md` — DEV2-002 final outcome.

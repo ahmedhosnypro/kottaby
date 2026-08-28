@@ -17,7 +17,7 @@ DEV3-005 is a **mostly-verification + small-additive ticket** (the DEV2-004 prec
 2. **`SessionInvariantService`** — a new server-internal guard module shipping two precondition guards: `assertSessionCompletedForReport` (INV-S7) and `assertSessionReportExistsForHomework` (INV-S8), each a pure read-then-assert inside the consumer's transaction.
 3. **Permanent test locks** — the exhaustive 5×5 transition matrix, the in-session lock end-state probes, the financial-purity proofs, the `disputed` unreachability proof, and static-assertion scans.
 
-There is **zero** new GraphQL surface, **zero** frontend code, **zero** schema/DBML drift.
+There is **zero** new GraphQL surface, **zero** frontend code, **zero** schema drift.
 
 ### 1.2 Guard Consumption Flow (the only new runtime path)
 
@@ -98,7 +98,7 @@ Lane D (static): session-invariants.static-assertions.test.ts (bun:test, file sc
 
 ### 2.1 Existing Schema Verification (READ-ONLY — zero changes, REQ-044)
 
-All structures exist from DEV1-001 (+ DEV1-004 trial lane). Verification-only audit — `git diff backend/db/schema/** db/schema.dbml` MUST be empty and `bun validate:dbml` MUST stay green at completion.
+All structures exist from DEV1-001 (+ DEV1-004 trial lane). Verification-only audit — `git diff backend/db/schema/**` MUST be empty at completion. The Drizzle schema in `backend/db/schema/` is the sole structural ground truth.
 
 | Contract dependency | Existing implementation | Verified at |
 |---|---|---|
@@ -109,7 +109,7 @@ All structures exist from DEV1-001 (+ DEV1-004 trial lane). Verification-only au
 | Teacher certification/lock flags (INV-S5/S6, INV-A2/A4) | `teacher.isApproved`, `teacher.isOnline` | `backend/db/schema/teachers/teacher.ts` |
 | Financial tables targeted by the purity proof | `wallet`, `teacher_transaction`, `student_payments`; balance lanes on `students` (+ DEV1-004 `balance_trial`) | `backend/db/schema/billing/*.ts`, `backend/db/schema/students/students.ts` |
 
-**Prohibited by construction:** no new tables/columns/enums/indexes; no `bun run db push`; no custom SQL under `backend/db/migration/`; no DBML edit; `db reset` / `cleanGenerate` remain disabled (`docs/DATABASE_MIGRATIONS.md`).
+**Prohibited by construction:** no new tables/columns/enums/indexes; no `bun run db push`; no custom SQL under `backend/db/migration/`; `db reset` / `cleanGenerate` remain disabled (`docs/DATABASE_MIGRATIONS.md`).
 
 ### 2.2 Canonical Types (UNCHANGED — no new type files, REQ-003)
 

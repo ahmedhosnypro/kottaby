@@ -10,7 +10,7 @@ import { type DbDialect, migrationsFolderForDialect } from "@/scripts/dbActions/
  * Run migrations programmatically.
  * This is useful for running migrations in production or in CI/CD pipelines.
  *
- * Dialect-aware (Phase 4): picks `backend/drizzle` for PostgreSQL or
+ * Dialect-aware: picks `backend/drizzle` for PostgreSQL or
  * `backend/drizzle-sqlite` for SQLite, and skips PG-only steps
  * (`applyCustomMigrations`, `ensureIdempotentMigrations`, pool close) for SQLite.
  *

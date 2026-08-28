@@ -1,7 +1,7 @@
 /**
  * SurahJuzRef enum — mirrors the `surah_juz_ref` pgEnum in
- * `backend/db/schema/enums.ts`. Values derived from `db/schema.dbml`
- * (ground truth per REQ-002). Composed of 5 surahs (al_fatihah..al_maidah)
+ * `backend/db/schema/enums.ts`. Values are canonical.
+ * Composed of 5 surahs (al_fatihah..al_maidah)
  * followed by 30 juz (1..30). Used by `home_work.current_surah_juz` and
  * `home_work.revision_surah_juz`.
  */

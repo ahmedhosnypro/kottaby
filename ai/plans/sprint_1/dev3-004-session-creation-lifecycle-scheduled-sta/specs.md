@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary & Problem Statement
 
-- **Feature**: The canonical Session Creation & Lifecycle engine for Draft Academy — a backend vertical slice delivering: (a) `requestSession` — a student-initiated, idempotent, fully-guarded creation mutation producing a `session` row (`scheduled`, `student_session`, platform-set `fee`, `fee_held=true`, `confirmation_deadline=now+24h`); (b) the teacher-driven transitions `scheduled → started` (with in-session lock `teacher.is_online=false`, INV-S6) and `started → completed` (`ended_at` set); (c) participant-driven cancellation from `scheduled`/`started → cancelled` with escrow-hold release (`fee_held=false`, no decrement, no wallet transaction); (d) a participant-only `session(id)` read query. All transitions are enforced by a single canonical state-guard implementing the DBML ground-truth transition set: `scheduled → started | cancelled`, `started → completed | cancelled`, `completed → ∅`, `cancelled → ∅` (INV-S1/INV-S2).
+- **Feature**: The canonical Session Creation & Lifecycle engine for Draft Academy — a backend vertical slice delivering: (a) `requestSession` — a student-initiated, idempotent, fully-guarded creation mutation producing a `session` row (`scheduled`, `student_session`, platform-set `fee`, `fee_held=true`, `confirmation_deadline=now+24h`); (b) the teacher-driven transitions `scheduled → started` (with in-session lock `teacher.is_online=false`, INV-S6) and `started → completed` (`ended_at` set); (c) participant-driven cancellation from `scheduled`/`started → cancelled` with escrow-hold release (`fee_held=false`, no decrement, no wallet transaction); (d) a participant-only `session(id)` read query. All transitions are enforced by a single canonical state-guard implementing the Workflow-03 transition set: `scheduled → started | cancelled`, `started → completed | cancelled`, `completed → ∅`, `cancelled → ∅` (INV-S1/INV-S2).
 
 - **Problem from user perspective**:
   - **Student (Yusuf)**: after subscribing (or holding his DEV1-004 free trial) he must be able to commit to a session with an online certified Sheikh whose Qira'ah/subject will later be filtered by matching (DEV3-008). His session credit must never be double-spent by a flaky-network double-tap (docs/IDEMPOTENCY.md), and if the session never happens he must not lose his credit (B.4 release-on-cancel).
@@ -83,7 +83,7 @@
 
 - **REQ-022 (Terminal Guards — INV-S1/INV-S2)**: WHEN any mutation targets a session in `completed` or `cancelled` state (including `completed → cancelled`, which DEV3-004 does not expose — disposal of completed sessions happens only via the DEV3-012/022 dispute path) THEN the transition SHALL be rejected with `SESSION_INVALID_TRANSITION` and zero writes SHALL occur; the `disputed` status SHALL NOT be reachable from any DEV3-004 mutation.
 
-- **REQ-023 (Canonical State Guard)**: WHEN any of the three transition mutations executes THEN it SHALL route through ONE shared state-guard module (allowed-transition map of the DBML/Workflow-03 graph) consumed by the service; ad-hoc per-mutation status checks duplicating the map are PROHIBITED.
+- **REQ-023 (Canonical State Guard)**: WHEN any of the three transition mutations executes THEN it SHALL route through ONE shared state-guard module (allowed-transition map of the Workflow-03 graph) consumed by the service; ad-hoc per-mutation status checks duplicating the map are PROHIBITED.
 
 - **REQ-024 (Participant Read Query)**: WHEN `session(id: ID!)` is queried THEN the service SHALL return the session only where `ctx.user.id ∈ {session.studentId, session.teacherId}` (or admin role per DEV2-002 machinery); a non-participant SHALL receive `SESSION_NOT_FOUND` (oracle-resistant — REQ-034).
 
@@ -135,7 +135,7 @@
 
 - **REQ-046 (No Module-Level Mutable State)**: WHEN the module executes THEN there SHALL be ZERO module-level mutable Maps/Sets/arrays for request tracking; the only shared pre-state is the atomic cache key claim and DB rows — so serverless cold starts and multi-instance deploys cannot diverge.
 
-- **REQ-047 (Schema Stability)**: WHEN implementation completes THEN `git diff` on `backend/db/schema/**` and `db/schema.dbml` SHALL be empty and `bun validate:dbml` SHALL remain green; any discovered schema gap (e.g., a per-session lane-assignment column for REQ-014's refinement) SHALL be escalated via `deferred-items.md` targeting DEV3-013/DEV1-001 owners — never patched inline (`db reset`/`cleanGenerate` remain permanently disabled; any structural change would belong to a separate approved schema task via `bun run db push`).
+- **REQ-047 (Schema Stability)**: WHEN implementation completes THEN `git diff` on `backend/db/schema/**` SHALL be empty; any discovered schema gap (e.g., a per-session lane-assignment column for REQ-014's refinement) SHALL be escalated via `deferred-items.md` targeting DEV3-013/DEV1-001 owners — never patched inline (`db reset`/`cleanGenerate` remain permanently disabled; any structural change would belong to a separate approved schema task via `bun run db push`).
 
 - **REQ-048 (Single Time Source)**: WHEN timestamps are written (`startedAt`, `endedAt`, `confirmationDeadline`) THEN one `now` captured per transactional operation SHALL be reused consistently, and 24h arithmetic SHALL be computed in application time — no database-clock/session-timezone drift.
 
@@ -249,7 +249,7 @@
 | Workflow | Alignment |
 |---|---|
 | **02 — On-Demand Matching** | "Verify teacher is still Available → session created (scheduled) + lock" is honored with the request-time creation reconciliation; directory/filter pipeline itself is DEV3-008/009. |
-| **03 — Session Lifecycle & Escrow** | Implements `scheduled→started→completed|cancelled` exactly as the DBML graph; dual-confirmation + escrow debit remain later-stage owners as annotated per state. |
+| **03 — Session Lifecycle & Escrow** | Implements `scheduled→started→completed|cancelled` exactly as the Workflow-03 graph; dual-confirmation + escrow debit remain later-stage owners as annotated per state. |
 | **01 — Teacher Verification** | Boundary: only primitives are shared with Contract 4; no evaluation booking here (REQ-026). |
 | **04 — Parent Supervision** | No parent-facing behavior emitted (non-goal); future parent session-completion notifications hang off the `completed` state (DEV3-010-011/DEV1-017). |
 | **05 — Admin Governance Override** | No admin mutation surface introduced; DEV3-021 will add governance transitions consuming the same canonical state guard (REQ-023) rather than forking it — binding forward note in REQ-080. |
@@ -279,7 +279,7 @@
 | REQ-027..029 | B.2 sweeper boundary; INV-A4; M1 gate | Creation writes deadline; no consumer exists in repo scan | REQ-077 evidence | — | Static scan: no `confirmationDeadline` read; suite green = M1 evidence |
 | REQ-030..034 | REQ-030–034 security family | Identity derivation + NOT_FOUND oracle-resistance; `assertNotSuspended` landing (services/auth) | authScopes on all four ops | — | REQ-076 security suite (BOLA/BFLA/governance windows/oracle) |
 | REQ-035..039 | Rate-limit posture; injection; logs; depth; ID safety | Boundary validators + localized key registry | Input-type gating pre-resolver | — | Fuzz/ID/boundary suites; forbidden-import scans; log-redaction review |
-| REQ-040..049 | Atomicity family; REQ-047 schema stability | `withTransaction`, guarded UPDATEs, students-row `FOR UPDATE` | — | — | REQ-074 chaos matrix (a–e); `git diff` + `bun validate:dbml` green; two consecutive deterministic reruns |
+| REQ-040..049 | Atomicity family; REQ-047 schema stability | `withTransaction`, guarded UPDATEs, students-row `FOR UPDATE` | — | — | REQ-074 chaos matrix (a–e); `git diff` empty; two consecutive deterministic reruns |
 | REQ-050..055 | DEV3-002 taxonomy; DomainError doc | `errors` namespace keys (types/en/ar); logger discipline | `extensions.code` assertions in every negative test | — | Code-mapping matrix tests + i18n parity gate (REQ-075-style) |
 | REQ-060..063 | Pothos canonical-type + enum CRITICAL RULES | `backend/graphql/pothos/sessions/*` + `shared/enum.pothos.ts` registrations | `requestSession`/`startSession`/`completeSession`/`cancelSession`/`session` | — | GraphQL integration suite (REQ-077) asserting surfaces + scopes |
 | REQ-064..065 | Codegen sync; sharedDocuments rules | — | Documents under `frontend/graphql/sharedDocuments/sessions/` | — | Codegen committed diff; document-naming/id-field static checks |

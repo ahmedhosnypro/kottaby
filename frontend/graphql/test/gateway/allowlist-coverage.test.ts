@@ -1,8 +1,8 @@
 /**
- * dev3-003 Task 5.2 — ALLOWLIST COVERAGE GATE (REQ-072 · BLOCKING · plan D3).
+ * Allowlist coverage gate — default-deny posture over the built schema.
  *
  * THE CONTRACT THIS FILE ENFORCES
- *   Default-deny (D3): EVERY root Query/Mutation field must EITHER declare an
+ *   Default-deny: EVERY root Query/Mutation field must EITHER declare an
  *   `authScopes` block (Pothos scope-auth plugin — visible at build time on
  *   each field's `extensions.pothosOptions.authScopes`) OR be an exact member
  *   of the closed `PUBLIC_OPERATIONS` constant (`backend/lib/gateway/
@@ -11,7 +11,7 @@
  *     - a scopeless resolver absent from the constant  ⇒ BFLA hole (test RED);
  *     - an allowlist entry that no longer matches any schema field ⇒ stale
  *       registry row advertising a surface that does not exist (test RED).
- *   Plus DEV2-002 REQ-074 preservation: NO mutation matching the
+ *   Role-escalation guard: NO mutation matching the
  *   `grantRole…` / `assignRole…` / `elevate…` name family may ship under a
  *   NON-admin-grade scope.
  *
@@ -24,30 +24,28 @@
  *   live this cycle: `me` → `{"authenticated":true}`; all six allowlisted
  *   operations → undefined).
  *
- * DECISION OF RECORD (vs extending DEV2-002's D3 test in place)
- *   CREATE new file. DEV2-002's D3 verification shipped STRUCTURAL ONLY
- *   (source-text grep + manual set listing — no introspection file ever
- *   landed; deferred item recorded there as "test-runner env unblock"),
- *   therefore there is nothing to extend in place. Pre-existing structural
- *   suites stay untouched as lower-tier complements:
+ * RELATIONSHIP TO THE STRUCTURAL SUITES
+ *   Pre-existing structural suites stay untouched as lower-tier complements:
  *   `backend/lib/gateway/public-operations.test.ts` (registry closure tiers)
- *   and schema-surface.test.ts (agreement SEC twin for `_health` alone).
+ *   and schema-surface.test.ts (agreement SEC twin for `_health` alone). This
+ *   gate adds the in-process introspection tier they deliberately lack —
+ *   they verify registry source text, this one walks the built schema.
  *
  * ENV NOTES
- *   - BLT-07 honored: `setupTestServerLifecycle`/`testClient` are DELIBERATELY
- *     NOT used (doubly env-locked while :3000 runs); REQ-072 needs only the
- *     built schema, so this gate runs at the schema-build tier and inherits
+ *   - `setupTestServerLifecycle`/`testClient` are DELIBERATELY
+ *     NOT used (env-locked while :3000 runs); the gate needs only the
+ *     built schema, so it runs at the schema-build tier and inherits
  *     none of the harness breakage.
- *   - Layering note: despite living under `frontend/graphql/test/gateway/`
- *     (plan-pinned path, R1 Correction #9), this is a UNIT-tier schema
- *     introspection suite, not an API-interaction test — the frontend/graphql
- *     test AGENTS.md rule banning direct backend imports governs API-driving
- *     integration files and cannot apply to the very schema the REQ-072 gate
- *     must inspect; no repos/services/db modules are touched.
+ *   - Layering note: despite living under `frontend/graphql/test/gateway/`,
+ *     this is a UNIT-tier schema introspection suite, not an API-interaction
+ *     test — the frontend/graphql test AGENTS.md rule banning direct backend
+ *     imports governs API-driving integration files and cannot apply to the
+ *     very schema this gate must inspect; no repos/services/db modules are
+ *     touched.
  *
  * Pure unit tier — NO server boot, NO network, NO DB. Runs via the mandated
- * runner: `bun run test/scripts/run-test.ts <this-file>` and inside the DEV3-
- * 001 CI `tests` stage through `bun run test:graphql`'s glob discovery over
+ * runner: `bun run test/scripts/run-test.ts <this-file>` and inside the CI
+ * `tests` stage through `bun run test:graphql`'s glob discovery over
  * `frontend/graphql/test/**`.
  */
 
@@ -107,7 +105,7 @@ function collectPosture(schema: GraphQLSchema, rootKind: "getQueryType" | "getMu
 }
 
 /**
- * Admin-grade scope detection for the role-escalation rule (DEV2-002 REQ-074):
+ * Admin-grade scope detection for the role-escalation rule:
  * a `grantRole…`/`assignRole…`/`elevate…` mutator counts as protected ONLY when its
  * scope block is `{ superAdmin: true }` or carries a `role:[…]` set containing
  * {@link UserRole.Admin}. Anything else (including bare `permission` gates) is
@@ -128,10 +126,10 @@ const ROLE_ESCALATION_PATTERN = /^(grantRole|assignRole|elevate)/;
 const ALLOWLIST_SORTED: string[] = [...PUBLIC_OPERATIONS].toSorted((a, b) => a.localeCompare(b));
 
 // ===========================================================================
-describe("REQ-072 (1) — default deny: every root field is scoped OR allowlisted", () => {
+describe("default deny: every root field is scoped OR allowlisted", () => {
   test("Query — zero unclassified fields (walk proven non-vacuous vs frozen set)", () => {
     const posture = collectPosture(graphQLSchema, "getQueryType");
-    // Frozen post-3.1 reality: exactly these two scopeless queries exist.
+    // Frozen reality: exactly these two scopeless queries exist.
     expect(posture.unscopedNames).toEqual(["_health", "recitationReadings"]);
     for (const name of posture.unscopedNames) {
       expect(PUBLIC_OPERATIONS.has(name)).toBe(true);
@@ -140,7 +138,7 @@ describe("REQ-072 (1) — default deny: every root field is scoped OR allowliste
 
   test("Mutation — zero unclassified fields (walk proven non-vacuous ≥4 ops)", () => {
     const posture = collectPosture(graphQLSchema, "getMutationType");
-    // Non-vacuous proof the walk found the frozen Phase-3 mutation quartet.
+    // Non-vacuous proof the walk found the frozen mutation quartet.
     expect(posture.unscopedNames.length + posture.scoped.size).toBeGreaterThanOrEqual(4);
     for (const name of posture.unscopedNames) {
       expect(PUBLIC_OPERATIONS.has(name)).toBe(true);
@@ -149,7 +147,7 @@ describe("REQ-072 (1) — default deny: every root field is scoped OR allowliste
 });
 
 // ===========================================================================
-describe("REQ-072 (2) — exact 1:1 agreement, both directions", () => {
+describe("exact 1:1 agreement, both directions", () => {
   const queryPosture = collectPosture(graphQLSchema, "getQueryType");
   const mutationPosture = collectPosture(graphQLSchema, "getMutationType");
   const schemaUnscopedSet = [...queryPosture.unscopedNames, ...mutationPosture.unscopedNames].toSorted((a, b) =>
@@ -178,7 +176,7 @@ describe("REQ-072 (2) — exact 1:1 agreement, both directions", () => {
 });
 
 // ===========================================================================
-describe("REQ-072 (3) — DEV2-002 REQ-074: role escalation stays admin-gated", () => {
+describe("role escalation stays admin-gated", () => {
   test("every grantRole*/assignRole*/elevate* mutation carries an admin-grade scope", () => {
     const posture = collectPosture(graphQLSchema, "getMutationType");
     for (const [name, scopes] of posture.scoped) {
@@ -197,7 +195,7 @@ describe("REQ-072 (3) — DEV2-002 REQ-074: role escalation stays admin-gated", 
 });
 
 // ===========================================================================
-describe("negative-fixture proof — the gate DETECTS drift (5.2.SR)", () => {
+describe("negative-fixture proof — the gate DETECTS drift", () => {
   /**
    * Synthetic drifted schema built IN THIS PROCESS (never touches production
    * modules or the committed SDL): the familiar public surfaces plus one

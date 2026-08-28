@@ -1,5 +1,5 @@
 /**
- * bun:test suite for the docs-validation CI wrapper (plan DEV3-001 task 2.3).
+ * bun:test suite for the docs-validation CI wrapper.
  *
  * Tier map:
  * - Tier 1: mode mapping (`pull_request` → pr; everything else, including
@@ -11,7 +11,7 @@
  * - Tier 3: git command failure surfacing (injected recorder AND live child
  *   processes: cwd without a repository, plus a hermetic self-remote fixture
  *   proving the REAL pr empty-diff no-op end to end).
- * - Tier 4 (REQ-035): shell-metacharacter BASE_REF must arrive as ONE element
+ * - Tier 4 (shell-injection defense): shell-metacharacter BASE_REF must arrive as ONE element
  *   of the spawned argv array — asserted on both the pure builder and a live
  *   process run against the real repository (payload provably inert).
  *
@@ -42,9 +42,9 @@ const FAKE_ROOT = "/fake-repo";
 const VALIDATOR_PREFIX = ["bun", "run", "scripts/validate-mermaid.ts"];
 const WRAPPER_ABSOLUTE_PATH = join(import.meta.dir, "validate-docs-ci.ts");
 const FENCE = "```mermaid";
-/** Production pr-mode git argv shape (W4-F1): NUL-record ingestion upstream of the pure core. */
+/** Production pr-mode git argv shape: NUL-record ingestion upstream of the pure core. */
 const EXPECTED_GIT_ARGV_TAIL = ["diff", "--name-only", "--diff-filter=ACMR", "-z"];
-/** Filename exercising the full W4-F1 gauntlet: embedded LF + space + non-ASCII. */
+/** Filename exercising every pathname hazard at once: embedded LF + space + non-ASCII. */
 const WEIRD_FILENAME = "re port\nwith LF & ä.md";
 
 /* ------------------------------------------------------------------ */
@@ -233,7 +233,7 @@ describe("resolveDocsCiMode (Tier 1)", () => {
 });
 
 describe("buildGitDiffArgv (Tier 1 + Tier 4 surface)", () => {
-  test("produces exactly eight elements: config pair, subcommand, filters, -z, operand (W4-F1)", () => {
+  test("produces exactly eight elements: config pair, subcommand, filters, -z, operand", () => {
     expect(buildGitDiffArgv("release/1.2")).toStrictEqual([
       "git",
       "-c",
@@ -246,7 +246,7 @@ describe("buildGitDiffArgv (Tier 1 + Tier 4 surface)", () => {
     ]);
   });
 
-  test("-c core.quotePath=false sits BEFORE the subcommand; -z is a plain flag element (W4-F1)", () => {
+  test("-c core.quotePath=false sits BEFORE the subcommand; -z is a plain flag element", () => {
     const argv = buildGitDiffArgv("main");
     expect(argv[0]).toBe("git");
     expect(argv.slice(1, 3)).toStrictEqual(["-c", "core.quotePath=false"]);
@@ -294,7 +294,7 @@ describe("runValidateDocsCi — pr mode", () => {
     expect(validator.calls).toStrictEqual([[...VALIDATOR_PREFIX, "docs/b.mmd"]]);
   });
 
-  test("nonzero validator exit is propagated EXACTLY (7) — no || true rewiring (REQ-051)", async () => {
+  test("nonzero validator exit is propagated EXACTLY (7) — no || true rewiring", async () => {
     const git = recordingSpawner([{ code: 0, stdout: "docs/a.md\u0000", stderr: "" }]);
     const validator = recordingValidatorExit([7]);
     const code = await runValidateDocsCi(
@@ -378,10 +378,10 @@ describe("runValidateDocsCi — pr mode", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* W4-F1 — nul-record ingestion + loud-fail closure                     */
+/* Nul-record ingestion + loud-fail closure                             */
 /* ------------------------------------------------------------------ */
 
-describe("W4-F1 nul ingestion (pr mode)", () => {
+describe("nul ingestion (pr mode)", () => {
   test("legacy C-quoted ghost line trips the named loud-fail guard: attributed stderr + exit 1", async () => {
     // The historic fail-open, now impossible to miss: a C-quoted record such as
     // `"path\nwith\nLF.md"` (what git used to emit for a filename containing an
@@ -448,16 +448,16 @@ describe("W4-F1 nul ingestion (pr mode)", () => {
   });
 });
 
-/** Injected reader alias local to this file's W4-F1 block (same shape as changed-docs tests). */
+/** Injected reader alias local to this file's nul-ingestion block (same shape as changed-docs tests). */
 function readerLike(contents: Record<string, string>): (path: string) => string | null {
   return path => contents[path] ?? null;
 }
 
 /* ------------------------------------------------------------------ */
-/* R3-H1 — pr-mode `.agents` parity with the push-walk skip set         */
+/* Pr-mode `.agents` parity with the push-walk skip set                 */
 /* ------------------------------------------------------------------ */
 
-describe("pr/push skip-set parity (R3-H1)", () => {
+describe("pr/push skip-set parity", () => {
   test("isSkippedDirectoryName exposes the shared walk/skip decision purely", () => {
     expect(isSkippedDirectoryName(".agents")).toBe(true);
     expect(isSkippedDirectoryName(".git")).toBe(true);
@@ -526,10 +526,10 @@ describe("pr/push skip-set parity (R3-H1)", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* REQ-026 — git failure surfacing                                      */
+/* Git failure surfacing                                                */
 /* ------------------------------------------------------------------ */
 
-describe("runValidateDocsCi — pr-mode git failure (REQ-026)", () => {
+describe("runValidateDocsCi — pr-mode git failure", () => {
   test("child exit code propagates and raw multi-line stderr is surfaced un-truncated", async () => {
     const rawGitStderr = ["fatal: ambiguous argument 'origin/nope...HEAD'", "another line preserved", ""].join("\n");
     const git = recordingSpawner([{ code: 128, stdout: "", stderr: rawGitStderr }]);
@@ -645,7 +645,7 @@ describe("runValidateDocsCi — push mode full-set scan", () => {
     expect(validator.calls[0]).toStrictEqual([...VALIDATOR_PREFIX, "docs/real.md"]);
   });
 
-  test("dot-prefixed tooling directories (.agents) are pruned like VCS/build caches — D4", async () => {
+  test("dot-prefixed tooling directories (.agents) are pruned like VCS/build caches", async () => {
     const walker = layoutWalker(FAKE_ROOT, [
       ".agents/skills/mermaid-diagrams/SKILL.md",
       ".agents/skills/c4-architecture/references/deep.mmd",
@@ -666,7 +666,7 @@ describe("runValidateDocsCi — push mode full-set scan", () => {
         readFileOrNull: async path => {
           // ANY read under .agents means the prune failed loudly — even if the
           // placeholder fence below would be selected, the argv assert below
-          // already guarantees failure; this documents the D4 fixture intent.
+          // already guarantees failure; this documents the fixture intent.
           if (path.startsWith(".agents")) throw new Error(`prune breach — content read of ${path}`);
           if (path === "docs/real.md") return "# doc";
           if (path === "agents-like/fenced.md") return mdDocument(["```mermaid", "flowchart TD", "A-->B", "```", ""]);
@@ -858,7 +858,7 @@ describe("LIVE processes", () => {
       expect(second.code).toBe(0);
       expect(second.stdout).toBe(`${NOOP_MESSAGE}\n`);
 
-      // W4-F1 extension: commit an exotic filename (embedded LF + space + umlaut)
+      // Exotic filename (embedded LF + space + umlaut)
       // carrying a valid mermaid fence. The `-z` ingestion executes through the
       // FULL wrapper against REAL git bytes: no crash, no ghost mis-parse. The
       // entry resolves null against the wrapper's repo-root content anchor
@@ -880,7 +880,7 @@ describe("LIVE processes", () => {
     }
   });
 
-  test("LIVE git -z harness: real diff bytes carry an LF/space/non-ASCII filename intact into the nul parser (W4-F1)", async () => {
+  test("LIVE git -z harness: real diff bytes carry an LF/space/non-ASCII filename intact into the nul parser", async () => {
     const sandbox = await mkdtemp(join(tmpdir(), "dev3-v23-znames-"));
     try {
       await gitOk(sandbox, ["init"]);

@@ -1,12 +1,12 @@
 /**
  * Runtime guards & assertion helpers for the contract library.
- * Pure, stateless, zero DB coupling (REQ-042).
+ * Pure, stateless, zero DB coupling.
  *
- * Guard discipline (REQ-052): return parsed canonical value or throw;
+ * Guard discipline: return parsed canonical value or throw;
  * `is*` boolean predicates + `assert*` throwers are the ONLY pattern;
- * silent null-swallowing is PROHIBITED (fail-closed, REQ-053).
+ * silent null-swallowing is PROHIBITED (fail-closed).
  *
- * Translation bags are PARAMETERS — zero i18n imports in this library (REQ-051).
+ * Translation bags are PARAMETERS — zero i18n imports in this library.
  */
 import { SessionIntent } from "@/backend/enum/scheduling/session-intent.enum";
 import { SessionType } from "@/backend/enum/scheduling/session-type.enum";
@@ -21,7 +21,7 @@ import type { TeacherSelectType } from "@/backend/types/teachers/teacher.types";
 
 /**
  * Minimal translation-bag shape required by guards.
- * Callers provide their own resolved translations (REQ-051).
+ * Callers provide their own resolved translations.
  */
 export interface GuardTranslationBag {
   readonly subjectsParseInvalid: string;
@@ -36,14 +36,14 @@ const VALID_EVALUATION_SESSION_TYPES = new Set<string>([SessionType.TeacherEvalu
 
 /**
  * Parses a JSON-encoded subjects string from the DB into a readonly string array.
- * Plan §4.2 exact behavioral contract:
+ * Behavioral contract:
  *   - `null` → `[]`
  *   - empty/whitespace → throw ValidationError
  *   - malformed JSON → throw ValidationError
  *   - non-array → throw ValidationError
  *   - non-string items → throw ValidationError
  *
- * REQ-053: fail-closed, no normalization.
+ * Fail-closed, no normalization.
  */
 export function parseTeacherSubjects(
   raw: TeacherSelectType["subjects"],
@@ -71,7 +71,7 @@ export function parseTeacherSubjects(
 
 /**
  * Fail-closed boolean predicate for SessionIntent values.
- * No case-folding, no normalization (REQ-053).
+ * No case-folding, no normalization.
  */
 export function isSessionIntent(value: string): value is SessionIntent {
   return VALID_SESSION_INTENTS.has(value);
@@ -79,7 +79,7 @@ export function isSessionIntent(value: string): value is SessionIntent {
 
 /**
  * Asserts a value is a valid SessionIntent; throws ValidationError otherwise.
- * REQ-053: fail-closed, no case-folding.
+ * Fail-closed, no case-folding.
  */
 export function assertSessionIntent(value: string, t: GuardTranslationBag): asserts value is SessionIntent {
   if (!isSessionIntent(value)) {
@@ -114,11 +114,11 @@ export function assertEvaluationSessionType(
 }
 
 /**
- * INV-S3 — Constructor-funnel for EscrowTriggerContract.
+ * Constructor-funnel for EscrowTriggerContract.
  * Both confirmation timestamps must be non-null; otherwise throws ConflictError
  * (state conflict, not input-shape error).
  *
- * Decision #3: the ONLY sanctioned constructor for EscrowTriggerContract.
+ * The ONLY sanctioned constructor for EscrowTriggerContract.
  */
 export function buildEscrowTrigger(
   state: DualConfirmationState,

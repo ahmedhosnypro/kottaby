@@ -1,28 +1,28 @@
 /**
  * Form-bound projection of Apollo mutation failures into RHF
- * `setError(field, { message })` pairs (dev3-002 Task 4.3, REQ-015 → REQ-061).
+ * `setError(field, { message })` pairs.
  *
  * WHY THIS EXISTS
- *   Task 4.1's ErrorLink dispatcher (`frontend/providers/apollo/utils.ts`)
- *   cannot see React form state and always publishes with `hasForm:false`.
- *   Its documented adoption protocol (outcome/4.1 §7.3) says a form-bound
- *   consumer converts the `fieldErrors` pairs attached to the VALIDATION rows
- *   into field-level errors locally. This module IS that form-bound seam for
+ *   The ErrorLink dispatcher (`frontend/providers/apollo/utils.ts`) cannot
+ *   see React form state and always publishes with `hasForm:false`.
+ *   Its documented adoption protocol says a form-bound consumer converts
+ *   the `fieldErrors` pairs attached to the VALIDATION rows into
+ *   field-level errors locally. This module IS that form-bound seam for
  *   mutation forms: it walks an unknown Apollo error's cause chain, finds
  *   `extensions.code` + `extensions.fields[]` carriers, re-runs them through
- *   the SAME pure REQ-061 table with `hasForm:true` / `contextKind:"mutation"`
- *   (the direct-call variant — the single-slot
+ *   the SAME pure code→behavior mapping table with `hasForm:true` /
+ *   `contextKind:"mutation"` (the direct-call variant — the single-slot
  *   `registerGraphQLErrorActionListener` seam stays owned by app-scope
  *   surfaces, so a page-level form must NOT register over it), and yields
  *   `{ field, message }` pairs ready for RHF.
  *
  * CONTRACT POSTURE
- *  - REQ-015: each `extensions.fields[]` entry already carries a fully
+ *  - Each `extensions.fields[]` entry already carries a fully
  *    localized user-facing `message` — that is the ONLY string echoed into
  *    the result. Nothing else from the wire (`code`, unknown extras, raw
  *    top-level error text) ever lands on a field (whitelist posture mirrors
  *    `projectTextFieldErrors` in `frontend/components/ui/fieldError.ts`).
- *  - REQ-055: this module adds ZERO translation surface. Field messages come
+ *  - This module adds ZERO translation surface. Field messages come
  *    verbatim from the server-localized wire pairs; every fallback copy used
  *    by consumers comes from EXISTING `auth` namespace keys.
  *  - Rows without field pairs (CONFLICT notice, masked INTERNAL_SERVER_ERROR,
@@ -43,7 +43,7 @@ import { extractWireFieldErrors, mapGraphQLErrorByCode } from "@/frontend/provid
 export interface ProjectedFieldError {
   /** RHF-consumable form path, e.g. `"email"`, `"homeWork.currentGrade"`. */
   readonly field: string;
-  /** Fully localized user-facing message (REQ-015 wire contract). */
+  /** Fully localized user-facing message (server-localized wire contract). */
   readonly message: string;
 }
 
@@ -139,7 +139,7 @@ export function projectMutationFieldErrors(error: unknown): readonly ProjectedFi
  * payloads from leaking anywhere into rendered state.
  *
  * `applied > 0` means the response carried usable `extensions.fields[]`: per
- * the REQ-061 contract the per-field mapping REPLACES the global-form
+ * the mapping contract the per-field mapping REPLACES the global-form
  * fallback — callers should suppress their generic inline alert for these
  * failures. `applied === 0` leaves form state untouched (callers keep prior
  * behavior).

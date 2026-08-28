@@ -212,11 +212,10 @@ async function getNewAccessToken(): Promise<string | null> {
 }
 
 // Auth-recovery trigger codes. The canonical taxonomy code emitted by the
-// DomainError hierarchy is "UNAUTHORIZED" (REQ-010 row 2; pothos scopeAuth
-// maps missing sessions onto UnauthorizedError); the legacy literal
-// "UNAUTHENTICATED" is kept so any pre-taxonomy producer still recovers.
-// Task 4.1 integration note: this EXTENDS the trigger predicate only — the
-// deduped refresh + redirect machinery below is byte-preserved.
+// DomainError hierarchy is "UNAUTHORIZED" (pothos scopeAuth maps missing
+// sessions onto UnauthorizedError); the legacy literal "UNAUTHENTICATED" is
+// kept so any pre-taxonomy producer still recovers. The deduped refresh +
+// redirect machinery below is owned by this file.
 const AUTH_RECOVERY_TRIGGER_CODES = new Set<string>(["UNAUTHENTICATED", "UNAUTHORIZED"]);
 
 /**
@@ -226,11 +225,9 @@ const AUTH_RECOVERY_TRIGGER_CODES = new Set<string>(["UNAUTHENTICATED", "UNAUTHO
  * visitors who have not signed in — without this exemption every anonymous
  * visit bounced straight back to /login.
  *
- * dev3-002 review-R1 delta (REQ-061 row 1 scope guard): `/register` belongs in
- * this set — the landing-workstream exemption above covered only `/` +
- * `/login`, leaving sign-up still bounced to `/login?redirect=%2Fregister`
- * ~2 s after load (live-reproduced during iteration R1). Protected routes keep
- * the existing refresh-then-redirect recovery unchanged.
+ * `/register` belongs in this set as well: without it, sign-up was bounced
+ * to `/login?redirect=%2Fregister` ~2 s after load. Protected routes keep
+ * the refresh-then-redirect recovery.
  */
 function isPublicAuthExemptPath(pathname: string): boolean {
   return pathname === "/" || pathname.endsWith("/login") || pathname === "/register" || pathname.endsWith("/register");
@@ -333,10 +330,10 @@ async function recoverFromUnauthenticated(operationName: string | undefined, pat
 }
 
 // ---------------------------------------------------------------------------
-// REQ-061 surface dispatch (Task 4.1)
+// GraphQL error surface dispatch
 //
-// Registration seam mirroring `registerAuthRecovery` above: a UI host (Task
-// 4.2 toasts / PermissionDeniedFallback sections) registers ONE listener and
+// Registration seam mirroring `registerAuthRecovery` above: a UI host
+// (toasts / PermissionDeniedFallback sections) registers ONE listener and
 // receives typed {@link GraphQLErrorAction}s produced by the pure mapping in
 // `error-link.map.ts`. With no listener registered the dispatcher is a no-op,
 // so today's behavior is preserved exactly.
@@ -379,9 +376,10 @@ function logErrorSurfaceEvent(message: string, payload: Record<string, unknown> 
 }
 
 /**
- * Maps ONE wire error item through the pure REQ-061 table, or returns `null`
- * when the item carries no string code, belongs to the auth-recovery rows
- * (display ownership stays with handleAuthError), or has no mapping row.
+ * Maps ONE wire error item through the pure code→behavior mapping table, or
+ * returns `null` when the item carries no string code, belongs to the auth-
+ * recovery rows (display ownership stays with handleAuthError), or has no
+ * mapping row.
  */
 function toMappedSurfaceAction(
   item: CombinedGraphQLErrors["errors"][number],
@@ -402,7 +400,7 @@ function toMappedSurfaceAction(
 }
 
 /**
- * Maps each GraphQL error item through the pure REQ-061 table and publishes
+ * Maps each GraphQL error item through the pure mapping table and publishes
  * the resulting actions to the registered surface listener.
  *
  *  - Auth rows (`UNAUTHENTICATED`/`UNAUTHORIZED`) are skipped here — display
@@ -413,7 +411,7 @@ function toMappedSurfaceAction(
  *  - The link layer cannot observe React form state, so `hasForm` is always
  *    `false` here; VALIDATION actions still carry their `fieldErrors` pairs
  *    so form-bound consumers can convert them into `setError(field, …)` calls
- *    instead of toasting the fallback copy (REQ-061 else-branch).
+ *    instead of toasting the fallback copy.
  */
 export function dispatchMappedGraphQLErrorActions(
   error: unknown,
@@ -423,13 +421,12 @@ export function dispatchMappedGraphQLErrorActions(
     !CombinedGraphQLErrors.is(error) ||
     typeof globalThis.window === "undefined" ||
     // Skip only where sign-in forms self-surface their failures (double-
-    // toast avoidance). NOTE (review-R2 fix): iteration R1 accidentally
-    // negated `isPublicAuthExemptPath` here, which INVERTED this guard into
-    // "publish on public pages only" — silently disabling every mapped
-    // REQ-061 surface action (toasts / PermissionDeniedFallback) across the
-    // whole authenticated app (dashboard/profile/…). The redirect-exemption
-    // predicate must not double as the dispatch gate; restored to the
-    // Phase-4 login-only exemption (29-test surface-seam suite pins this).
+    // toast avoidance). The redirect-exemption predicate must NOT double as
+    // the dispatch gate: gating on `isPublicAuthExemptPath` here would
+    // invert the guard into "publish on public pages only", silently
+    // disabling every mapped surface action (toasts /
+    // PermissionDeniedFallback) across the whole authenticated app
+    // (dashboard/profile/…). The dispatch gate stays login-only.
     globalThis.window.location.pathname.endsWith("/login") ||
     SELF_SURFACED_OPERATION_NAMES.has(operation.operationName ?? "") ||
     graphQLErrorActionListener === null
@@ -443,7 +440,7 @@ export function dispatchMappedGraphQLErrorActions(
 
   for (const item of error.errors) {
     const action = toMappedSurfaceAction(item, contextKind);
-    if (action === null) continue; // auth row / no REQ-061 row → behavior unchanged
+    if (action === null) continue; // auth row / no mapping row → behavior unchanged
 
     try {
       graphQLErrorActionListener(action, meta);
@@ -475,9 +472,9 @@ export type ErrorRoutingDeps = {
 };
 
 /**
- * The FULL errorLink callback body, extracted verbatim (Task 4.1) so the
- * auth double-path, REQ-061 surface dispatch, and the transport connectivity
- * branch are unit-testable without standing up an Apollo Link chain.
+ * The FULL errorLink callback body, extracted here so the auth double-path,
+ * the mapped-action surface dispatch, and the transport connectivity branch
+ * are unit-testable without standing up an Apollo Link chain.
  * {@link createErrorLinkHandler} delegates here unchanged.
  */
 export function routeApolloLinkError(
@@ -493,7 +490,7 @@ export function routeApolloLinkError(
   // the per-operation error.
   void handleAuthError(error, operation.operationName);
 
-  // Task 4.1: publish non-auth mapped actions to the UI surface seam.
+  // Publish non-auth mapped actions to the UI surface seam.
   // Ordering guarantee: auth recovery dispatch above keeps exclusive
   // ownership of UNAUTHORIZED/UNAUTHENTICATED rows (the mapping skips
   // them here), and the network-error connectivity branch below stays

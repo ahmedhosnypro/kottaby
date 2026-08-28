@@ -1,16 +1,16 @@
 /**
- * Task 4.1 paired suite — REQ-061 frontend error-link mapping + wiring.
+ * Paired suite for the frontend error-link mapping + wiring.
  *
  * WHAT THIS LOCKS
- *   1. The PURE `mapGraphQLErrorByCode` branch table (every REQ-061 row,
- *      including the legacy `RATE_LIMIT_EXCEEDED` alias carried into the
- *      frontend table per plan-review-R1 correction #3, and the strict
- *      "branch on extensions.code ONLY" posture per REQ-016).
- *   2. The `routeApolloLinkError` integration seam in `utils.ts`: the EXISTING
+ *   1. The PURE `mapGraphQLErrorByCode` branch table (every mapping row,
+ *      including the legacy `RATE_LIMIT_EXCEEDED` alias folded into the
+ *      frontend table, and the strict "branch on extensions.code ONLY"
+ *      posture).
+ *   2. The `routeApolloLinkError` integration seam in `utils.ts`: the
  *      deduped token-refresh double-path (refresh-once → stay-on-page;
- *      refresh-failure → logout/login redirect), the REQ-061 surface dispatch
- *      (with auth-row and self-surfaced-operation exclusions), and the
- *      pre-existing network-error connectivity branch.
+ *      refresh-failure → logout/login redirect), the mapped-action surface
+ *      dispatch (with auth-row and self-surfaced-operation exclusions), and
+ *      the network-error connectivity branch.
  *
  * FIXTURES
  *   Errors are authored as genuine Apollo Client v4 `CombinedGraphQLErrors`
@@ -18,10 +18,9 @@
  *   FormattedExecutionResult`) — mirroring
  *   `frontend/graphql/test/warnings/warning-surfacing.test.ts`.
  *
- * i18n ADAPTATION NOTE (REQ-075; plan-review-R1 finding #7 / correction #7):
- *   The component-tier `readTranslation(handle, locale)` / `TestWrapper` /
- *   `translation-preload.ts` scaffold is ABSENT from the tree (`test/ui/`
- *   holds only its AGENTS.md). Per correction #7 this unit-tier suite
+ * i18n ADAPTATION NOTE: the component-tier `readTranslation(handle, locale)`
+ *   / `TestWrapper` / `translation-preload.ts` scaffold is ABSENT from the
+ *   tree (`test/ui/` holds only its AGENTS.md), so this unit-tier suite
  *   resolves every expected user-facing string through `getDefaultTranslations()`
  *   (`shared/locale/server.ts` — the same MessagesSchema the namespace handles
  *   wrap) and probes AR parity by direct namespace-object access. No copy
@@ -72,7 +71,7 @@ function mapped(code: string, context: GraphQLErrorMappingContext): GraphQLError
     // Assertion first (bun prints the diff), then an explicit throw so the
     // success path narrows without any type assertion.
     expect(action).not.toBeNull();
-    throw new Error("expected a non-null REQ-061 mapping");
+    throw new Error("expected a non-null mapping");
   }
   return action;
 }
@@ -161,7 +160,7 @@ afterEach(() => {
 });
 
 // ===========================================================================
-describe("mapGraphQLErrorByCode — REQ-061 pure branch table", () => {
+describe("mapGraphQLErrorByCode — pure branch table", () => {
   test("row UNAUTHORIZED → auth-recovery with localized unauthorized copy", () => {
     const action = mapped("UNAUTHORIZED", queryContext);
     expect(action.kind).toBe("auth-recovery");
@@ -244,14 +243,14 @@ describe("mapGraphQLErrorByCode — REQ-061 pure branch table", () => {
     expect(action.noticeKind).toBe("retry-later");
     expect(shownCopyOf(action)).toBe(labels.rateLimitExceeded);
     expect(action.retryable).toBe(true);
-    // REQ-034 nondisclosure discipline: the action shape itself stays
+    // Nondisclosure discipline: the action shape itself stays
     // counter/threshold/window free.
     expect("attempts" in action).toBe(false);
     expect("retryAfterSeconds" in action).toBe(false);
     expect(action.fieldErrors).toBeUndefined();
   });
 
-  test("legacy RATE_LIMIT_EXCEEDED alias folds onto the RATE_LIMITED row (R1 correction #3)", () => {
+  test("legacy RATE_LIMIT_EXCEEDED alias folds onto the RATE_LIMITED row", () => {
     expect(normalizeGraphQLErrorCode("RATE_LIMIT_EXCEEDED")).toBe("RATE_LIMITED");
     expect(LEGACY_ERROR_CODE_ALIASES.RATE_LIMIT_EXCEEDED).toBe("RATE_LIMITED");
     const viaLegacy = mapped("RATE_LIMIT_EXCEEDED", queryContext);
@@ -276,12 +275,12 @@ describe("mapGraphQLErrorByCode — REQ-061 pure branch table", () => {
     expect(action.correlationRequestId).toBe("req-1234-abcd");
   });
 
-  test("requestId correlation attaches to non-masked rows too (REQ-013)", () => {
+  test("requestId correlation attaches to non-masked rows too", () => {
     const action = mapped("FORBIDDEN", { ...mutationContext, requestId: "req-echo-42" });
     expect(action.correlationRequestId).toBe("req-echo-42");
   });
 
-  test("codes WITHOUT a REQ-061 row map to null (behavior left untouched)", () => {
+  test("codes with no mapping row return null (behavior left untouched)", () => {
     for (const code of ["BAD_REQUEST", "GRAPHQL_PARSE_FAILED", "PAYLOAD_TOO_LARGE", "", "unauthorized_x"]) {
       expect(mapGraphQLErrorByCode(code, queryContext)).toBeNull();
     }

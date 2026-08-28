@@ -1,6 +1,6 @@
 /**
  * UserRole enum — mirrors the `user_role` pgEnum in `backend/db/schema/enums.ts`.
- * Values derived from `db/schema.dbml` (ground truth per REQ-002).
+ * Values are canonical.
  */
 export enum UserRole {
   Admin = "admin",

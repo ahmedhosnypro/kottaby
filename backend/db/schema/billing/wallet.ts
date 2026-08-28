@@ -3,7 +3,7 @@ import { check, decimal, integer, pgTable, timestamp, unique } from "drizzle-orm
 import { teacher } from "@/backend/db/schema/teachers/teacher";
 
 /**
- * Teacher wallet table (DBML `wallet`, L288–L295).
+ * Teacher wallet table (`wallet`).
  *
  * One wallet per teacher (`teacher_id` is unique, cascade delete). Holds the
  * current `balance` (must be >= 0) and the cumulative `total_earning`
@@ -12,7 +12,7 @@ import { teacher } from "@/backend/db/schema/teachers/teacher";
  * wallet balance is updated atomically by the trigger that enforces
  * transaction immutability + wallet consistency.
  *
- * Per DBML the wallet is created when a teacher is approved (A.6/B.5).
+ * The wallet is created when a teacher is approved.
  */
 export const wallet = pgTable(
   "wallet",

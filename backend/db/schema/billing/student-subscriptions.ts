@@ -3,13 +3,13 @@ import { subscriptions } from "@/backend/db/schema/billing/subscriptions";
 import { students } from "@/backend/db/schema/students/students";
 
 /**
- * Student↔Subscription junction table (DBML `student_subscriptions`, L266–L275).
+ * Student↔Subscription junction table (`student_subscriptions`).
  *
  * Many-to-many link between students and subscriptions: one subscription
  * (purchased by a parent or self-paying student) can cover multiple students,
  * and one student can be covered by multiple subscriptions over time.
  *
- * Composite primary key `(student_id, subscription_id)` per DBML — there is
+ * Composite primary key `(student_id, subscription_id)` — there is
  * NO separate `id` column. Both FKs use `cascade` delete: deleting either a
  * student or a subscription removes the junction row. `enrolled_at` records
  * when the student was enrolled under the subscription (defaults to now()).

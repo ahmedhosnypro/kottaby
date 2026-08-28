@@ -9,7 +9,7 @@
  *
  * Used by the live DB explorer dashboard (`app/page.tsx` + client shell in
  * `app/_components/db-explorer-client.tsx`). Replaces the static hardcoded
- * schema-inventory page (DEV1-001 verification build).
+ * schema-inventory page of the initial verification build.
  *
  * Security:
  *  - All table-name parameters are validated against `^[a-z_]+$` before
@@ -63,7 +63,7 @@ export interface EnumInfo {
   values: string[];
 }
 
-/** One row per public-schema trigger (immutability triggers — 6 in DEV1-001). */
+/** One row per public-schema trigger (the immutability triggers). */
 export interface TriggerInfo {
   triggerName: string;
   tableName: string;
@@ -335,7 +335,7 @@ export async function getEnums(): Promise<EnumInfo[]> {
 /**
  * Returns all public-schema triggers. Joins `information_schema.triggers`
  * with `pg_trigger` (for `tgenabled`) so we can report the live enabled/
- * disabled state. DEV1-001 ships 6 immutability triggers — see
+ * disabled state. The schema ships six immutability triggers — see
  * `backend/db/migration/3-immutability-triggers.sql`.
  */
 export async function getTriggers(): Promise<TriggerInfo[]> {

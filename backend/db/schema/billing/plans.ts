@@ -2,14 +2,14 @@ import { sql } from "drizzle-orm";
 import { char, check, decimal, integer, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
 
 /**
- * Subscription plans table (DBML `plans`).
+ * Subscription plans table (`plans`).
  *
  * Defines the catalog of subscription plans a user can purchase. Each plan
  * grants a fixed number of sessions (`session_count`, must be > 0) for a
  * fixed price (`price`, must be >= 0) in a given `currency` (default "EGP"),
- * valid for `interval_days` (must be > 0). Per DBML L277–L286.
+ * valid for `interval_days` (must be > 0).
  *
- * CHECK constraints mirror the DBML `[check: ...]` clauses.
+ * CHECK constraints mirror the intended validation rules.
  */
 export const plans = pgTable(
   "plans",

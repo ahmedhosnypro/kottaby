@@ -1,7 +1,7 @@
 /**
- * Warning-surfacing contract lock — dev3-002 Task 3.3 paired suite.
+ * Warning-surfacing contract lock.
  *
- * WHAT THIS LOCKS (REQ-027 + REQ-063):
+ * WHAT THIS LOCKS:
  *   Warnings produced by partial-success mutations travel INSIDE the GraphQL
  *   payload `data` channel (never log-only); hard failures travel EXCLUSIVELY
  *   in `errors[]` carrying their `DomainError` `extensions.code`. This is the
@@ -9,7 +9,7 @@
  *   §Rules #6/#7 (`releaseQuotaIfDeducted → { success, warning }`,
  *   `deleteClassInstance → DeleteClassInstanceResult { success, warnings }`,
  *   "not `Boolean`" anti-pattern) — it is **convention-only**: NO new
- *   production result types are invented by this ticket (plan.md §217).
+ *   production result types are invented here.
  *
  * GROUND TRUTH ANCHOR (honesty pin, Section A):
  *   The quota / class-instance domains are NOT yet materialized in this tree —
@@ -17,8 +17,8 @@
  *   registerUser }. Test A2 pins that inventory gap so the moment those
  *   domains land, this suite fails loudly until they adopt the locked shapes
  *   (and gets updated to point Section B's reproduction directly at them).
- *   The gap is recorded as deferred-items ledger row BLT-11 (⚠️ wiring task,
- *   owned by whichever plan introduces `deleteClassInstance`).
+ *   The gap is a known wiring task, owned by whichever change introduces
+ *   `deleteClassInstance`.
  *
  * SECTION B mechanics (propagation semantics, deterministic):
  *   Reproduces the two documented precedent shapes verbatim in a test-local
@@ -34,14 +34,14 @@
  *   into integration suites — production-truth for real codes over the full
  *   stack is anchored by test A4 instead.
  *
- * Runs via (verified in-sandbox, task 6-x3): KOTTABY_TEST_RUNNER_OK=1 bun --env-file=.env.test
+ * Runs via (verified in-sandbox): KOTTABY_TEST_RUNNER_OK=1 bun --env-file=.env.test
  *   test --timeout=150000 frontend/graphql/test/warnings/warning-surfacing.test.ts
  * Requires NO other `next dev` process in this project directory (Next 16
- * holds a per-directory dev lock; leaks make beforeAll time out — see
- * outcome/3.1 §4). The run-test/run-server-tests wrappers are the intended
- * CI path but currently die at ENTRY-module load under this sandbox
- * (graphql-tag async-require TypeError before any preload applies); recorded
- * as deferred-items BLT-12 — the authored suite itself is wrapper-agnostic.
+ * holds a per-directory dev lock; leaks make beforeAll time out). The
+ * run-test/run-server-tests wrappers are the intended CI path but currently
+ * die at ENTRY-module load under this sandbox (graphql-tag async-require
+ * TypeError before any preload applies); the authored suite itself is
+ * wrapper-agnostic.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -159,7 +159,7 @@ const WARNING_SHAPE_SCHEMA = new GraphQLSchema({
   mutation: MUTATION_ROOT_TYPE,
 });
 
-/** Named operations per REQ-063 / sharedDocuments AGENTS (operationName set). */
+/** Named operations per the sharedDocuments AGENTS rule (operationName set). */
 const DELETE_CLASS_INSTANCE_WARNING_DOCUMENT: DocumentNode = gql`
   mutation DeleteClassInstance($id: ID!) {
     deleteClassInstance(id: $id) {
@@ -186,7 +186,7 @@ const RELEASE_QUOTA_IF_DEDUCTED_WARNING_DOCUMENT: DocumentNode = gql`
  * Chosen for this wire leg because it is deterministic (no DB row warm-up,
  * no locale-dependent message wording); domain-code preservation through real
  * resolvers is locked at the container tier by B3/B4 and re-anchored over the
- * wire once the boot-tier environment stabilizes (ledger BLT-12). */
+ * wire once the boot-tier environment stabilizes. */
 const INVALID_MUTATION_DOCUMENT: DocumentNode = gql`
   mutation ProbeInvalidMutationSelection {
     logout {
@@ -233,7 +233,7 @@ function toCombinedContainer(result: ExecutionResult): CombinedGraphQLErrors {
 // codegen types cannot exist for an inventory pin whose job is to prove which
 // surfaces do NOT exist yet. The meta-field is aliased (`schemaMeta:`) so no
 // dangling-underscore identifier ever appears on the TS side; the wire field
-// is still plain `__schema` introspection. Named operation per REQ-063.
+// is still plain `__schema` introspection. Named operation (operationName set).
 
 interface MutationSurfaceInventory {
   typeName: string | null;
@@ -293,13 +293,13 @@ describe("Warning-surfacing contract lock — Section A: live GraphQL surface (w
     );
   });
 
-  test("A2. inventory-gap pin: documented warning surfaces not wired yet (BLT-11)", async () => {
+  test("A2. inventory-gap pin: documented warning surfaces not wired yet", async () => {
     const result = await testClient.query({ query: MUTATION_SURFACE_INVENTORY_QUERY_DOCUMENT });
     const liveNames = new Set(extractMutationSurfaceInventory(result.data)?.fieldNames ?? []);
     const prematureSurfaces = DOCUMENTED_WARNING_SURFACES_PENDING.filter(name => liveNames.has(name));
     // When this flips red, someone wired deleteClassInstance/releaseQuota:
     // extend Section B to execute THEM over the wire and enforce Rule #6/#7
-    // result shapes end-to-end (see deferred-items ledger row BLT-11).
+    // result shapes end-to-end.
     expect(prematureSurfaces).toEqual([]);
   });
 

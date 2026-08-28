@@ -1,29 +1,27 @@
 /**
- * ctx.idempotencyKey + factory isolation — dev3-003 Task 3.3.TE paired suite
- * (sibling of request-id.test.ts; same anonymous, DB-free harness).
+ * ctx.idempotencyKey + factory isolation tests — sibling of
+ * request-id.test.ts; same anonymous, DB-free harness.
  *
- * Coverage map (tasks.md 3.3.TE):
+ * Coverage map:
  *  - Tier 1 — the context carries `idempotencyKey` when the header is
  *    present AND materializes as `null` when absent (never `undefined` on the
- *    runtime object); `requestId` keeps its DEV3-002 contract in the same
+ *    runtime object); `requestId` keeps its contract in the same
  *    constructions;
  *  - Tier 2 — ABSENT header yields exactly `null`, never `""`; present values
- *    propagate RAW/verbatim (no trim, no validation policy — propagation-only
- *    per REQ-041/043; classification belongs to the owning mutation
- *    transaction);
+ *    propagate RAW/verbatim (no trim, no validation policy — propagation-only;
+ *    classification belongs to the owning mutation transaction);
  *  - Tier 3 — concurrent constructions (distinct pinned keys) produce fully
  *    isolated contexts: unique correlation ids, pairwise-distinct
  *    `authCookieOut` accumulators and cookies objects, keys mapping 1:1 to
- *    their own request (REQ-040 / REQ-074 support);
+ *    their own request;
  *  - Tier 4 — identity IMMUNITY: across hostile/varied key values (empty,
  *    oversized, comma-collapsed, control-char) and even under a garbage
  *    Bearer credential, the identity tuple (`user`,`safeUser`,`role`,
  *    `isSuperAdmin`) stays byte-equal to the headerless baseline — keys can
- *    NEVER influence identity (REQ-030; GatewayRequestMetadata contract).
+ *    NEVER influence identity (see the `GatewayRequestMetadata` contract).
  *
- * Semantic-review pins (REQ-004/D10 single-source evidence): the capture
- * site exists EXACTLY ONCE in gqlContextFactory.ts and ZERO times in the
- * route module.
+ * Single-capture-site pins: the capture site exists EXACTLY ONCE in
+ * gqlContextFactory.ts and ZERO times in the route module.
  *
  * Runs via `bun run test/scripts/run-test.ts backend/graphql/test/context-keys.test.ts`.
  */
@@ -118,7 +116,7 @@ describe("ctx.idempotencyKey — Tier 2 null contract & propagation purity", () 
   });
 });
 
-// ─── Tier 3 — concurrent construction isolation (REQ-074 support) ────────────
+// ─── Tier 3 — concurrent construction isolation ──────────────────────────────
 
 describe("ctx.idempotencyKey — Tier 3 concurrent factory isolation", () => {
   test("parallel distinct-user-ish constructions keep ids, keys and accumulators fully isolated", async () => {
@@ -133,7 +131,7 @@ describe("ctx.idempotencyKey — Tier 3 concurrent factory isolation", () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids.every(id => UUID_V4_PATTERN.test(id))).toBe(true);
 
-    // Per-request accumulator/object identity — REQ-040 independence proof.
+    // Per-request accumulator/object identity — independence proof.
     for (let i = 0; i < contexts.length; i++) {
       for (let j = i + 1; j < contexts.length; j++) {
         const left = contexts[i];
@@ -148,7 +146,7 @@ describe("ctx.idempotencyKey — Tier 3 concurrent factory isolation", () => {
 
 // ─── Tier 4 — identity immunity (keys can NEVER influence identity) ──────────
 
-describe("ctx.idempotencyKey — Tier 4 identity-immunity matrix (REQ-030)", () => {
+describe("ctx.idempotencyKey — Tier 4 identity-immunity matrix", () => {
   const HOSTILE_KEYS = [
     { label: "plain key", headers: { "x-idempotency-key": "identity-try-1" } },
     { label: "oversized 10× budget key", headers: { "x-idempotency-key": "k".repeat(1280) } },
@@ -199,7 +197,7 @@ describe("ctx.idempotencyKey — Tier 4 identity-immunity matrix (REQ-030)", () 
   });
 });
 
-// ─── Semantic-review pins — single capture site (D10/REQ-004) ────────────────
+// ─── Semantic pins — single capture site ─────────────────────────────────────
 
 /** Comment-stripped view so literal-count pins measure CODE sites only. */
 function codeView(source: string): string {
@@ -210,17 +208,17 @@ function codeView(source: string): string {
     .join("\n");
 }
 
-describe("factory semantic-review pins — no duplicated idempotency capture", () => {
+describe("factory semantic pins — no duplicated idempotency capture", () => {
   const factorySource = codeView(readFileSync(new URL("../gqlContextFactory.ts", import.meta.url), "utf8"));
   const routeSource = codeView(readFileSync(new URL("../../../app/api/graphql/route.ts", import.meta.url), "utf8"));
 
   test("the X-Idempotency-Key capture site lives EXACTLY ONCE — inside the factory", () => {
     expect(factorySource.split('headers.get("x-idempotency-key")').length - 1).toBe(1);
-    // Route-side has ZERO second capture points (no parallel helper — REQ-004).
+    // Route-side has ZERO second capture points (no parallel helper).
     expect(routeSource.includes("x-idempotency-key")).toBe(false);
   });
 
-  test("requestId discipline survived the edit untouched (existing D4 pins re-asserted)", () => {
+  test("requestId discipline survived the edit untouched (single-resolution pins re-asserted)", () => {
     expect(factorySource.split("resolveRequestId(").length - 1).toBe(1);
     expect(factorySource.includes("randomUUID")).toBe(false);
     expect(factorySource.includes('from "@/backend/lib/api"')).toBe(true);

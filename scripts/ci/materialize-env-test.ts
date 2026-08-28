@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `.env.test` materializer for CI (plan DEV3-001 §4.3 — REQ-022/027/031/038).
+ * `.env.test` materializer for CI.
  *
  * Reads the COMMITTED template `.env.test.ci` from the repo root, copies every
  * `KEY=VALUE` line into the runtime file `.env.test`, and replaces every value
@@ -11,12 +11,12 @@
  * - Template absent       → stderr exactly `CI env template .env.test.ci missing`, exit 1.
  * - Override absent       → stderr exactly `missing required CI env variable: <KEY>`, exit 1.
  * - Override with newline → stderr exactly
- *   `invalid CI env variable value (newline): <KEY>`, exit 1 (R3-M7 dotenv
+ *   `invalid CI env variable value (newline): <KEY>`, exit 1 (dotenv
  *   injection guard — a value carrying \n or \r could otherwise synthesize
  *   extra KEY=VALUE lines inside the written `.env.test`).
  *
- * REQ-038 (never echo secrets): stdout carries KEY NAMES ONLY plus counts —
- * never values. Values exist solely inside the written `.env.test`.
+ * Stdout carries KEY NAMES ONLY plus counts — never values (never echo
+ * secrets). Values exist solely inside the written `.env.test`.
  *
  * Design notes:
  * - Repo-root resolution uses `import.meta.dir/../../` (this file lives at
@@ -26,10 +26,10 @@
  *   against temp directories instead of the live repo tree.
  * - `.env.test` is gitignored by repo policy (`test/integration/AGENTS.md`);
  *   this script never writes `.env` itself and never touches the template.
- * - Zero `console.*` (scripts exemption documented in plan §4.2): all output
+ * - Zero `console.*`: all output
  *   goes through injected `process.stdout.write` / `process.stderr.write`.
- * - Operator-facing strings are English-only per the REQ-002 script/YAML
- *   exemption (no i18n crossing shared tooling) — recorded in the outcome.
+ * - Operator-facing strings are English-only — script/YAML output is exempt
+ *   from the i18n requirement (no i18n crossing shared tooling).
  */
 
 import { randomBytes } from "node:crypto";
@@ -59,8 +59,8 @@ export interface MaterializeEnvTestOptions {
   /** Override source map; defaults to `process.env`. Absent ⇒ sentinel key fails fast. */
   env?: Record<string, string | undefined>;
   /**
-   * Non-fatal diagnostic channel (R3-L8); receives the malformed-line note only
-   * — never any VALUE (REQ-038). Core default is a no-op so the pure layer stays
+   * Non-fatal diagnostic channel; receives the malformed-line note only
+   * — never any VALUE. Core default is a no-op so the pure layer stays
    * IO-free; {@link runMaterializeEnvTestCli} wires the real stderr.
    */
   writeStderr?: (text: string) => void;
@@ -69,7 +69,7 @@ export interface MaterializeEnvTestOptions {
 export interface MaterializeEnvTestResult {
   /** Absolute path of the written output file. */
   outputPath: string;
-  /** Final key names in emitted order — safe to print (REQ-038). */
+  /** Final key names in emitted order — safe to print (names only, never values). */
   keyNames: string[];
   /** Keys whose values came from the CI environment (sentinel-replaced). */
   overriddenKeys: string[];
@@ -92,8 +92,8 @@ export class RequiredCiEnvMissingError extends Error {
 }
 
 /**
- * Stderr prefix of the newline-injection rejection (contract-defined failure #3,
- * R3-M7). Values arrive from workflow `env:` mapping only; a payload embedding
+ * Stderr prefix of the newline-injection rejection (contract-defined failure
+ * #3). Values arrive from workflow `env:` mapping only; a payload embedding
  * LF/CR could smuggle synthetic bindings into `.env.test`.
  */
 export const INVALID_CI_ENV_VALUE_PREFIX = "invalid CI env variable value (newline): ";
@@ -106,7 +106,7 @@ export class InvalidCiEnvValueError extends Error {
   }
 }
 
-/** Parse result carrying the R3-L8 visibility counter for skipped input. */
+/** Parse result carrying the skipped-malformed-line visibility counter. */
 export interface ParsedEnvTemplate {
   /** Valid bindings in first-seen order (duplicates collapsed to LAST value). */
   entries: EnvEntry[];
@@ -119,7 +119,7 @@ export interface ParsedEnvTemplate {
 
 /**
  * Parse `.env.test.ci`-style text into bindings PLUS a malformed-line count
- * (R3-L8: template typos must not vanish silently — the materializer forwards
+ * (template typos must not vanish silently — the materializer forwards
  * the count to the operator's stderr, non-fatally).
  *
  * DEFINED BEHAVIOR (asserted in tests): lines are split on `\r\n`/`\n`/`\r`;
@@ -180,7 +180,7 @@ function isNodeJSError(error: unknown, code: string): boolean {
  * I/O error propagates unchanged to the caller.
  *
  * The output file NEVER exists with permissions looser than 0600 nor holding
- * content under any other inode (R3-M6 TOCTOU fix): bytes land in a freshly
+ * content under any other inode (TOCTOU-safe publish): bytes land in a freshly
  * created random-named temp sibling whose mode is forced to 0600 BEFORE the
  * first write, and the destination appears only via ATOMIC rename of that
  * inode. A lax pre-existing `.env.test` is therefore tightened by replacement,
@@ -202,8 +202,8 @@ export async function materializeEnvTest(options: MaterializeEnvTestOptions = {}
     throw error;
   }
 
-  // R3-L8: surfaced AFTER parsing, before anything else can fail — non-fatal,
-  // key names/count only (REQ-038: no values reach stdout/stderr).
+  // Surfaced AFTER parsing, before anything else can fail — non-fatal,
+  // key names/count only; no values ever reach stdout/stderr.
   const parsed = parseEnvTemplateDetailed(templateText);
   if (parsed.ignoredMalformedLines > 0) {
     writeStderr(`template: ignored ${parsed.ignoredMalformedLines} malformed lines\n`);
@@ -218,7 +218,7 @@ export async function materializeEnvTest(options: MaterializeEnvTestOptions = {}
     }
     const override = env[entry.key];
     if (override === undefined) throw new RequiredCiEnvMissingError(entry.key); // fail-fast, first offender
-    // R3-M7: reject newline-bearing overrides BEFORE any byte reaches disk.
+    // Reject newline-bearing overrides BEFORE any byte reaches disk.
     if (/[\r\n]/.test(override)) throw new InvalidCiEnvValueError(entry.key);
     overriddenKeys.push(entry.key);
     resolvedEntries.push({ key: entry.key, value: override });
@@ -226,7 +226,7 @@ export async function materializeEnvTest(options: MaterializeEnvTestOptions = {}
 
   await mkdir(dirname(outputPath), { recursive: true });
   const contents = renderEnvFile(resolvedEntries);
-  // R3-M6: mode BEFORE content, then atomic publish (see doc block above).
+  // Mode BEFORE content, then atomic publish (see doc block above).
   const tempPath = `${outputPath}.tmp-${randomBytes(8).toString("hex")}`;
   let published = false;
   try {
@@ -254,7 +254,7 @@ export async function materializeEnvTest(options: MaterializeEnvTestOptions = {}
  * Injectable CLI shell inputs. Extends {@link MaterializeEnvTestOptions} so
  * callers (and tests using temp directories) can redirect the template/output
  * paths; omitted fields fall back to the same repo-root defaults. The CLI also
- * forwards its stderr into the core as the L8 diagnostic channel.
+ * forwards its stderr into the core as the non-fatal diagnostic channel.
  */
 export interface CliIo extends MaterializeEnvTestOptions {
   writeStdout: (text: string) => void;
@@ -263,7 +263,8 @@ export interface CliIo extends MaterializeEnvTestOptions {
 
 /**
  * CLI shell around {@link materializeEnvTest}: maps the two named failures
- * onto stderr + exit code 1 and prints KEY NAMES ONLY on success (REQ-038).
+ * onto stderr + exit code 1 and prints KEY NAMES ONLY on success (never
+ * echo secret values).
  * Returns the process exit code; the real entrypoint below just forwards it.
  */
 export async function runMaterializeEnvTestCli(io: CliIo): Promise<number> {
@@ -272,7 +273,7 @@ export async function runMaterializeEnvTestCli(io: CliIo): Promise<number> {
       templatePath: io.templatePath,
       outputPath: io.outputPath,
       env: io.env,
-      writeStderr: io.writeStderr, // L8 diagnostics flow to the operator too
+      writeStderr: io.writeStderr, // diagnostics flow to the operator too
     });
     io.writeStdout(`${result.keyNames.join("\n")}\n`);
     io.writeStdout(
@@ -296,4 +297,3 @@ if (import.meta.main) {
     })
   );
 }
-// req-072 no-op probe: code-only change (no documentation surface)

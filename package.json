@@ -65,7 +65,6 @@
     "cron:worker": "bun run scripts/cron-worker.ts",
     "generate:gqlSchema": "bun run scripts/generate-gql-schema.ts",
     "codegen": "graphql-codegen --config codegen.ts",
-    "validate:dbml": "bun run scripts/validate-dbml.ts",
     "validate:mermaid": "bun run scripts/validate-mermaid.ts",
     "db:push": "bun --no-env-file run scripts/dbActions/index.ts --env-file=.env.sqlite push",
     "validate:seed-assets": "bun run scripts/validate-seed-assets.ts"

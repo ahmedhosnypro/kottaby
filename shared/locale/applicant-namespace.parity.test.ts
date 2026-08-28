@@ -1,6 +1,6 @@
 /**
- * dev2-004 Task 1.3.TE — `applicant`-namespace locale-parity verification
- * · ar+en parity gate (REQ-051) + cooldown-placeholder security pin (REQ-015/REQ-035).
+ * `applicant`-namespace locale-parity verification
+ * · ar+en parity gate + cooldown-placeholder security pin.
  *
  * WHAT THIS LOCKS
  *   1. RUNTIME PARITY BELT — the ar/en `applicant` leaf maps expose IDENTICAL
@@ -11,9 +11,9 @@
  *   2. COOLDOWN PLACEHOLDER PIN — the two cooldown surfaces (errors'
  *      `applicantCooldownActive` + applicant's `cooldownExpiryLine`) carry
  *      EXACTLY ONE ICU placeholder, named `cooldownUntil`, in BOTH locales —
- *      the timestamp is the ONLY interpolated value (REQ-035: no other user
+ *      the timestamp is the ONLY interpolated value (no other user
  *      data enters the reject copy) and its NAME must stay identical ar/en so
- *      the Phase-2/4 consumers can expand it uniformly.
+ *      consumers can expand it uniformly.
  *   3. REGISTRY WIRING — the `Applicant` handle is registered in
  *      `shared/locale/namespaces/index.ts` with the conventional
  *      `<ns>.<ns>` id and its getter resolves to the composed bundle slice.
@@ -37,7 +37,7 @@ import { enMessages } from "@/shared/locale/en/messages";
 import { Applicant } from "@/shared/locale/namespaces/applicant";
 import { namespaces } from "@/shared/locale/namespaces/index";
 
-// ─── DEV2-004 new transport keys on the EXISTING errors namespace ────────────
+// ─── New transport keys on the existing errors namespace ─────────────────────
 
 const APPLICANT_ERROR_KEYS = ["applicantNotFound", "applicantCooldownActive", "applicantStatusCorrupt"] as const;
 

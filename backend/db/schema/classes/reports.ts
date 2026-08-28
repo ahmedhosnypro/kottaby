@@ -3,16 +3,16 @@ import { check, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-
 import { session } from "@/backend/db/schema/classes/session";
 
 /**
- * Reports table (DBML `reports`, L321–L334).
+ * Reports table (`reports`).
  *
  * Post-session teacher report: free-form `teacher_notes` plus an optional
  * `student_rating_by_teacher` integer in [0, 5] (the CHECK enforces the
- * range). One report row per session is the typical pattern but DBML does
+ * range). One report row per session is the typical pattern but the schema does
  * NOT mark session_id unique here, so multiple report revisions are
  * structurally allowed (the application layer enforces the one-per-session
  * invariant if desired).
  *
- * REQ-019 / R6: NO `teacher_id` column. The teacher is reached via
+ * NO `teacher_id` column. The teacher is reached via
  * session.teacher_id — the column was removed as redundant. Access path:
  * reports → session → teacher → users.
  *

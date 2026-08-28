@@ -4,8 +4,8 @@
  * Used by `frontend/providers/theme/presets/` (the built-in preset catalog)
  * and the appearance-preview store (future brand-customization tickets).
  *
- * Kept minimal for DEV1-002 — the full appearance management UI is a later
- * ticket; these types are the structural contract the preset catalog needs.
+ * Kept minimal — the full appearance management UI is future work; these
+ * types are the structural contract the preset catalog needs.
  */
 
 /**

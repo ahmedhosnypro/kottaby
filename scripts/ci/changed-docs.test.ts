@@ -23,8 +23,8 @@ function isStrictlyAscending(values: readonly string[]): boolean {
   return values.every((value, index) => index === 0 || values[index - 1] <= value);
 }
 
-describe("WATCH_PATTERNS (plan §4.2 literal membership)", () => {
-  test("contains the plan-mandated regex sources", () => {
+describe("WATCH_PATTERNS (literal membership)", () => {
+  test("contains the mandated regex sources", () => {
     const sources = WATCH_PATTERNS.map(pattern => pattern.source);
     expect(sources).toContain("\\.mmd$");
     expect(sources).toContain("^docs\\/.+\\.md$");
@@ -220,7 +220,7 @@ describe("Tier 4 — security & fence-detection semantics", () => {
   });
 });
 
-describe("computeDocsChangedSet — nul-mode (-z) ingestion (W4-F1)", () => {
+describe("computeDocsChangedSet — nul-mode (-z) ingestion", () => {
   /** Filename exercising every hazard at once: embedded LF, spaces, non-ASCII. */
   const WEIRD = "re port\nwith LF & ä.md";
 

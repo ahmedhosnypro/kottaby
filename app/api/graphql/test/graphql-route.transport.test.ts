@@ -1,18 +1,17 @@
 /**
- * GraphQL route — TRANSPORT-tier handler-unit suite (dev3-003 Task 3.2.TE,
- * static-import tier · REQ-010 step 1 / REQ-014/015/016; D5/D6/D7).
+ * GraphQL route — TRANSPORT-tier handler-unit suite (static-import tier).
  *
  * Handlers are invoked DIRECTLY with constructed `NextRequest`s — NO server
  * boot (house pattern: app/api/set-locale/test/set-locale-route.test.ts).
  *
  * Coverage map:
- *  - Explicit 405 handlers (`PUT`/`DELETE`/`PATCH` + env-gated-off `GET`) →
+ *  - Explicit 405 handlers (`PUT`/`DELETE`/`PATCH` + default-denied `GET`) →
  *    guarded rejection envelope + mandatory `Allow: POST` header +
  *    `X-Request-Id` echo (never Next.js' default-absent behavior);
  *  - unsupported/missing content-type → 400 `BAD_REQUEST`;
  *  - malformed JSON / empty body / whitespace-only body boundaries → 400
- *    with the LIVE `GRAPHQL_PARSE_FAILED` pairing (R1 Cor #4/#2 — stream
- *    deaths and unparseable bodies share the kind→code row);
+ *    with the LIVE `GRAPHQL_PARSE_FAILED` pairing (stream deaths and
+ *    unparseable bodies share the kind→code row);
  *  - forged INFLATED `content-length` → 413 `PAYLOAD_TOO_LARGE` pre-drain,
  *    deflated-header lie caught at the DRAINED checkpoint (both size
  *    checkpoints proven distinct);
@@ -39,7 +38,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 // Value import (NOT type-only): NextRequest is CONSTRUCTED below (type-only
-// form detonates at runtime — trap documented in outcome/3.1-outcome.md §3).
+// form detonates at runtime).
 import { NextRequest } from "next/server";
 import { DELETE, GET, PATCH, POST, PUT } from "@/app/api/graphql/route";
 import { getServerTranslations } from "@/shared/locale/server-graphql";
@@ -124,7 +123,7 @@ function makeDisallowedRequest(method: "GET" | "PUT" | "DELETE" | "PATCH", reque
 
 // ─── Shared invariant runner: every disallowed-method export ────────────────
 
-describe("explicit disallowed-method exports → guarded 405 envelope (D7)", () => {
+describe("explicit disallowed-method exports → guarded 405 envelope", () => {
   const HANDLERS = [
     { name: "PUT", call: PUT },
     { name: "DELETE", call: DELETE },
@@ -149,7 +148,7 @@ describe("explicit disallowed-method exports → guarded 405 envelope (D7)", () 
     });
   }
 
-  test("405 responses localize through the ar errors namespace (REQ-051 parity)", async () => {
+  test("405 responses localize through the ar errors namespace (en–ar parity)", async () => {
     const response = await PUT(
       new NextRequest(BASE_URL, {
         method: "PUT",
@@ -193,7 +192,7 @@ describe("content-type transport guard → 400 (engine never invoked)", () => {
 
 // ─── Malformed-JSON family + body boundaries (LIVE GRAPHQL_PARSE_FAILED pairing) ──
 
-describe("malformed-JSON family → 400 GRAPHQL_PARSE_FAILED (R1 Cor#4 pairing)", () => {
+describe("malformed-JSON family → 400 GRAPHQL_PARSE_FAILED (live pairing)", () => {
   test("unparsable body keeps the LIVE transport wire code", async () => {
     const response = await POST(
       makePostRequest({ bodyText: '{"query": "{ _health"', headers: { "x-request-id": "corr-bad-json" } })
@@ -262,7 +261,7 @@ describe("body-size checkpoints → 413 PAYLOAD_TOO_LARGE (verbatim reuse)", () 
 
 // ─── Envelope-shape + disclosure pins ────────────────────────────────────────
 
-describe("rejection-envelope shape and disclosure pins (exemption register)", () => {
+describe("rejection-envelope shape and disclosure pins", () => {
   test("payload is EXACTLY {errors:[{message,extensions:{code,requestId}}]} — never REST-shaped", async () => {
     const response = await POST(makePostRequest({ bodyText: "{", headers: { "x-request-id": "corr-shape" } }));
     const body = await readJson(response);
@@ -278,7 +277,7 @@ describe("rejection-envelope shape and disclosure pins (exemption register)", ()
     expect(Object.keys(extensions)).toEqual(["code", "requestId"]);
     expect(extensions.requestId).toBe("corr-shape");
 
-    // Zero-leak: no stack/path/limit internals cross the wire (REQ-034).
+    // Zero-leak: no stack/path/limit internals cross the wire.
     const serialized = JSON.stringify(body) ?? "";
     expect(serialized.includes("stack")).toBe(false);
     expect(serialized.includes("/srv")).toBe(false);
@@ -286,7 +285,7 @@ describe("rejection-envelope shape and disclosure pins (exemption register)", ()
   });
 });
 
-// ─── Source-level semantic-review pins (composition purity, Task 3.2.SR) ────
+// ─── Source-level pins (composition purity) ─────────────────────────────────
 
 describe("route-source pins — constant unification + composition purity", () => {
   const rawSource = readFileSync(join(process.cwd(), "app/api/graphql/route.ts"), "utf8");
@@ -309,7 +308,7 @@ describe("route-source pins — constant unification + composition purity", () =
     expect(routeSource.includes("request.text()")).toBe(false);
   });
 
-  test("cookie merge is append-only; never headers.set for Set-Cookie (REQ-011)", () => {
+  test("cookie merge is append-only; never headers.set for Set-Cookie", () => {
     expect(routeSource.split('headers.append("Set-Cookie"').length - 1).toBe(1);
     expect(routeSource.includes('headers.set("Set-Cookie"')).toBe(false);
   });
@@ -324,7 +323,7 @@ describe("route-source pins — constant unification + composition purity", () =
 
   test("no module-level mutable registries beyond the pre-existing WeakMap hand-off", () => {
     // Frozen maps only; the sole mutable module member stays the sanctioned
-    // request-scoped WeakMap channel (F8 machinery preserved verbatim).
+    // request-scoped WeakMap channel (preserved verbatim).
     expect(routeSource.match(/\bconst [A-Za-z]+ = new Map</gu)).toBeNull();
     expect(routeSource.match(/\blet [A-Za-z]+ = \[\]/gu)).toBeNull();
     expect(routeSource.includes("new WeakMap<NextRequest, Context>()")).toBe(true);

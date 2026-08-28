@@ -1,31 +1,31 @@
 /**
- * Task 4.3 paired suite — form-bound VALIDATION field-error wiring.
+ * Paired suite — form-bound VALIDATION field-error wiring.
  *
  * WHAT THIS LOCKS
  *   1. `projectMutationFieldErrors`: a mocked `VALIDATION` error authored as
  *      a genuine Apollo Client v4 `CombinedGraphQLErrors` container flows
- *      through the 4.1 REQ-061 table (`hasForm:true` direct-call variant) and
- *      yields exactly the `extensions.fields[]` `{field, message}` pairs —
+ *      through the pure mapping table (`hasForm:true` direct-call variant)
+ *      and yields exactly the `extensions.fields[]` `{field, message}` pairs —
  *      the same pairs an RHF submit handler feeds to
  *      `setError(field, { message })`.
  *   2. The clear-on-fix contract at LOGIC tier: once inputs are corrected the
  *      next submit produces NO projected pairs (empty projection ⇒ callers
  *      clear/replace stale server errors; rule-level client errors are then
  *      cleared natively by RHF's post-submit `reValidateMode:"onChange"`).
- *      Render-tier component tests stay deferred under ledger BLT-05 (no
- *      `test/ui` scaffold — plan-review-R1 finding #7), nothing faked here.
+ *      Render-tier component tests stay deferred (no `test/ui` scaffold
+ *      in-tree), nothing faked here.
  *   3. `applyProjectedFieldErrors`: whitelist narrowing into the typed sink —
  *      the mock sink receives exactly the field:message pairs, unknown wire
  *      paths are skipped without unsafe casts, applied-count drives the
  *      "per-field mapping replaces global fallback" branch.
- *   4. REQ-055 no-new-near-duplicates: every fallback translation key this
- *      task's consumer relies on ALREADY EXISTS in both locale namespaces —
- *      asserted against the real `authTranslations` objects so a future key
- *      removal fails loudly HERE instead of blanking UI copy.
+ *   4. No-new-near-duplicates: every fallback translation key the consumers
+ *      rely on ALREADY EXISTS in both locale namespaces — asserted against
+ *      the real `authTranslations` objects so a future key removal fails
+ *      loudly HERE instead of blanking UI copy.
  *
- * i18n ADAPTATION NOTE (REQ-075 / R1 correction #7): expected strings resolve
- * via `getDefaultTranslations()` / AR namespace-object parity probes — same
- * mechanism as the 4.1 suite; fixture field messages are technical test data
+ * i18n ADAPTATION NOTE: expected strings resolve via `getDefaultTranslations()`
+ * / AR namespace-object parity probes — same mechanism as the error-link
+ * mapping suite; fixture field messages are technical test data
  * (`test/ui/AGENTS.md` "What Counts as Acceptable").
  *
  * RUNS VIA (in-sandbox): bun run test/scripts/run-test.ts frontend/lib/mutationFieldErrors.test.ts
@@ -69,7 +69,7 @@ function validationItem(fields: readonly unknown[]): FixtureItem {
   };
 }
 
-/** expect-wrapped narrowing helper — assertion first, zero casts (4.1 style). */
+/** expect-wrapped narrowing helper — assertion first, zero casts. */
 function firstPairOrThrow(pairs: readonly ProjectedFieldError[], index = 0): ProjectedFieldError {
   if (index >= pairs.length) {
     // Assertion first (bun prints the diff), then an explicit throw so the
@@ -109,7 +109,7 @@ describe("projectMutationFieldErrors — mocked VALIDATION → RHF setError pair
     expect(firstPairOrThrow(pairs).field).toBe("email");
   });
 
-  test("form-bound adoption flips the link-tier toast row into field pairs (4.1 §7.3 protocol)", () => {
+  test("form-bound adoption flips the link-tier toast row into field pairs", () => {
     // Same wire item, both contexts: the ErrorLink sees hasForm:false and can
     // only produce a toast action; THIS module re-runs it with hasForm:true.
     const fields = [{ field: "email", code: "EMAIL_INVALID", message: "Enter a valid email address." }] as const;
@@ -233,7 +233,7 @@ describe("applyProjectedFieldErrors — setError receives field:message pairs", 
 });
 
 // ---------------------------------------------------------------------------
-// REQ-055 — EXISTING keys only: reuse set for consumer fallback copy
+// EXISTING keys only: reuse set for consumer fallback copy
 
 const REUSE_SET = [
   "nameRequired",
@@ -248,7 +248,7 @@ const REUSE_SET = [
   "registrationFailed",
 ] as const satisfies readonly (keyof AuthLabels)[];
 
-describe("REQ-055 reuse audit — auth fallback keys exist in BOTH locales", () => {
+describe("reuse audit — auth fallback keys exist in BOTH locales", () => {
   const enLabels = getDefaultTranslations().authTranslations;
   const arLabels = loadAllTranslations("ar").authTranslations;
 

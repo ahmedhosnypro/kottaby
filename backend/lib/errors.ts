@@ -59,14 +59,14 @@ export class ForbiddenError extends DomainError {
  *
  * @example new ValidationError(message) // code = "VALIDATION"
  * @example new ValidationError("PASSWORD_TOO_SHORT", message) // custom code
- * @example new ValidationError(message, fields) // + REQ-015 field payload
+ * @example new ValidationError(message, fields) // + field payload
  * @example new ValidationError("CODE", message, options, fields) // full form
  */
 export class ValidationError extends DomainError {
   /**
-   * Optional field-level payload (REQ-015): whitelist-projected entries built
-   * explicitly by the producer — NEVER a spread/echo of client input (REQ-033;
-   * every property must be property-mapped `{field, code, message}`).
+   * Optional field-level payload: whitelist-projected entries built explicitly
+   * by the producer — NEVER a spread/echo of client input; every property must
+   * be property-mapped `{field, code, message}`.
    *
    * Presence semantics (consumed by the boundary finalizer/envelope layers):
    * `undefined` = absent → the transport omits `fields` entirely; an EMPTY
@@ -224,16 +224,16 @@ function hasSqliteUnique(error: unknown): boolean {
   return false;
 }
 
-// ─── Error-code taxonomy re-export (dev3-002 Task 2.1) ─────────────────────
-// The `backend/lib/errors/` directory hosts the Phase-2 contract modules
-// (taxonomy now; masking/envelope helpers follow). Consumers keep importing
+// ─── Error-code taxonomy re-export ──────────────────────────────────────────
+// The `backend/lib/errors/` directory hosts the error-boundary contract
+// modules (taxonomy, masking/envelope helpers). Consumers keep importing
 // everything from this flat module — `@/backend/lib/errors` resolves to THIS
 // file (exact-file beats same-named directory in TS/bun resolution), so the
 // taxonomy symbols flow through the established single barrel surface:
 // `import { ERROR_CODE_HTTP_STATUS, isErrorCode } from "@/backend/lib/errors"`.
 export * from "./errors/error-code-taxonomy";
 
-// ─── Error masking & log-redaction re-export (dev3-002 Task 2.2) ───────────
+// ─── Error masking & log-redaction re-export ────────────────────────────────
 // Pure boundary finalizer utilities (`isDomainError`, `maskInternalError`,
 // `redactLogContext`, `finalizeGraphqlErrors`) join the SAME single barrel:
 // `import { finalizeGraphqlErrors } from "@/backend/lib/errors"`.

@@ -1,9 +1,8 @@
 # User Registration — Canonical Reference
 
 **Domain:** Auth / Identity provisioning
-**Plan of record:** `ai/plans/dev1-002-user-registration-with-role-specific-chi/`
-**Specs:** `specs.md` REQ-010..REQ-071
-**Status:** Implemented + verified (DEV1-002)
+**Specs:** `docs/specs/functional-requirements.md`
+**Status:** Implemented and verified
 
 This document is the single canonical reference for how the Kottaby / Draft Academy backend creates a new user identity. It consolidates the role→child mapping, the handshake-generation algorithm, the atomicity transaction pattern, the BOPLA/BFLA defenses, and the 23505→ConflictError translation rule. All layers (types, repos, service, GraphQL, frontend) MUST conform to the contracts described here.
 
@@ -20,9 +19,9 @@ When `RegistrationService.registerUser(input, locale, tx?)` runs, the `users` ro
 | `parent` | `parent` | `parents` | (PK only; extension columns added by later flows) | ✓ `registerUser` |
 | `admin` | `admin` | `admin` | (PK only) | ✗ — service-only via `RegistrationService.createAdminUser` |
 
-> **B.6 / B.7 contract (teacher applicant flow):** A user registering as `teacher` receives an `applicants` row with `status='pending'` and **NO `teacher` row**. The `teacher` row is created only after the verification pipeline (DEV2-004+) approves the applicant. Granting teacher privileges before evaluation would compromise platform quality (FR-3.1).
+> **Teacher applicant flow:** A user registering as `teacher` receives an `applicants` row with `status='pending'` and **NO `teacher` row**. The `teacher` row is created only after the teacher verification pipeline approves the applicant. Granting teacher privileges before evaluation would compromise platform quality.
 >
-> **Applicant lifecycle (post-registration):** the `applicants` state machine, cooldown/attempt contracts, `myApplicantProfile` query contract, and consumer obligations for DEV2-005..010 are canonically documented in `docs/teachers/applicant-lifecycle.md` (DEV2-004; REQ-081).
+> **Applicant lifecycle (post-registration):** the `applicants` state machine, cooldown/attempt contracts, the `myApplicantProfile` query contract, and downstream consumer obligations are canonically documented in `docs/teachers/applicant-lifecycle.md`.
 
 All child tables share the user's primary key (`child.id = users.id`, `ON DELETE CASCADE`).
 
@@ -30,7 +29,7 @@ All child tables share the user's primary key (`child.id = users.id`, `ON DELETE
 
 ## 2. Handshake Generation
 
-Every `student` registration generates a unique `handshake_code` so a parent can later link to the student (DEV1-013/014/015 owns the *consumption* workflow; DEV1-002 only generates the code).
+Every `student` registration generates a unique `handshake_code` so a parent can later link to the student. The parent-link *consumption* workflow is out of scope here; this document covers only code generation.
 
 ### 2.1 Format
 
@@ -79,7 +78,7 @@ throw new ConflictError("Handshake code generation failed after retries", { caus
 
 ## 3. Atomicity Transaction Pattern
 
-All registration writes occur inside a **single `db.transaction`**. Atomicity (REQ-030) is non-negotiable — partial accounts corrupt every downstream state machine.
+All registration writes occur inside a **single `db.transaction`**. Atomicity is non-negotiable — partial accounts corrupt every downstream state machine.
 
 ### 3.1 Production path
 
@@ -137,7 +136,7 @@ const insert: UserInsertType = {
   role,
   gender: input.gender ?? null,
   country: input.country,
-  // Governance defaults (REQ-011) — server-set, never client-controlled.
+  // Governance defaults — server-set, never client-controlled.
   isDeleted: false,
   deletedAt: null,
   suspended: false,
@@ -155,13 +154,13 @@ const insert: UserInsertType = {
 
 | Omitted field | Reason |
 |---|---|
-| `id` | Server-generated (REQ-024) |
-| `handshakeCode` | Server-generated for students (REQ-012) |
-| `balanceHifz`, `balanceTajweed`, `balanceReviews` | Server-zeroed for students (REQ-012) |
-| `parentId` | Server-set during parent handshake (DEV1-013+) |
-| `isDeleted`, `deletedAt` | Governance (REQ-011) |
-| `suspended`, `suspendedAt`, `suspendedPeriodDays` | Governance (REQ-011) |
-| `isBlocked`, `blockedAt` | Governance (REQ-011) |
+| `id` | Server-generated |
+| `handshakeCode` | Server-generated for students |
+| `balanceHifz`, `balanceTajweed`, `balanceReviews` | Server-zeroed for students |
+| `parentId` | Server-set during the parent handshake flow |
+| `isDeleted`, `deletedAt` | Governance — server-controlled |
+| `suspended`, `suspendedAt`, `suspendedPeriodDays` | Governance — server-controlled |
+| `isBlocked`, `blockedAt` | Governance — server-controlled |
 | `lastActiveAt` | Server-set to `now()` on registration, updated on each authenticated request |
 | `createdAt`, `updatedAt` | Drizzle defaults |
 
@@ -173,13 +172,13 @@ A client that submits `isDeleted: true`, `handshakeCode: "X"`, or `id: 999` is *
 export type RegistrationReturnType = Omit<UserSelectType, "passwordHash">;
 ```
 
-The hash can never leak to a resolver payload, log, or GraphQL response (REQ-020).
+The hash can never leak to a resolver payload, log, or GraphQL response.
 
 ---
 
 ## 5. BFLA Public-Resolver Gate (Function-Level Authorization)
 
-`admin` is a privileged role reserved for super-admin onboarding (DEV3-016/018). The public registration mutation MUST NOT accept `role=admin`. The defense is layered:
+`admin` is a privileged role reserved for super-admin onboarding. The public registration mutation MUST NOT accept `role=admin`. The defense is layered:
 
 ### 5.1 Type-level gate (compile-time)
 
@@ -204,7 +203,7 @@ This defends against transport-layer tamper (e.g., a hand-crafted POST that bypa
 
 ### 5.4 Privileged path
 
-`RegistrationService.createAdminUser(input: AdminRegistrationSubmitInput, locale, outerTx?)` is a separate service method that accepts `role: "admin"`. It is **service-only** — not exposed via any Pothos mutation. DEV3-016/018 will wire it to a permission-gated admin onboarding surface.
+`RegistrationService.createAdminUser(input: AdminRegistrationSubmitInput, locale, outerTx?)` is a separate service method that accepts `role: "admin"`. It is **service-only** — not exposed via any Pothos mutation. A future permission-gated admin onboarding surface will call it explicitly.
 
 ---
 
@@ -249,7 +248,7 @@ The `localizedMessage` is `t.emailAlreadyExists` from `getServerTranslations(loc
 
 ## 7. JWT Auth Flow
 
-DEV1-002 delivers a complete auth vertical slice alongside registration. The flow:
+Registration ships with a complete JWT auth vertical slice. The flow:
 
 ### 7.1 Registration
 
@@ -258,7 +257,7 @@ DEV1-002 delivers a complete auth vertical slice alongside registration. The flo
 ### 7.2 Login
 
 `mutation login(input: { email, password })` → `AuthService.login`:
-1. `UserRepository.findByEmail(email)` — case-insensitive per DBML collation.
+1. `UserRepository.findByEmail(email)` — case-insensitive collation.
 2. `comparePassword(plaintext, hash)` — bcrypt.
 3. Governance check: `isDeleted || isBlocked || suspended` → `UnauthorizedError` (generic — never discloses which).
 4. Sign `access_token` (15min, HS256) + `refresh_token` (7day, HS256).
@@ -286,7 +285,7 @@ The `refresh_token` is also set as an **httpOnly cookie** by the Next.js route h
 - Dev fallback: derive both from `DATABASE_ENCRYPTION_KEY` via `SHA-256(base + ":access"|"refresh")` — keeps dev bootstrapping to a single secret while remaining cryptographically distinct.
 - `isUsingDevFallbackSecret()` lets the GraphQL route log a one-time warning in non-production.
 
-> **Deferred (D4):** Session store for refresh-token revocation — currently stateless JWT. The `sessionId` claim is already present on refresh tokens, so adding a server-side `sessions` table is additive (no token-shape change). Lands in DEV2-001/DEV2-002.
+> **Deferred:** Session store for refresh-token revocation — currently stateless JWT. The `sessionId` claim is already present on refresh tokens, so adding a server-side `sessions` table is additive (no token-shape change).
 
 ---
 
@@ -298,7 +297,7 @@ All user-facing error messages resolve through the **compile-time TypeScript tra
 - Resolvers: `ctx.t("auth")` (already bound to `ctx.locale`).
 - Client components: `useAppTranslation("auth")` from `@/shared/locale/client`.
 
-The `auth` and `errors` namespaces were added by DEV1-002 across all four required files per locale:
+The `auth` and `errors` namespaces live in the standard four files per locale:
 
 ```
 shared/locale/types/auth/index.ts    (MessageSchema — source of truth)
@@ -327,16 +326,16 @@ Never hardcode error strings — always use typed translation functions.
 
 ---
 
-## 9. Rollout Summary
+## 9. File Layout and Tests
 
-### 9.1 Files created
+### 9.1 Files
 
 **Backend:**
 - `backend/types/users/registration.types.ts`
 - `backend/services/auth/registration.service.ts`
 - `backend/services/auth/auth.service.ts`
 - `backend/lib/auth/jwt.ts`, `backend/lib/auth/cookies.ts`, `backend/lib/auth/password.ts`
-- `backend/lib/ratelimit.ts` (stub — D1)
+- `backend/lib/ratelimit.ts` (stub)
 - `backend/db/repo/users/user.repository.ts`, `admin.repository.ts`
 - `backend/db/repo/students/student.repository.ts`
 - `backend/db/repo/parents/parent.repository.ts`
@@ -350,11 +349,11 @@ Never hardcode error strings — always use typed translation functions.
 
 **Frontend:**
 - `frontend/graphql/sharedDocuments/auth/auth.documents.ts` (+ barrel) — `registerUserMutationDocument`, `loginMutationDocument`, `meQueryDocument`, `refreshTokenMutationDocument`
-- `frontend/context/AuthContext.ts` (rewritten — `NonNullable<MeQuery["me"]>` user shape)
-- `frontend/providers/apollo/AuthProvider.tsx` (real impl — login, session restore, refresh-before-redirect, logout)
-- `frontend/providers/apollo/useAuthRecoveryRegistration.ts` (real impl)
+- `frontend/context/AuthContext.ts` — user shape is `NonNullable<MeQuery["me"]>`
+- `frontend/providers/apollo/AuthProvider.tsx` (login, session restore, refresh-before-redirect, logout)
+- `frontend/providers/apollo/useAuthRecoveryRegistration.ts`
 - `frontend/lib/auth/refreshMemoryToken.ts`
-- 12 frontend infra modules created by the F1 provider-stack repair (logger, safeRedirect, dedupedRefreshToken, emotion caches, theme-detection, ViewportContext, NetworkConnectivityContext, useNetworkConnectivity hook, etc.)
+- Frontend provider/infra modules: logger, safeRedirect, dedupedRefreshToken, emotion caches, theme-detection, ViewportContext, NetworkConnectivityContext, useNetworkConnectivity hook, etc.
 - `app/(auth)/login/{page.tsx,LoginForm.tsx}`, `app/(auth)/register/{page.tsx,RegisterForm.tsx}`, `app/(auth)/layout.tsx`
 - `app/_components/auth-header.tsx`, `app/layout.tsx` (mounts AppClientProviders)
 
@@ -365,40 +364,22 @@ Never hardcode error strings — always use typed translation functions.
 
 ### 9.2 Tests
 
-- `backend/services/auth/registration.service.test.ts` — role matrix, duplicate email, forced child-insert failure → rollback, handshake collision retry + budget exhaustion, validation matrix, password hash verification. (Written per REQ-060..064; DB-bound runs require `.env.test` + bunfig preload — adapted note in `tasks.md` Task 5.x.)
+- `backend/services/auth/registration.service.test.ts` — role matrix, duplicate email, forced child-insert failure → rollback, handshake collision retry + budget exhaustion, validation matrix, password hash verification. DB-bound runs require `.env.test` plus the bunfig preload.
 
-### 9.3 Gate results
+### 9.3 Deferred and future work
 
-| Gate | Result |
-|---|---|
-| `tsgo` (DEV1-002 files) | 0 errors |
-| `biome:check` (DEV1-002 files) | 0 errors / 0 warnings |
-| `validate:dbml` | GREEN (22 tables, 15 enums) |
-| `sub-loop --lifecycle duplicates` per file | exit 0 |
-| End-to-end GraphQL suite | 6/6 operations verified live (register, login, me, refreshToken, wrong-password, anonymous-me) |
-| Midpoint review R1 | 0 feature-specific findings (1 bug fixed: Drizzle cause-chain traversal) |
-| Post-implementation review | 0 feature-specific findings across types/backend/frontend/security |
-| Deferred-items gate | `grep -c "❌\|⚠️" = 1` (only D1 — documented partial, does not block) |
-
-### 9.4 Carry-over to downstream plans
-
-| Carry-over | Target plan |
-|---|---|
-| Recitation (Qira'ah) record creation tied to student registration | DEV1-003 |
-| Free-trial balance crediting beyond zeroed columns | DEV1-004 |
-| Session store for refresh-token revocation; real rate limiter | DEV2-001 / DEV2-002 |
-| Teacher verification pipeline (applicants → teacher row) | DEV2-004+ |
-| Parent handshake consumption (link via `handshake_code`) | DEV1-013/014/015 |
-| Admin onboarding mutation (wires `createAdminUser` to a permission-gated surface) | DEV3-016/018 |
+- Recitation (Qira'ah) record creation tied to student registration.
+- Free-trial balance crediting beyond the zeroed student columns.
+- Session store for refresh-token revocation and a real rate limiter (the current `backend/lib/ratelimit.ts` is a stub).
+- Teacher verification pipeline (applicants → teacher row) — see `docs/teachers/applicant-lifecycle.md`.
+- Parent handshake consumption (linking a parent via `handshake_code`).
+- Admin onboarding mutation that wires `createAdminUser` to a permission-gated surface.
 
 ---
 
 ## 10. References
 
-- Plan: `ai/plans/dev1-002-user-registration-with-role-specific-chi/`
-- Specs: `specs.md` REQ-010..REQ-071
-- Outcome files: `outcome/phase0-baseline-outcome.md`, `outcome/midpoint-review-R1.md`, `outcome/post-implementation-review.md`, `outcome/plan-completion-outcome.md`
-- Deferred items: `deferred-items.md` (D1–D4)
+- Specs: `docs/specs/functional-requirements.md`
 - Related docs: `docs/auth/REDIRECT_LOOP_FIX.md`, `docs/graphql/error-handling-contract.md`, `docs/graphql/domain-error-extensions-code.md`
 - Service entry points: `backend/services/auth/registration.service.ts`, `backend/services/auth/auth.service.ts`
 - Key infra: `backend/lib/auth/jwt.ts`, `backend/lib/auth/cookies.ts`, `backend/lib/auth/password.ts`, `backend/lib/errors.ts`

@@ -1,5 +1,5 @@
 /**
- * ApplicantRepository lifecycle tests (DEV2-004 Task 2.1) — `findByUserId`
+ * ApplicantRepository lifecycle tests — `findByUserId`
  * (read) + `recordVerificationAttempt` (atomic in-place increment write)
  * against the live `kottab_test` PostgreSQL instance.
  *
@@ -21,17 +21,14 @@
  *    call returns null.
  *  - Tier 2 (boundary): pre-seeded attempts=3 → 4; monotonic advance of
  *    `last_attempt_at` from a setup-forced older value.
- *  - Tier 3 (chaos/concurrency): sequential calls 0→1→2 (REQ-072); concurrent
+ *  - Tier 3 (chaos/concurrency): sequential calls 0→1→2; concurrent
  *    calls inside the same `runInRollback` via `Promise.allSettled` land both
- *    increments (final attempts = 2, no lost update, REQ-042); applicant-row
+ *    increments (final attempts = 2, no lost update); applicant-row
  *    insert without an owning user violates the FK constraint.
  *  - Tier 4 (security/tenancy): attempt recorded for user A leaves user B's
  *    row byte-identical; the UPDATE is provably parameterized by static
  *    review (no string concatenation / interpolation of the id in the
- *    repository source — nothing dynamic to assert at runtime, see
- *    outcome/2.1-outcome.md).
- *
- * Requirements: REQ-014, REQ-041, REQ-042, REQ-044, REQ-072, REQ-032.
+ *    repository source — nothing dynamic to assert at runtime).
  */
 
 import { describe, expect, test } from "bun:test";

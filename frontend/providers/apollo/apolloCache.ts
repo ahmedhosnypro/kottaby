@@ -13,9 +13,9 @@ import { InMemoryCache } from "@apollo/client";
  * does not emit "Cache data may be lost" warnings when these types are written
  * to the cache via different parent objects. They are always read back through
  * their enclosing parent (e.g. a `Session`, an `AdminNote` owner or a future
- * `_health` document), so identifying them by their own fields is unnecessary.
- * (`HealthCheck` added by dev3-003 Task 4.1 — REQ-061/D4 pairing for the
- * scalar-only probe object exposed by the `_health` gateway query.)
+ * `_health` document), so identifying them by their own fields is unnecessary
+ * (`HealthCheck` is the scalar-only probe object exposed by the `_health`
+ * gateway query).
  */
 export function createApolloCache(): InMemoryCache {
   return new InMemoryCache({
@@ -32,7 +32,7 @@ export function createApolloCache(): InMemoryCache {
       },
       // Embedded scalar-only value object (no `id`) — normalize-safe from day
       // one so any future consumer of `_health` cannot trigger cache-data-loss
-      // warnings (dev3-003 REQ-061/D4; frontend/graphql/AGENTS.md policy).
+      // warnings (frontend/graphql/AGENTS.md embedded-type policy).
       HealthCheck: {
         keyFields: false,
       },

@@ -4,17 +4,17 @@ import { paymentGateway, subscriptionStatus } from "@/backend/db/schema/enums";
 import { users } from "@/backend/db/schema/users/users";
 
 /**
- * Subscriptions table (DBML `subscriptions`, L246–L263).
+ * Subscriptions table (`subscriptions`).
  *
- * A subscription is owned by a generic `user_id` (A.9 lifecycle: pending →
+ * A subscription is owned by a generic `user_id` (lifecycle: pending →
  * active → expired/cancelled/suspended). It links a purchaser (any role —
  * parent, teacher, or self-paying student) to a `plans` row. Offline payment
  * tracking columns (`payment_method`, `payment_reference`,
- * `payment_verified_at`) support B.9 (admin-verified offline payments).
+ * `payment_verified_at`) support admin-verified offline payments.
  *
  * Both FKs use `restrict` delete semantics: a user or plan with active
  * subscriptions cannot be hard-deleted until the subscriptions are resolved.
- * Indexes on `user_id` and `plan_id` per DBML `indexes { ... }` block.
+ * Indexes on `user_id` and `plan_id`.
  */
 export const subscriptions = pgTable(
   "subscriptions",

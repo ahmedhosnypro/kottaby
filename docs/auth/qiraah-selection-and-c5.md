@@ -1,8 +1,6 @@
-# Qira'ah Selection and the C.5 Invariant
+# Qira'ah Selection and the Session-Linked Recitation Invariant
 
-**Plan:** DEV1-003 — Recitation Selection on Registration
-**Owner:** DEV1-003 (vocabulary/contract/UI); DEV3-007 (session recitation creation — out of scope here)
-**Status:** DEV1-003 shipped. Durable user-level persistence is **deferred** (see §7).
+**Status:** Shipped. Durable user-level persistence is **deferred** (see §7).
 **Canonical source files:**
 - `shared/constants/recitation-reading.enum.ts` — canonical `RecitationReading` enum (10 Qira'at)
 - `backend/services/shared/recitation-catalog.service.ts` — pure validation/catalog service
@@ -12,19 +10,19 @@
 - `app/(auth)/register/RegisterForm.tsx` — registration form selector
 - `backend/db/schema/classes/recitation.ts` — physical `recitation` table (session-linked)
 
-> This document is the canonical reference for Qira'ah selection on the Kottaby platform. It records the ticket-vs-C.5 contradiction, the canonical catalog, the public query, the registration contract, the security rules, the "What NOT to Do" list, and the deferred persistence options. Read this before touching anything related to `recitation` or `preferredRecitation`.
+> This document is the canonical reference for Qira'ah selection on the Kottaby platform. It records the user-linked-vs-session-linked modeling decision, the canonical catalog, the public query, the registration contract, the security rules, the "What NOT to Do" list, and the deferred persistence options. Read this before touching anything related to `recitation` or `preferredRecitation`.
 
 ---
 
-## 1. The Ticket Contradiction — and How It Was Resolved
+## 1. The Modeling Decision — User-Linked vs Session-Linked
 
-The DEV1-003 ticket text describes the feature as:
+An early formulation of the feature described it as:
 
 > "recitation linked to the user, 1:M"
 
 i.e. many `recitation` rows per user, joined via `recitation.user_id`.
 
-**This is no longer the physical schema.** During DEV1-001, resolved decision **C.5** and DEV1-001 REQ-020 renamed the legacy `recitation.user_id` column to **`recitation.session_id`**, marked it `NOT NULL` + `UNIQUE`, and redefined the relationship as:
+**This is not the physical schema.** The session-linkage decision recorded in `docs/specs/open-decisions-and-gaps.md` renamed the legacy `recitation.user_id` column to **`recitation.session_id`**, marked it `NOT NULL` + `UNIQUE`, and redefined the relationship as:
 
 > **1:1 `session` → `recitation`** (one recitation row per session, not per user)
 
@@ -34,13 +32,13 @@ The reciter is reached via the session: `session.student_id → students → use
 
 - The 1:M user → recitation model implied recitations are user-owned preferences (a user "has" recitations). In the actual product model, recitations belong to **sessions** — a session is a specific recitation event between a student and a teacher.
 - A user may practice multiple Qira'at across different sessions; modeling "a user has many recitations" confused the user-preference concept with the session-occurrence concept.
-- DEV3-007 owns the session-recitation creation flow. DEV1-003 ships only the **vocabulary** (the Qira'ah catalog) and the **registration-time contract** (an optional `preferredRecitation` preference field) — it does NOT create `recitation` rows.
+- Session recitation creation is owned by the session-lifecycle work (see §8). The registration contract ships only the **vocabulary** (the Qira'ah catalog) and the **registration-time contract** (an optional `preferredRecitation` preference field) — it does NOT create `recitation` rows.
 
-### C.5 wins
+### The session-linked model wins
 
-C.5 + DEV1-001 REQ-020 are **authoritative**. The ticket text is treated as superseded. DEV1-003 refuses to recreate `recitation.user_id` semantics inline. Any implementation that inserts user-linked `recitation` rows would corrupt the 1:1 session-linked model and break DEV3 session recitation ownership.
+The session-linkage decision is **authoritative**. The user-linked reading of the feature description is treated as superseded. Never recreate `recitation.user_id` semantics inline. Any implementation that inserts user-linked `recitation` rows would corrupt the 1:1 session-linked model and break session recitation ownership.
 
-This is recorded in `docs/specs/open-decisions-and-gaps.md` (C.5 reconciliation) and enforced structurally: the `recitation` table has no `user_id` column at all.
+This is recorded in `docs/specs/open-decisions-and-gaps.md` and enforced structurally: the `recitation` table has no `user_id` column at all.
 
 ---
 
@@ -206,9 +204,9 @@ export interface RegistrationSubmitInput {
   /**
    * Optional preferred recitation reading (Qira'ah).
    * Validated against the canonical catalog before any DB work.
-   * NOT persisted to the `recitation` table (C.5 guardrail).
-   * This field is contract metadata only until a DEV1-001-approved
-   * user-preference home exists (deferred schema-gap — see deferred-items.md).
+   * NOT persisted to the `recitation` table (session-linkage guardrail).
+   * This field is contract metadata only until an approved
+   * user-preference home exists (deferred schema gap — see §7).
    */
   readonly preferredRecitation?: RecitationReading | null;
 }
@@ -223,23 +221,23 @@ export type RegistrationReturnType = Omit<UserSelectType, "passwordHash"> & {
 In `backend/services/auth/registration.service.ts`, `registerUser`:
 
 1. **Validates `preferredRecitation`** via `RecitationCatalogService.validateOptionalReading(value, locale)` BEFORE the transaction. Throws `ValidationError` (DomainError subclass with `extensions.code = "VALIDATION"`) on any non-enum value. The `validateOptionalReading` wrapper returns `null` for `null`/`undefined` (no selection) — the field is optional.
-2. **Runs the existing atomic user + child creation transaction** (unchanged from DEV1-002 — atomic, BOPLA explicit field mapping, password hashing, 23505 → `ConflictError` translation, handshake generation with retry).
+2. **Runs the existing atomic user + child creation transaction** (atomic, BOPLA explicit field mapping, password hashing, 23505 → `ConflictError` translation, handshake generation with retry — see `docs/auth/user-registration.md`).
 3. **Echoes the validated selection** as `preferredRecitation` on the `RegistrationReturnType` via `toReturnType`. This is contract metadata only — there is NO DB write to `recitation` or to any user-preference column.
 
 ### The me/login path returns `null`
 
 `preferredRecitation` on the `User` GraphQL type and `RegistrationReturnType` is **nullable**. On the `me` query and `login` mutation paths, it is always `null` because:
 
-- There is no DB column to read from (D1 deferred).
+- There is no DB column to read from (durable persistence is deferred — see §7).
 - The selection was only just validated on the registration path; the me/login path does not re-fetch it.
 
 This is enforced at two construction sites:
 - `backend/graphql/gqlContextFactory.ts` (builds `ctx.user` from `UserRepository.findById`): explicitly sets `preferredRecitation: null`.
 - `backend/services/auth/auth.service.ts` (`stripPasswordHash`): explicitly sets `preferredRecitation: null`.
 
-When D1 lands (durable user-preference persistence), these two sites will be updated to populate `preferredRecitation` from the new persistence target.
+When durable user-preference persistence lands, these two sites will be updated to populate `preferredRecitation` from the new persistence target.
 
-### Teacher applicant semantics (REQ-024)
+### Teacher applicant semantics
 
 When `role: teacher` (the public applicant path), the recitation selection does **NOT** change applicant semantics:
 - `applicants.status` remains `"pending"`
@@ -269,7 +267,7 @@ export enum RegisterPublicRole {
 
 The Pothos `RegisterPublicRolePothosEnum` is registered from this enum, so the GraphQL schema itself rejects `role: admin` with a `VALIDATION` error before the resolver is invoked.
 
-The `AdminRegistrationSubmitInput` type (which permits `role: "admin"`) is **service-only** — it is NOT exposed via any Pothos input type. Admin child rows are only created through the privileged `RegistrationService.createAdminUser` entry point used by DEV3-016/018 onboarding.
+The `AdminRegistrationSubmitInput` type (which permits `role: "admin"`) is **service-only** — it is NOT exposed via any Pothos input type. Admin child rows are only created through the privileged `RegistrationService.createAdminUser` entry point used by admin onboarding flows.
 
 Recitation selection does not grant elevated permissions — `preferredRecitation` is metadata, not a role or privilege.
 
@@ -311,26 +309,26 @@ This rejects:
 - **SQL/LIKE wildcards** — `%`, `_`, `'`, `";` etc. are not enum values → rejected
 - **Extra object fields** — the GraphQL input type enforces shape; even if a malicious client smuggles extra fields via a raw HTTP request, the BOPLA whitelist drops them
 
-No `as RecitationReading` narrowing casts anywhere in the DEV1-003 diff. The frontend `recitationLabel(reading, t)` switch uses codegen-generated enum members (`RecitationReading.HafsAnAsim`, etc.), not string literals — the codegen `RecitationReading` is a native TS enum (not a string-union type), so switch cases are exhaustive-checked at compile time.
+No `as RecitationReading` narrowing casts anywhere in this feature. The frontend `recitationLabel(reading, t)` switch uses codegen-generated enum members (`RecitationReading.HafsAnAsim`, etc.), not string literals — the codegen `RecitationReading` is a native TS enum (not a string-union type), so switch cases are exhaustive-checked at compile time.
 
-### 5.4 C.5 Guardrail
+### 5.4 Session-Linkage Guardrail
 
-The C.5 invariant is enforced structurally:
+The session-linked recitation invariant is enforced structurally:
 
-- The `recitation` table has **no `user_id` column** — the legacy column was renamed to `session_id` per DEV1-001 REQ-020.
+- The `recitation` table has **no `user_id` column** — the legacy column was renamed to `session_id`.
 - `recitation.session_id` is `NOT NULL` + `UNIQUE` (`recitation_session_id_unique` index).
-- DEV1-003 creates **zero** `recitation` rows during registration. Verified by direct SQL after a live `registerUser` mutation:
+- Registration creates **zero** `recitation` rows. Verified by direct SQL after a live `registerUser` mutation:
   ```sql
   SELECT count(*) FROM recitation WHERE session_id IN (SELECT id FROM session WHERE student_id = <new>);
   -- → 0
   ```
 - The `preferredRecitation` value appears only as contract metadata in the mutation response.
 
-Session recitation creation is owned by DEV3-007. DEV1-003 ships only the vocabulary + validation contract.
+Session recitation creation is owned by the session-lifecycle work (§8). The registration contract ships only the vocabulary + validation contract.
 
 ### 5.5 Rate Limiting
 
-The public `registerUser` mutation is rate-limit wrapped via the `graphqlRateLimiter` config (in `backend/lib/ratelimit.ts`). However, `checkRateLimit` is currently a **fail-open stub** that always returns `success: true` — inherited from DEV1-002. Real per-IP Redis counters / sliding-window quotas / lockout periods land in DEV2-002 (deferred item D3). The `TEST_ENFORCE_RATE_LIMIT` env flag is reserved for that work.
+The public `registerUser` mutation is rate-limit wrapped via the `graphqlRateLimiter` config (in `backend/lib/ratelimit.ts`). However, `checkRateLimit` is currently a **fail-open stub** that always returns `success: true`. Real per-IP Redis counters / sliding-window quotas / lockout periods are deferred (see `docs/specs/open-decisions-and-gaps.md`). The `TEST_ENFORCE_RATE_LIMIT` env flag is reserved for that work.
 
 The fail-open posture mirrors the login cold-start resilience pattern: a transient limiter error must NOT block a legitimate registration.
 
@@ -338,11 +336,11 @@ The fail-open posture mirrors the login cold-start resilience pattern: a transie
 
 ## 6. What NOT to Do
 
-These anti-patterns are explicitly prohibited. Each would either violate C.5, introduce a security hole, or break the canonical-source-of-truth rule.
+These anti-patterns are explicitly prohibited. Each would either violate the session-linkage invariant, introduce a security hole, or break the canonical-source-of-truth rule.
 
 ### 6.1 Do NOT resurrect `recitation.user_id`
 
-The legacy `user_id` column on the `recitation` table was renamed to `session_id` per DEV1-001 REQ-020 / decision C.5. The physical table has **no `user_id` column**.
+The legacy `user_id` column on the `recitation` table was renamed to `session_id` by the session-linkage decision. The physical table has **no `user_id` column**.
 
 ```typescript
 // ❌ PROHIBITED — there is no recitation.user_id column
@@ -369,7 +367,7 @@ await tx.insert(recitation).values({
 });
 ```
 
-Session recitation creation is owned by DEV3-007 (session lifecycle).
+Session recitation creation is owned by the session-lifecycle work (§8).
 
 ### 6.3 Do NOT hardcode the enum value array in Pothos
 
@@ -479,21 +477,21 @@ const { data, loading } = useQuery(recitationReadingsQueryDocument);
 
 ### 6.10 Do NOT patch the schema inline
 
-If durable user-level Qira'ah persistence is required, escalate via the DEV1-001/DEV3-001 schema-gap path. Do NOT `ALTER TABLE` or `bun db push` a new user-recitation model inside DEV1-003.
+If durable user-level Qira'ah persistence is required, escalate through the schema-gap process. Do NOT `ALTER TABLE` or `bun db push` a new user-recitation model ad hoc.
 
 ```bash
-# ❌ PROHIBITED — inline schema patch inside DEV1-003
-bun db push   # adding a users.preferred_recitation column without a DEV1-001-approved schema task
+# ❌ PROHIBITED — inline schema patch
+bun db push   # adding a users.preferred_recitation column without an approved schema change
 
-# ✅ REQUIRED — escalate via deferred-items.md (D1)
-# Open a DEV1-001 schema task → pick Candidate A / B / C → run validate:dbml → then implement
+# ✅ REQUIRED — escalate through the schema-gap process (§7)
+# Choose a candidate option → approve the schema change → then implement
 ```
 
 ---
 
-## 7. Deferred Persistence (D1 — schema-gap)
+## 7. Deferred Durable Persistence
 
-Durable user-level Qira'ah persistence is **blocked** on a DEV1-001/DEV3-001 schema-gap decision. No user-preference table or column exists. The `recitation` table is session-linked per C.5 and cannot serve user-level persistence.
+Durable user-level Qira'ah persistence is **blocked** on a pending schema-gap decision. No user-preference table or column exists. The `recitation` table is session-linked and cannot serve user-level persistence.
 
 `preferredRecitation` is currently:
 - Captured on the registration form (optional selector)
@@ -503,33 +501,33 @@ Durable user-level Qira'ah persistence is **blocked** on a DEV1-001/DEV3-001 sch
 
 ### Candidate options
 
-| ID | Option | Pros | Cons | Owner |
-|---|---|---|---|---|
-| A | `users.preferred_recitation` column (single-value) | Low-friction, co-located with the user row, simple read on `me` | Single value only (no ranking, no history) | DEV1-001 (schema) |
-| B | `user_recitation_preferences` table (multi-row) | Supports ranking/multiple preferences + history | Extra table + join on `me`; more complex | DEV1-001 (schema) + DEV3-001 (DBML) |
-| C | Defer to DEV3-007 session-recitation only (no user-level persistence) | Simplest — no schema change | No user-level preference; preference is captured per-session at booking time | DEV3-007 |
+| Option | Pros | Cons |
+|---|---|---|
+| `users.preferred_recitation` column (single-value) | Low-friction, co-located with the user row, simple read on `me` | Single value only (no ranking, no history) |
+| `user_recitation_preferences` table (multi-row) | Supports ranking/multiple preferences + history | Extra table + join on `me`; more complex |
+| Session-recitation only (no user-level persistence) | Simplest — no schema change | No user-level preference; preference is captured per-session at booking time |
 
-### When D1 lands
+### When durable persistence lands
 
-The following files will need updates:
-1. **DEV1-001/DEV3-001:** add the column/table to DBML + Drizzle schema; run `bun validate:dbml`; create a migration.
-2. **DEV1-003 follow-up:** update `AuthService.stripPasswordHash` and `gqlContextFactory.ts` to populate `preferredRecitation` from the new persistence target instead of `null`.
-3. **DEV2-002:** implement the `setMyPreferredRecitation` mutation (deferred item D2). MUST source identifiers from `ctx.user.id` (BOLA/IDOR defense). MUST validate via `RecitationCatalogService.validateReading`. MUST be `authScope`-gated (authenticated users only).
-4. **DEV1-003 follow-up (optional):** update the `me` query to surface the persisted preference (currently always `null` on the me path).
+The following changes will be needed:
+1. Add the column/table to the Drizzle schema (`backend/db/schema/`) and create a migration.
+2. Update `AuthService.stripPasswordHash` and `gqlContextFactory.ts` to populate `preferredRecitation` from the new persistence target instead of `null`.
+3. Implement a `setMyPreferredRecitation` mutation. It MUST source identifiers from `ctx.user.id` (BOLA/IDOR defense), MUST validate via `RecitationCatalogService.validateReading`, and MUST be `authScope`-gated (authenticated users only).
+4. Optionally, update the `me` query to surface the persisted preference (currently always `null` on the me path).
 
-### Why DEV1-003 ships without persistence
+### Why the contract ships without persistence
 
-The ticket's primary value is the **cross-layer vocabulary** — the canonical Qira'ah catalog, the public query, the registration-contract field. Downstream tickets (DEV3-007 session recitation, DEV2-002 authenticated preference mutation, DEV3 matching engine) all need this vocabulary to exist before they can consume it. Blocking DEV1-003 on the schema-gap decision would block the entire Qira'ah-aware roadmap.
+The feature's primary value is the **cross-layer vocabulary** — the canonical Qira'ah catalog, the public query, the registration-contract field. Downstream work (session-linked recitation creation, the authenticated preference mutation, the matching engine) all needs this vocabulary to exist before it can consume it. Blocking the vocabulary on the schema-gap decision would block the entire Qira'ah-aware roadmap.
 
-By shipping vocabulary + contract + UI now and deferring persistence, DEV1-003 unblocks downstream work without corrupting the C.5 invariant. The `preferredRecitation` contract field is forward-compatible with any of Candidate A/B/C — when D1 lands, the field will be populated from the new persistence target instead of being echoed as registration-time metadata.
+By shipping vocabulary + contract + UI now and deferring persistence, downstream work is unblocked without corrupting the session-linkage invariant. The `preferredRecitation` contract field is forward-compatible with any of the candidate options — when durable persistence lands, the field will be populated from the new persistence target instead of being echoed as registration-time metadata.
 
 ---
 
 ## 8. Post-Registration / Session-Linked Boundary
 
-DEV1-003 ships only the vocabulary + validation contract + catalog query + registration UI selector. The session-linked recitation creation flow is **owned by DEV3-007**.
+The registration contract ships only the vocabulary + validation contract + catalog query + registration UI selector. The session-linked recitation creation flow is owned by the session-lifecycle work.
 
-### What DEV1-003 provides to DEV3-007
+### What the registration contract provides to session-lifecycle work
 
 - The canonical `RecitationReading` enum (10 Qira'at) — consume via `@/shared/constants/recitation-reading.enum` (backend) or `@/frontend/graphql/generated/gql/graphql` (frontend).
 - `RecitationCatalogService.validateReading(value, locale)` — pure validation, throws `ValidationError` on bad input. Use before inserting a `recitation` row.
@@ -537,16 +535,16 @@ DEV1-003 ships only the vocabulary + validation contract + catalog query + regis
 - `RecitationReadingPothosEnum` — already registered in `backend/graphql/pothos/shared/enum.pothos.ts`. Use as a field type on session-recitation mutations/inputs.
 - The public `recitationReadings` query — already exists. Do NOT add a competing catalog query.
 
-### What DEV3-007 owns
+### What session-lifecycle work owns
 
 - The authenticated session-recitation creation mutation (e.g. `setSessionRecitation(sessionId, input)`).
 - The `authScope` gate (session owner / teacher / supervisor — per `docs/workflows/03-session-lifecycle-escrow.md`).
 - The DB insert into the `recitation` table (session-linked, 1:1 via unique `session_id`).
-- The unique-constraint violation handling (23505 → `ConflictError` translation, mirroring the DEV1-002 registration pattern).
+- The unique-constraint violation handling (23505 → `ConflictError` translation, mirroring the registration pattern in `docs/auth/user-registration.md`).
 
-### What DEV3-007 must NOT do
+### What session-lifecycle work must NOT do
 
-- Add a `user_id` column to `recitation` (C.5).
+- Add a `user_id` column to `recitation` (violates the session-linkage invariant).
 - Re-register the `RecitationReading` Pothos enum (runtime error).
 - Hardcode the enum value array.
 - Use `as RecitationReading` narrowing casts.
@@ -556,20 +554,11 @@ DEV1-003 ships only the vocabulary + validation contract + catalog query + regis
 
 ## 9. Cross-Reference
 
-- **Plan:** `ai/plans/dev1-003-recitation-selection-on-registration/`
-- **Specs:** `specs.md` REQ-001..REQ-071
-- **Tasks:** `tasks.md` (16 top-level tasks, all `[x]`)
-- **Deferred items:** `deferred-items.md` (D1, D2, D3)
-- **Outcomes:**
-  - `outcome/phase0-baseline-outcome.md`
-  - `outcome/midpoint-review-R1.md`
-  - `outcome/post-implementation-review.md`
-  - `outcome/plan-completion-outcome.md`
-- **C.5 reconciliation:** `docs/specs/open-decisions-and-gaps.md`
-- **DEV1-001 schema (recitation table):** `backend/db/schema/classes/recitation.ts`
-- **DEV1-002 registration canonical reference:** `docs/auth/user-registration.md`
+- **Session-linkage decision:** `docs/specs/open-decisions-and-gaps.md`
+- **Schema (recitation table):** `backend/db/schema/classes/recitation.ts`
+- **Registration canonical reference:** `docs/auth/user-registration.md`
 - **DomainError → extensions.code:** `docs/graphql/domain-error-extensions-code.md`
-- **Session lifecycle (DEV3-007 context):** `docs/workflows/03-session-lifecycle-escrow.md`
+- **Session lifecycle:** `docs/workflows/03-session-lifecycle-escrow.md`
 - **Pothos Enum Registration CRITICAL RULE:** `backend/graphql/AGENTS.md`
 - **Cross-layer enum migration rules:** `backend/enum/AGENTS.md`
 - **TypedDocumentNode convention:** `frontend/graphql/sharedDocuments/AGENTS.md`

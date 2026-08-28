@@ -308,8 +308,3 @@ Queries with correlated sub-selects or complex aggregation are not suitable for 
 - `backend/db/repo/AGENTS.md` — Repository layer rules
 - `backend/AGENTS.md` — Backend architecture patterns
 - `docs/graphql/dataloader-batching.md` — DataLoader batching (uses batch prepared statements)
-- `ai/plans/neon/outcome/2.1-prepared-statements-pilot-outcome.md` — Pilot refactor details
-- `ai/plans/neon/outcome/2.2-prepared-statements-rollout-outcome.md` — Rollout summary
-- `ai/plans/neon/outcome/3.1-graphql-dataloader-pilot-outcome.md` — DataLoader pilot (batch repo methods)
-- `ai/plans/neon/spec.md` — Neon optimization specification
-- `ai/plans/neon/design.md` — Technical design document

@@ -2,12 +2,12 @@ import { index, integer, pgTable, text, timestamp, unique, varchar } from "drizz
 import { session } from "@/backend/db/schema/classes/session";
 
 /**
- * Recitation table (DBML `recitation`, L372–L383).
+ * Recitation table (`recitation`).
  *
- * One recitation record per session (C.5): `session_id` is NOT NULL and UNIQUE
+ * One recitation record per session: `session_id` is NOT NULL and UNIQUE
  * (one-to-one with session). The legacy `user_id` column was replaced with
- * `session_id` per the DBML reconciliation (R7) — the reciter is reached via
- * session.student_id → students → users.
+ * `session_id` — the reciter is reached via session.student_id →
+ * students → users.
  *
  * `name` is a short label for the recitation; `description` is free-form text.
  * Cascade delete: removing a session removes its recitation row.

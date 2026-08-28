@@ -1,8 +1,8 @@
 /**
- * ValidationError fields-payload & envelope-translation contract tests —
- * dev3-002 Task 2.3 paired suite (additive extension of backend/lib/errors.ts).
+ * ValidationError fields-payload & envelope-translation contract tests
+ * (additive extension of backend/lib/errors.ts).
  *
- * Coverage map (tasks.md 2.3.TE):
+ * Coverage map:
  *  - Tier 1: every constructor branch — with fields, without fields (absent),
  *    custom overloaded-code form, default form, full form; empty-array vs
  *    absent discrimination; extensions.fields mirroring; caller-extensions
@@ -17,7 +17,7 @@
  *  - Tier 4: input-echo probe — whitelist projection of attacker-shaped input
  *    into `fields` exposes ONLY `{field, code, message}` per entry and never
  *    echoes raw payloads/driver text; NotFoundError entity-name semantics
- *    pinned (REQ-052 — no double suffixing).
+ *    pinned (no double suffixing).
  *
  * DB-free unit tier — runs via `bun run test/scripts/run-test.ts <path>`.
  */
@@ -65,7 +65,7 @@ function attackerInput(): Record<string, unknown> {
 
 /**
  * Producer-side projection — the ONLY sanctioned way to build `fields`:
- * explicit property mapping from validated structures (REQ-033). Mirrors
+ * explicit property mapping from validated structures. Mirrors
  * what service layers must do; this file pins the pattern in executable
  * form.
  */
@@ -252,7 +252,7 @@ describe("cyclic cause graphs terminate deterministically (Tier 3)", () => {
 
 // ─── Tier 4 ────────────────────────────────────────────────────────────────
 
-describe("input-echo probe — whitelist projection & REQ-052 semantics (Tier 4)", () => {
+describe("input-echo probe — whitelist projection & NotFoundError naming semantics (Tier 4)", () => {
   /** Attacker-shaped raw payload with smuggled extra properties. */
 
   /**
@@ -289,7 +289,7 @@ describe("input-echo probe — whitelist projection & REQ-052 semantics (Tier 4)
     expect(err.extensions.code).toBe("VALIDATION"); // normalizeErrorCode maps it to 422 upstream
   });
 
-  test("REQ-052: NotFoundError(entity) entity-name convention — single suffix only", () => {
+  test("NotFoundError(entity) entity-name convention — single suffix only", () => {
     const err = new NotFoundError("USER", "User not found");
     expect(err.code).toBe("USER_NOT_FOUND");
     expect(err.extensions.code).toBe("USER_NOT_FOUND");

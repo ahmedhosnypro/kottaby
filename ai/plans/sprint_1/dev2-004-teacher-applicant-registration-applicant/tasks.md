@@ -37,7 +37,7 @@ The following protocol applies to EVERY task in this file. It is not optional an
    - Mark boxes `[x]` ONLY after the two agent-browser/health self-loops (where applicable) and verification commands pass. Unsupported claims of completion are protocol violations.
 
 8. **Scope Freeze Discipline**
-   - Files owned by DEV1-001 (`backend/db/schema/**`, `db/schema.dbml`), DEV1-002 (`RegistrationService`, `auth.mutation.ts`, `RegisterPublicRole`), DEV2-001/DEV2-002 (auth context, authScopes engine) are VERIFY-ONLY unless a contract-lock test proves a defect. Any such defect ⇒ defer via `deferred-items.md` + coordinated fix; never inline-patch as a workaround.
+   - Files owned by DEV1-001 (`backend/db/schema/**`), DEV1-002 (`RegistrationService`, `auth.mutation.ts`, `RegisterPublicRole`), DEV2-001/DEV2-002 (auth context, authScopes engine) are VERIFY-ONLY unless a contract-lock test proves a defect. Any such defect ⇒ defer via `deferred-items.md` + coordinated fix; never inline-patch as a workaround.
 
 ---
 
@@ -54,7 +54,7 @@ The following protocol applies to EVERY task in this file. It is not optional an
     - `bun biome:check` → record total issue count
     - `bun run scripts/lint-service.ts --json --id baseline` → record baseline JSON
     - `git diff --name-only` → record the pre-existing modified-file set (these files are EXEMPT from this ticket's "your changes must be clean" gate)
-    - `git diff -- backend/db/schema/** backend/db/migration/** db/schema.dbml` → MUST be empty; record as evidence
+    - `git diff -- backend/db/schema/** backend/db/migration/**` → MUST be empty; record as evidence
   - _Requirements: REQ-001, REQ-045_
   - [x] 0.1.SR **Semantic Review**: outcome file contains all five command outputs verbatim; ledger is initialized with zero ❌/⚠️ entries.
   - [x] 0.1.OC **Outcome**: write `outcome/0.1-outcome.md` with counts and exempt-file list.
@@ -94,13 +94,13 @@ The following protocol applies to EVERY task in this file. It is not optional an
 
 ## Phase 1: Types, Enums & Database Schema
 
-> Schema work in this phase is **TypeScript-canonical-only**. Per REQ-045, `git diff` for `backend/db/schema/**`, `backend/db/migration/**`, and `db/schema.dbml` MUST be EMPTY at ticket end. There is NO `pgEnum` addition and NO `bun run db push`.
+> Schema work in this phase is **TypeScript-canonical-only**. Per REQ-045, `git diff` for `backend/db/schema/**` and `backend/db/migration/**` MUST be EMPTY at ticket end. There is NO `pgEnum` addition and NO `bun run db push`.
 
 ### Task 1.1 — ApplicantStatus Canonical Enum & Type Guard
 
 - [x] 1.1 Implement the `ApplicantStatus` TS enum and `isApplicantStatus` guard
   - Files to create/modify:
-    - CREATE `backend/enum/teachers/applicant-status.enum.ts` — EXACT members: `Pending = "pending"`, `InEvaluation = "in_evaluation"`, `Failed = "failed"`, `Passed = "passed"` (matching the DBML note on `applicants.status`); export `isApplicantStatus(value: unknown): value is ApplicantStatus` (string check + `Object.values` membership)
+    - CREATE `backend/enum/teachers/applicant-status.enum.ts` — EXACT members: `Pending = "pending"`, `InEvaluation = "in_evaluation"`, `Failed = "failed"`, `Passed = "passed"` (matching the canonical value set recorded for `applicants.status`); export `isApplicantStatus(value: unknown): value is ApplicantStatus` (string check + `Object.values` membership)
     - MODIFY `backend/enum/teachers/index.ts` — add `export * from "./applicant-status.enum"`
     - VERIFY-ONLY `backend/enum/index.ts` — confirm top-level barrel already re-exports `teachers/`; edit ONLY if it does not (record disposition in outcome)
   - Applicable AGENTS.md: `backend/enum/AGENTS.md`, root `AGENTS.md`
@@ -168,11 +168,10 @@ The following protocol applies to EVERY task in this file. It is not optional an
 
 - [x] 1.4 Prove zero schema drift before leaving Phase 1
   - Commands:
-    - `git diff -- backend/db/schema/** backend/db/migration/** db/schema.dbml` → MUST be EMPTY
-    - `bun validate:dbml` → GREEN with zero new drift
+    - `git diff -- backend/db/schema/** backend/db/migration/**` → MUST be EMPTY
   - Files to create: append evidence to `outcome/1.4-outcome.md`
   - _Requirements: REQ-045, REQ-001_
-  - [x] 1.4.SR **Semantic Review**: `ApplicantStatus` has NO `pgEnum` counterpart (deliberate, per plan D1); varchar contract note in DBML remains untouched.
+  - [x] 1.4.SR **Semantic Review**: `ApplicantStatus` has NO `pgEnum` counterpart (deliberate, per plan D1); varchar contract remains untouched.
   - [x] 1.4.OC **Outcome**: write `outcome/1.4-outcome.md` with command outputs.
 
 ---
@@ -238,7 +237,7 @@ The following protocol applies to EVERY task in this file. It is not optional an
 - [x] 2.M Mid-Point Review of Phases 0–2 before ANY GraphQL/frontend work begins
   - Verify checklist (record pass/fail per item):
     - All 2.1/2.2 tests GREEN via `run-test.ts`; coverage ≥100% on new logic.
-    - `git diff -- backend/db/schema/** backend/db/migration/** db/schema.dbml` EMPTY; `bun validate:dbml` green.
+    - `git diff -- backend/db/schema/** backend/db/migration/**` EMPTY.
     - `ApplicantStatus` is TS-enum-only (no pgEnum anywhere in diff).
     - Zero hardcoded status string literals outside `applicant-status.enum.ts` and tests (grep-gated).
     - `bun tsgo`, `bun biome:check` counts vs baseline — ZERO new issues attributable to this ticket.
@@ -474,7 +473,7 @@ The following protocol applies to EVERY task in this file. It is not optional an
   - Commands & artifacts:
     - `bun tsgo`, `bun biome:check`, `bun run scripts/lint-service.ts --json --id final` → diff counts vs 0.1 baseline (target: ZERO new issues attributable to this ticket; pre-existing exempt files from 0.1 remain exempt).
     - Full suite runs: `bun run test:db`, service tests, `bun run test:graphql`, `bun run test:ui:components` (as applicable per 0.2 script inventory) — ALL GREEN.
-    - `git diff -- backend/db/schema/** backend/db/migration/** db/schema.dbml` EMPTY + `bun validate:dbml` green (final re-proof, REQ-045).
+    - `git diff -- backend/db/schema/** backend/db/migration/**` EMPTY (final re-proof, REQ-045).
     - `grep -c "❌\|⚠️" deferred-items.md` MUST equal 0 — forward items for DEV2-005 (purchase wiring consuming `assertCanPurchaseVerification` + `recordReapplication`) MUST be expressed as RESOLVED reference entries targeted at DEV2-005, not open debt.
     - Files deliberately NOT changed (list verbatim): `RegistrationService`, `auth.mutation.ts`, `RegisterPublicRole` enum path, all `backend/db/schema/**`, DEV2-001/002 auth files.
   - _Requirements: REQ-001, REQ-045, REQ-076_
@@ -580,4 +579,4 @@ The following protocol applies to EVERY task in this file. It is not optional an
 | Applicant views profile → sees applicant status, not teacher status | Tasks 3.3, 4.2, 5.3 (REQ-017/018/063; certified→null precedence) |
 | Failed applicant: `cooldown_until` set; after expiry re-purchase permitted; attempts incremented; `last_attempt_at` updated | Tasks 2.1, 2.2, 5.2 (REQ-014/015/042/072 boundary+concurrency matrix); duration-agnostic guard contract documented for DEV2-008 writer (Task 7.1) |
 
-**Final gates (ALL must be green):** zero new tsgo/biome/lint vs baseline · empty schema/DBML diff + `validate:dbml` green · all test suites green · 100% stmt/branch on new logic · `grep -c "❌\|⚠️" deferred-items.md` = 0 · `docs/teachers/applicant-lifecycle.md` exists · cross-links in `docs/auth/user-registration.md`, `backend/services/AGENTS.md`, root `AGENTS.md`.
+**Final gates (ALL must be green):** zero new tsgo/biome/lint vs baseline · empty schema diff · all test suites green · 100% stmt/branch on new logic · `grep -c "❌\|⚠️" deferred-items.md` = 0 · `docs/teachers/applicant-lifecycle.md` exists · cross-links in `docs/auth/user-registration.md`, `backend/services/AGENTS.md`, root `AGENTS.md`.

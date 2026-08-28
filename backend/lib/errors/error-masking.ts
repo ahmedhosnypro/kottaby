@@ -1,8 +1,7 @@
 /**
- * Error masking & log-redaction — GraphQL boundary finalizer module
- * (dev3-002 Phase 2, Task 2.2).
+ * Error masking & log-redaction — GraphQL boundary finalizer module.
  *
- * Pure boundary utilities (REQ-040): deterministic given their inputs and the
+ * Pure boundary utilities: deterministic given their inputs and the
  * process environment, side-effect-free EXCEPT the single boundary log call
  * emitted per classified error by {@link finalizeGraphqlErrors}. No DB
  * reads/writes, no cache access, no network calls, and no direct output
@@ -15,20 +14,20 @@
  *    `errors[]`, preserving `path`/`locations` and carrying dev-only
  *    diagnostics outside PROD configuration.
  *  - {@link redactLogContext}     — bounded, pattern-based credential redaction
- *    for structured log-context bags (REQ-025/REQ-035).
+ *    for structured log-context bags.
  *  - {@link finalizeGraphqlErrors} — per-error classification at the boundary:
  *    DomainError ⇒ pass-through (localized message + code preserved verbatim,
  *    taxonomy-family normalization delegated to downstream status layers,
  *    `ctx.requestId` attached, `fields` mapped only when present); everything
  *    else ⇒ masked item plus exactly one correlated `logger.error`.
  *
- * Classification rules (tasks.md §2.2):
+ * Classification rules:
  *  - ONE-HOP domain resolution locally (`originalError` / `cause` — a single
  *    unwrap step, never a recursive walk). Deeper traversal exists only by
  *    REUSING the cycle-guarded walker shipped in `backend/lib/errors.ts`
- *    ({@link translateDbError}, REQ-042). This module deliberately introduces
+ *    ({@link translateDbError}). This module deliberately introduces
  *    NO second cause-walker.
- *  - ENVELOPE HOP (Task 3.1): Apollo Server ≥5 normalizes execution errors
+ *  - ENVELOPE HOP: Apollo Server ≥5 normalizes execution errors
  *    through `GraphQLError.toJSON()`, so items reaching `willSendResponse` are
  *    PLAIN objects — no `Error` identity, no `originalError`. To keep the
  *    single response-time classifier possible, the route's `formatError` hook
@@ -37,7 +36,7 @@
  *    therefore invisible to JSON serialization AND wire validation). Probes
  *    inspect the wire item, that envelope hop, and one structural unwrap of
  *    each (bounded — never a chain walk).
- *  - PROTOCOL-PRESET PASS-THROUGH (Task 3.1): failures generated BEFORE
+ *  - PROTOCOL-PRESET PASS-THROUGH: failures generated BEFORE
  *    resolution (parse / GraphQL-validation / persisted-query misses) carry
  *    Apollo's preset `extensions.code` values and protocol-authored messages
  *    that can never embed server internals. Masking them would collapse
@@ -45,9 +44,9 @@
  *    items pass through AS-IS (only `extensions.requestId` attached).
  *    Resolver-thrown errors NEVER match this rule — their codes are masked or
  *    passed through by Hops A/B above.
- *  - Legacy alias handling (BLT-08): producers emitting `RATE_LIMIT_EXCEEDED`
+ *  - Legacy alias handling: producers emitting `RATE_LIMIT_EXCEEDED`
  *    cross UNCHANGED — message and code pass through verbatim. Any
- *    STATUS/category derivation composes the Task 2.1 taxonomy elsewhere
+ *    STATUS/category derivation composes the taxonomy module elsewhere
  *    (`normalizeErrorCode("RATE_LIMIT_EXCEEDED") → "RATE_LIMITED"` → 429 row).
  *  - Localization ONLY via `getServerTranslations(locale)` from
  *    `@/shared/locale/server-graphql` (repo ground-truth accessor shape — see
@@ -56,7 +55,6 @@
  *    string literals in this module.
  *
  * @see docs/graphql/domain-error-extensions-code.md
- * @see ai/plans/dev3-002-shared-error-handling-response-contracts/tasks.md Task 2.2
  */
 
 import { env } from "node:process";
@@ -66,8 +64,8 @@ import type { ApiFieldErrorType } from "@/backend/types";
 import { getServerTranslations } from "@/shared/locale/server-graphql";
 
 /**
- * Marker written over every credential-shaped value during redaction
- * (REQ-035). Exported so log reviewers and paired tests share one literal.
+ * Marker written over every credential-shaped value during redaction.
+ * Exported so log reviewers and paired tests share one literal.
  */
 export const REDACTED_VALUE_MARKER = "[REDACTED]";
 
@@ -87,7 +85,7 @@ const OPAQUE_RENDER_BUDGET = 512;
 const DEV_STACK_BUDGET = 1536;
 
 /**
- * Hard traversal bounds for {@link redactLogContext} (REQ-042): input is never
+ * Hard traversal bounds for {@link redactLogContext}: input is never
  * walked unbounded — deeper objects collapse to the depth marker and longer
  * arrays are truncated with an explicit marker entry.
  */
@@ -150,13 +148,13 @@ export interface MaskedInternalErrorOptions {
   /** Request locale; resolves exclusively through server translations. */
   readonly locale: string;
   /**
-   * Correlation id copied verbatim into `extensions.requestId` when defined
-   * (REQ-013). Treated as opaque — never trimmed, mutated, or reflected.
+   * Correlation id copied verbatim into `extensions.requestId` when defined.
+   * Treated as opaque — never trimmed, mutated, or reflected.
    */
   readonly requestId?: string;
   /**
    * Response path of the failing error, copied verbatim onto the masked item
-   * so consumers keep positional fidelity ("preserving `path`", tasks.md §2.2).
+   * so consumers keep positional fidelity.
    */
   readonly path?: GraphQLResponsePath;
   /** Document locations of the failing error, copied when provided. */
@@ -167,16 +165,15 @@ export interface MaskedInternalErrorOptions {
    * (`name` / capped `message` / capped leading `stack`) rides inside
    * `extensions.debug`; PRODUCTION masked bodies carry strictly
    * message/code/requestId/path(/locations) — zero stack frames, SQL text,
-   * parameter values, env names/values, file paths, or hash-shaped material
-   * (REQ-030 / REQ-074 leak-scan contract).
+   * parameter values, env names/values, file paths, or hash-shaped material.
    */
   readonly diagnosticSubject?: unknown;
   /**
-   * BOUNDARY-mode switch (dev3-002 Task 3.1): when `false`, the dev-only
-   * `extensions.debug` snapshot is suppressed in EVERY environment — rebuilt
-   * `errors[]` never echo throwable material to the wire; the correlated
-   * redacted `logger.error` stays the single diagnostic surface. Omitted/
-   * `true` keeps the pre-existing non-production behavior (Phase-2 pins).
+   * BOUNDARY-mode switch: when `false`, the dev-only `extensions.debug`
+   * snapshot is suppressed in EVERY environment — rebuilt `errors[]` never
+   * echo throwable material to the wire; the correlated redacted
+   * `logger.error` stays the single diagnostic surface. Omitted/`true` keeps
+   * the default non-production behavior.
    */
   readonly includeDiagnostics?: boolean;
 }
@@ -197,8 +194,8 @@ type MaskedInternalGraphQLErrorExtensions = {
 
 /**
  * Client-facing masked internal-error item — fully serialized-safe,
- * usable directly as an element of `errors[]` (Task 3.1 wiring) or wrapped by
- * the REST envelope layer (Task 2.4).
+ * usable directly as an element of `errors[]` or wrapped by the REST
+ * envelope layer.
  */
 type MaskedInternalGraphQLError = {
   /** Fully localized generic message (`errorsTranslations.internalServerError`). */
@@ -211,11 +208,11 @@ type MaskedInternalGraphQLError = {
   readonly locations?: readonly GraphQLLocationShape[];
 };
 
-/** Context handed to the finalizer by the request pipeline (Task 2.5 fills it). */
+/** Context handed to the finalizer by the request pipeline. */
 export interface ErrorFinalizationContext {
-  /** Request locale used for every localization decision (REQ-002/REQ-050). */
+  /** Request locale used for every localization decision. */
   readonly locale: string;
-  /** Correlation id attached to EVERY finalized error's extensions (REQ-013). */
+  /** Correlation id attached to EVERY finalized error's extensions. */
   readonly requestId?: string;
   /** Operation name from the request — correlation metadata for the log line. */
   readonly operationName?: string;
@@ -309,7 +306,7 @@ function capRenderedText(raw: string, budget: number): string {
   return raw.length > budget ? `${raw.slice(0, budget)}…[TRUNCATED]` : raw;
 }
 
-// ─── Boundary envelope hop (Task 3.1 formatError ⇄ finalizer contract) ──────
+// ─── Boundary envelope hop (formatError hook ⇄ finalizer contract) ──────────
 
 /**
  * Non-enumerable property key under which the route's `formatError` hook
@@ -411,7 +408,7 @@ function redactRecordEntries(source: Record<string, unknown>, depth: number): Re
 }
 
 /**
- * Walks a value with hard bounds (REQ-042): traversal depth is capped at
+ * Walks a value with hard bounds: traversal depth is capped at
  * {@link REDACTION_MAX_DEPTH} and arrays at {@link REDACTION_MAX_ITEMS} —
  * input is NEVER walked unbounded.
  */
@@ -443,7 +440,7 @@ function redactNode(value: unknown, depth: number): unknown {
 /**
  * Redacts credential-shaped material from a structured log-context bag.
  *
- * Pure, bounded transformation (REQ-035/REQ-042):
+ * Pure, bounded transformation:
  *  - key names are reduced to word segments and matched against the
  *    credential vocabulary ({@link SENSITIVE_KEY_WORDS}); sensitive subtrees
  *    are replaced ENTIRELY by `{@link REDACTED_VALUE_MARKER}` BEFORE their
@@ -514,16 +511,16 @@ function snapshotDiagnostic(subject: unknown): DomainDiagnosticSnapshot | undefi
  *
  * Deterministic given (locale, requestId, path, locations, environment):
  *  - `message` resolves through server translations ONLY — the generic
- *    `errorsTranslations.internalServerError` string (REQ-050, zero literals);
+ *    `errorsTranslations.internalServerError` string (zero literals);
  *  - `extensions.code` is exactly `INTERNAL_SERVER_ERROR`;
- *  - `requestId` attaches verbatim when defined (correlation REQ-013);
- *  - `path`/`locations` pass through verbatim ("preserving path");
+ *  - `requestId` attaches verbatim when defined;
+ *  - `path`/`locations` pass through verbatim;
  *  - `extensions.debug` appears ONLY under non-production configuration AND
  *    when `includeDiagnostics !== false`, containing solely the whitelisted
  *    diagnostic snapshot (see {@link snapshotDiagnostic}); PROD bodies stay
- *    lean for the REQ-030/074 leak scan.
+ *    lean for the leak scan.
  *
- * `includeDiagnostics: false` is the BOUNDARY-mode switch (dev3-002 Task 3.1):
+ * `includeDiagnostics: false` is the BOUNDARY-mode switch:
  * rebuilt `errors[]` NEVER echo throwable material to any environment — the
  * correlated redacted `logger.error` line is the one diagnostic surface.
  */
@@ -556,7 +553,7 @@ export function isDomainError(value: unknown): value is DomainError {
 /**
  * Single structural unwrap (`originalError`, falling back to `cause`) from any
  * record- or Error-shaped root — graphql-js located errors, Apollo wrapped
- * errors, and Task 3.1 test fixtures all expose their real throwable through
+ * errors, and boundary test fixtures all expose their real throwable through
  * one of these properties.
  */
 function firstStructuralHop(root: unknown): unknown {
@@ -579,7 +576,7 @@ function firstStructuralHop(root: unknown): unknown {
  * Bounded probe set for ONE wire item: the item itself, its envelope hop
  * (when attached by the route's `formatError`), and ONE structural unwrap of
  * each. Never a recursive chain walk — classification stays O(1)-depth per
- * element (tasks.md §2.2 rule, preserved under Task 3.1 wiring).
+ * element.
  */
 function boundaryProbes(candidate: unknown): readonly unknown[] {
   const rawHop = readRawErrorHop(candidate);
@@ -652,11 +649,11 @@ function readProtocolPresetCode(candidate: unknown): string | null {
 }
 
 /**
- * Presence-preserving `fields` mapping (REQ-015, 2.3 carry-forward): ONLY
- * ValidationErrors contribute payloads, and the producer-whitelisted array
- * reference is mirrored immutably — `undefined` stays ABSENT, a deliberate
- * EMPTY array survives AS-IS, entries are never null and never re-echoed
- * (they were explicitly property-mapped at construction time per REQ-033).
+ * Presence-preserving `fields` mapping: ONLY ValidationErrors contribute
+ * payloads, and the producer-whitelisted array reference is mirrored
+ * immutably — `undefined` stays ABSENT, a deliberate EMPTY array survives
+ * AS-IS, entries are never null and never re-echoed (they were explicitly
+ * property-mapped at construction time).
  */
 function extractFieldsPayload(error: DomainError): readonly ApiFieldErrorType[] | undefined {
   if (!(error instanceof ValidationError)) {
@@ -707,7 +704,8 @@ function describeThrownKind(value: unknown): string {
 
 /**
  * Redacted correlated context for the masked-path `logger.error` call. Built
- * by explicit key mapping (NO spread of the throwable — BOPLA/REQ-033); the
+ * by explicit key mapping (NO spread of the throwable — no client input is
+ * echoed); the
  * error itself contributes only whitelisted scalars, and the whole bag goes
  * through {@link redactLogContext} so bearer-shaped strings cannot ride along.
  */
@@ -751,8 +749,8 @@ function formatDomainPassThrough(
  *
  * `path`/`locations` always read from the WIRE carrier (the item the client
  * would have received). Diagnostics are SUPPRESSED at this boundary — rebuilt
- * items carry zero throwable material in any environment (Task 3.1
- * includeDiagnostics:false); the redacted correlated log line is the one
+ * items carry zero throwable material in any environment
+ * (`includeDiagnostics: false`); the redacted correlated log line is the one
  * diagnostic surface and still receives the real throwable's whitelisted
  * scalars when the envelope hop holds it.
  */
@@ -791,7 +789,7 @@ function readWireExtensions(candidate: unknown): Record<string, unknown> | undef
 
 /** Logs-and-formats one element of `result.errors`. */
 function classifyBoundaryErrorElement(candidate: unknown, ctx: ErrorFinalizationContext): FormattedBoundaryError {
-  // Hop A — DomainError pass-through (REQ-020). Probes are bounded: the wire
+  // Hop A — DomainError pass-through. Probes are bounded: the wire
   // item, its envelope hop, and one structural unwrap of each. Carrier stays
   // the WIRE item so `path`/`locations` come from the transport metadata.
   for (const probe of boundaryProbes(candidate)) {

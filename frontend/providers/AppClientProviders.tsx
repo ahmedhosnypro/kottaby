@@ -48,7 +48,7 @@ export function AppClientProviders({ children, locale, initialTheme }: Readonly<
           <AppApolloProvider>
             <AuthProvider>
               {children}
-              {/* App-scope REQ-061 surface host — owns the single-slot
+              {/* App-scope error surface host — owns the single-slot
                   errorLink listener seam (toasts / notices / query-level
                   permission fallback). Mounted LAST so sibling providers
                   register their own seams first during mount. */}

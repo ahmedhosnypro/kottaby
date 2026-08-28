@@ -109,7 +109,7 @@ Prerequisite note: the 0.2 prerequisite-verification pass (`outcome/0.2-outcome.
 
 ### Dimension 5: Permissions / Enums — ✅ PASS
 
-- `ApplicantStatus` value set {pending, in_evaluation, failed, passed} matches the DBML note verbatim (0.2 item 20 confirmed) — TS-over-varchar design (D1) violates no rule and is protected by REQ-045 gates.
+- `ApplicantStatus` value set {pending, in_evaluation, failed, passed} matches the canonical value set verbatim (0.2 item 20 confirmed) — TS-over-varchar design (D1) violates no rule and is protected by REQ-045 gates.
 - Zero-argument BOLA contract is stated consistently across REQ-030, plan D4/§3.5, task 3.3, and the pentester wave probes (SDL grep + integration attempts).
 - Role gate composition, VALUE-import discipline, role≠certification boundary (REQ-033), BOPLA closed shapes, and no-oracle deny language are mutually consistent across spec/plan/tasks. Admin/Supervisor rows in the permission matrix resolve correctly given `user_role ∈ {admin, teacher, student, parent}` (supervisor users are denied by the teacher-only scope regardless of their underlying permission groups).
 - 401/403 split obligations ride on recorded 0.2 Adaptation #4.
@@ -136,7 +136,7 @@ Prerequisite note: the 0.2 prerequisite-verification pass (`outcome/0.2-outcome.
     - **Resolution (binding interpretation):** every `ai/plans/dev2-004-teacher-applicant-registration/**` reference resolves to the ACTUAL plan directory `ai/plans/sprint_1/dev2-004-teacher-applicant-registration-applicant/**` for all reads/writes (outcome files, ledger, baseline evidence). Executing agents should normalize against the real path when writing artifacts; mismatched strings in prose carry no independent weight.
 17. REQ-ID bijectivity verified programmatically: all 44 REQ ids referenced in tasks.md exist in specs.md, and every specs-defined id is consumed somewhere (no orphan requirement, no phantom reference).
 18. Doc anchors verified present: `docs/specs/open-decisions-and-gaps.md` §A.7/A.8/A.10/B.6/B.7/B.15/C.1/C.2 and `docs/specs/state-machine-invariants.md` INV-TV/U markers; `docs/auth/user-registration.md` has B.6/B.7 applicant content (line ~23) anchoring the REQ-081 cross-link; `docs/teachers/` correctly treated as net-new by task 7.1.
-19. Verification anchors audited executable: `scripts/health/sub-loop.ts` exists and accepts `--lifecycle duplicates` (progressive stage table in script header + root AGENTS); `test/scripts/run-test.ts` exists; `validate:dbml`, `generate:gqlSchema`, `codegen`, `test:db`, `test:services`, `test:graphql`, `test:ui:components`, `tsgo`, `biome:check`, `scripts/lint-service.ts` all present in package.json/scripts tree. Anchor #4 runner path corrected (finding D1-A).
+19. Verification anchors audited executable: `scripts/health/sub-loop.ts` exists and accepts `--lifecycle duplicates` (progressive stage table in script header + root AGENTS); `test/scripts/run-test.ts` exists; `generate:gqlSchema`, `codegen`, `test:db`, `test:services`, `test:graphql`, `test:ui:components`, `tsgo`, `biome:check`, `scripts/lint-service.ts` all present in package.json/scripts tree. Anchor #4 runner path corrected (finding D1-A).
 20. **[Note]** Output-location convention: the plan-review template suggests saving under `outcome/plan-review-R<N>.md`; the orchestrator for this ticket directs `plan-review-R1.md` at the plan-directory root (alongside tasks 0.3's own relative wording). This report complies with the orchestrator instruction; `outcome/0.3-outcome.md` should point back here.
 
 ### Stray artifacts (doc hygiene)
@@ -162,7 +162,7 @@ No source code was modified.
 - [x] Net-new folders enumerated consistently with 0.2 Adaptation #5 (enum/services/pothos/query/test/views/docs teachers domains)
 - [x] AC traceability: tasks ↔ specs REQ ids bijective
 - [x] Quality-loop target stage `--lifecycle duplicates` validated against `scripts/health/sub-loop.ts`
-- [x] All named commands exist in `package.json` / scripts tree (`validate:dbml`, `generate:gqlSchema`, `codegen`, `run-test.ts`, `test:*`)
+- [x] All named commands exist in `package.json` / scripts tree (`generate:gqlSchema`, `codegen`, `run-test.ts`, `test:*`)
 - [ ] Run per-file quality loop on modified plan file:
       `bun run scripts/health/sub-loop.ts ai/plans/sprint_1/dev2-004-teacher-applicant-registration-applicant/plan.md --lifecycle duplicates` (single-line prose token change only)
 - [ ] Proceed to Phase 1 (Foundation) with the dispositions in this report attached as REQ-083 outcome context

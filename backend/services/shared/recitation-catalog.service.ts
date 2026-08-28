@@ -2,14 +2,13 @@
  * RecitationCatalogService — pure catalog listing + validation for Qira'ah
  * (recitation reading) values.
  *
- * Per DEV1-003 REQ-005/010–013/040–041:
  *  - No DB access, no external adapters, no network calls.
  *  - Uses the canonical `RecitationReading` enum from `shared/constants/`.
  *  - Validation uses the `isRecitationReading` type guard (no unsafe `as` casts).
  *  - Errors are `ValidationError` (DomainError subclass) with localized messages
  *    from `getServerTranslations(locale).recitationTranslations`.
  *
- * C.5 guardrail (REQ-003): this service MUST NOT write to the `recitation`
+ * Read-only guardrail: this service MUST NOT write to the `recitation`
  * table. The physical `recitation` table is session-linked (1:1 with `session`
  * via unique `session_id`). This catalog is for user-preference selection only.
  *
@@ -45,7 +44,7 @@ export namespace RecitationCatalogService {
    * Throws `ValidationError` with a localized message on failure.
    *
    * Used by the registration service to validate `preferredRecitation` before
-   * any DB work (REQ-022). Safe against: unknown values, malformed casing,
+   * any DB work. Safe against: unknown values, malformed casing,
    * non-string payloads, SQL/LIKE wildcard text, and extra object fields.
    *
    * @param value  Unknown input to validate (typically from GraphQL input).

@@ -70,8 +70,8 @@ describe("resolvePostAuthTarget — post-login redirect precedence", () => {
   test("rejects every isSafeRedirect-accepted variant of the dispatcher path", () => {
     // The gateway loop is driven by the PATH, not the literal string: a
     // trailing slash, query, or hash all land on the same `/dashboard`
-    // dispatcher the preview gateway ping-pongs (CodeRabbit review of the
-    // DEV2-004 PR — the trailing-slash variant still looped).
+    // dispatcher the preview gateway ping-pongs (the trailing-slash variant
+    // still looped).
     expect(resolvePostAuthTarget("/dashboard/", UserRole.Admin)).toBe("/admin/dashboard");
     expect(resolvePostAuthTarget("/dashboard?from=login", UserRole.Teacher)).toBe("/teacher/dashboard");
     expect(resolvePostAuthTarget("/dashboard#section", UserRole.Student)).toBe("/student/dashboard");

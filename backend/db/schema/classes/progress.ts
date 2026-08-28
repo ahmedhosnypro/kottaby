@@ -3,20 +3,18 @@ import { lessons } from "@/backend/db/schema/classes/lessons";
 import { students } from "@/backend/db/schema/students/students";
 
 /**
- * Progress table (DBML `progress`, L421–L432).
+ * Progress table (`progress`).
  *
  * Tracks a student's progression through lessons. `student_id` → students.id
  * (cascade: removing a student removes their progress rows). `lesson_id` →
  * lessons.id (set null: removing a lesson preserves the progress row as a
  * historical record without a dangling lesson reference).
  *
- * Per R8: DBML `progress` has only `student_id`, `lesson_id`, and timestamps
- * — NO `completed_at` or `score` columns (those were in the plan prose but
- * superseded by the DBML ground truth).
+ * `progress` has only `student_id`, `lesson_id`, and timestamps —
+ * NO `completed_at` or `score` columns.
  *
- * CROSS-FILE DEP: imports `lessons` from the same classes domain (relative
- * `./lessons` import per CONTRACT). Imports `students` from the students
- * domain (deep import).
+ * Imports `lessons` from the same classes domain (relative `./lessons`
+ * import). Imports `students` from the students domain (deep import).
  */
 export const progress = pgTable(
   "progress",

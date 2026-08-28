@@ -1,6 +1,5 @@
 /**
- * Auth mutations — `registerUser` (DEV1-002), `login` + `refreshToken` +
- * `logout` (AUTH1 / DEV2-001).
+ * Auth mutations — `registerUser`, `login`, `refreshToken`, and `logout`.
  *
  * Contract:
  *  - `registerUser(input: RegisterUserInput!): User!`
@@ -67,8 +66,8 @@ gqlSchemaBuilder.mutationField("registerUser", t =>
           gender: input.gender ?? undefined,
           country: input.country,
           role: input.role,
-          // DEV1-003: pass the optional preferredRecitation to the service for
-          // catalog validation (C.5 guardrail: NOT persisted to `recitation`).
+          // Pass the optional preferredRecitation to the service for
+          // catalog validation (NOT persisted to the `recitation` table).
           preferredRecitation: input.preferredRecitation ?? undefined,
         },
         ctx.locale

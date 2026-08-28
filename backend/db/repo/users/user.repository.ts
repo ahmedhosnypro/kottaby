@@ -7,7 +7,7 @@
  *    config) and keep read queries stateless + transport-cheap.
  *  - Writes take a REQUIRED `tx: DBTransaction` (last param) — every insert
  *    must run inside a caller-supplied transaction so the registration flow
- *    can guarantee atomicity (REQ-030).
+ *    can guarantee atomicity.
  *  - No business logic, no permission checks, no hardcoded error strings —
  *    repository methods surface raw Drizzle errors; the service layer maps
  *    `23505` → `ConflictError` via `translateDbError`.
@@ -32,7 +32,8 @@ function isDBTransaction(tx: DBQueryExecutor): tx is DBTransaction {
 export namespace UserRepository {
   /**
    * Finds a user by email (case-sensitive on the DB side; PG collation is
-   * case-insensitive by default for `varchar`, matching REQ-021 expectations).
+   * case-insensitive by default for `varchar`, matching the email-uniqueness
+   * contract).
    *
    * Read-only — uses `queryDb` for the Neon HTTP fast path when eligible.
    *
@@ -96,8 +97,8 @@ export namespace UserRepository {
    * Inserts a new user row inside the supplied transaction.
    *
    * The caller is responsible for hashing the password BEFORE calling this
-   * method (REQ-020). Field-by-field mapping keeps mass-assignment out of
-   * the insert payload (BOPLA — REQ-023).
+   * method. Field-by-field mapping keeps mass-assignment out of
+   * the insert payload (BOPLA defense).
    *
    * @returns The inserted row (Drizzle `.returning()` yields all columns).
    */

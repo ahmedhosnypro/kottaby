@@ -15,7 +15,7 @@ Each checkbox is evidenced by its `outcome/<task-id>-out come.md` (verification 
 | tsgo | 0 errors | **0 errors** |
 | biome | 0 issues | **0 issues** (500 files) |
 | direct eslint | 0 errors | **0 errors** (1 transient finding fixed in-gate at 5.5) |
-| schema/DBML diff | EMPTY | **EMPTY** |
+| schema diff | EMPTY | **EMPTY** |
 | deferred debt | 0 | **0** (DI-1..DI-7 all ✅ resolved references) |
 
 ## Test inventory (111 pass / 0 fail; run commands per outcome/5.5)
@@ -26,7 +26,7 @@ Each checkbox is evidenced by its `outcome/<task-id>-out come.md` (verification 
 
 ## Schema-drift proof
 
-`git diff -- backend/db/schema/ backend/db/migration/ db/schema.dbml` = 0 lines at 1.4, 2.M, and 5.5. `bun validate:dbml` green (22 tables, 15 enums). `ApplicantStatus` is deliberately TS-enum-only over the varchar(50) column (plan D1).
+`git diff -- backend/db/schema/ backend/db/migration/` = 0 lines at 1.4, 2.M, and 5.5. `ApplicantStatus` is deliberately TS-enum-only over the varchar(50) column (plan D1).
 
 ## SDL/codegen delta
 
@@ -42,7 +42,7 @@ All 8 plan §6 threat rows PASS — 5.4 static/live evidence + 6.4 independent w
 
 ## Files deliberately NOT changed
 
-`RegistrationService`, `auth.mutation.ts`, `RegisterPublicRole`, `backend/db/schema/**`, `backend/db/migration/**`, `db/schema.dbml`, `backend/graphql/pothos/builder.ts`, `frontend/lib/auth/withPageAuth.ts`, `docs/specs/state-machine-invariants.md` (7.1 diff-check quote).
+`RegistrationService`, `auth.mutation.ts`, `RegisterPublicRole`, `backend/db/schema/**`, `backend/db/migration/**`, `backend/graphql/pothos/builder.ts`, `frontend/lib/auth/withPageAuth.ts`, `docs/specs/state-machine-invariants.md` (7.1 diff-check quote).
 
 ## Canonical doc & propagation
 

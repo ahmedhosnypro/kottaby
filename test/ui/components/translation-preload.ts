@@ -73,8 +73,8 @@ void mock.module("next/navigation", () => ({
 for (const translations of [arMessages, enMessages]) {
   Landing.getLabels(translations);
   Auth.getLabels(translations);
-  // DEV2-004 (Task 4.3): warm the Applicant + Errors handles so the
-  // ApplicantStatusCard suites surface missing-key drift at preload time.
+  // Warm the Applicant + Errors handles so the ApplicantStatusCard suites
+  // surface missing-key drift at preload time.
   Applicant.getLabels(translations);
   Errors.getLabels(translations);
 }

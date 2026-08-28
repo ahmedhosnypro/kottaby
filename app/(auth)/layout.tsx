@@ -196,7 +196,7 @@ export default function AuthLayout({ children }: { readonly children: ReactNode 
         {/* === Middle: Marketing pitch + decorative book motif === */}
         <div style={{ position: "relative", zIndex: 1, maxWidth: 440 }}>
           <BookMotif />
-          {/* audit-R4: this decorative marketing headline rendered as a bare
+          {/* This decorative marketing headline rendered as a bare
               <h2> BEFORE the form's <h1>, inverting the document outline on
               every auth page. Same look as a paragraph — the form title
               stays the page's single top-level heading. */}

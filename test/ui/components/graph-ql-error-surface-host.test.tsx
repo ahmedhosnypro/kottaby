@@ -7,12 +7,12 @@
  * localized surfaces that appear.
  *
  * All expected strings resolve through the compile-time translation system
- * (never hardcoded literals — REQ-075).
+ * (never hardcoded literals).
  *
  * NO history.pushState in this suite: happy-dom treats it as a navigation
  * and wipes the rendered React container (empirically verified — the DOM
  * resets to an empty wrapper div). The dispatcher's login-only path gate
- * (review-R2 fix) already passes on happy-dom's default URL.
+ * already passes on happy-dom's default URL.
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
@@ -28,7 +28,7 @@ import { renderWithWrapper } from "@/test/ui/components/TestWrapper";
 
 afterEach(cleanup);
 
-/** Publish one REQ-061 action through the production dispatcher (act-flushed). */
+/** Publish one error-code action through the production dispatcher (act-flushed). */
 function dispatch(code: string, operation: "query" | "mutation", requestId?: string): void {
   act(() => {
     dispatchMappedGraphQLErrorActions(
@@ -58,11 +58,11 @@ describe("GraphQLErrorSurfaceHost", () => {
     dispatch("INTERNAL_SERVER_ERROR", "mutation", "req-test-123");
 
     expect(screen.getByText(labels.internalServerError)).toBeDefined();
-    // Correlation guidance: the requestId travels as a mono chip (REQ-011/013).
+    // Correlation guidance: the requestId travels as a mono chip.
     expect(screen.getByText("req-test-123")).toBeDefined();
-    // Close affordance is translated, not hardcoded (REQ-002).
+    // Close affordance is translated, not hardcoded.
     expect(screen.getByRole("button", { name: Common.getLabels(getTranslations(locale)).close })).toBeDefined();
-    // The raw server message NEVER renders (REQ-011 masking).
+    // The raw server message NEVER renders (server masking).
     expect(screen.queryByText("masked wire message — never rendered")).toBeNull();
   });
 
@@ -104,7 +104,7 @@ describe("GraphQLErrorSurfaceHost", () => {
     expect(screen.queryByText(labels.forbiddenRole)).toBeNull();
   });
 
-  test("en: DUPLICATE_REQUEST → neutral info toast (success-equivalent, REQ-076)", () => {
+  test("en: DUPLICATE_REQUEST → neutral info toast (success-equivalent)", () => {
     const locale: AppLocale = "en";
     const labels = Errors.getLabels(getTranslations(locale));
 
@@ -115,7 +115,7 @@ describe("GraphQLErrorSurfaceHost", () => {
     expect(screen.getByText(labels.duplicateRequest)).toBeDefined();
   });
 
-  test("en: RATE_LIMITED stays threshold-free (REQ-034 oracle resistance)", () => {
+  test("en: RATE_LIMITED stays threshold-free (oracle resistance)", () => {
     const locale: AppLocale = "en";
     const labels = Errors.getLabels(getTranslations(locale));
 

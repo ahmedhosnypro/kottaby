@@ -1,10 +1,10 @@
 /**
  * GraphQL error-finalization boundary plugin — THE single registration site
- * for `finalizeGraphqlErrors` on the response path (dev3-002 Task 3.1).
+ * for `finalizeGraphqlErrors` on the response path.
  *
  * Pipeline position: Apollo Server applies `formatError` to each raw error
  * DURING execution; this plugin runs at `willSendResponse` — after the whole
- * execution result exists, BEFORE HTTP serialization. The Phase-2 finalizer
+ * execution result exists, BEFORE HTTP serialization. The finalizer
  * (`finalizeGraphqlErrors`, re-exported through `@/backend/lib/errors`) then:
  *   - passes DomainError elements through verbatim (localized message +
  *     subclass code + transport `path`/`locations`), attaching
@@ -53,7 +53,7 @@
  * structural view ({request.operationName, contextValue, response.body}) that
  * Apollo's full `GraphQLRequestContext<Context>` satisfies implicitly — this
  * keeps the production wiring cast-free AND gives the paired test-suite a
- * narrow, honest surface to drive (mirrors the 2.4/2.5 light-harness style).
+ * narrow, honest surface to drive (light-harness style).
  */
 
 import type { ApolloServerPlugin, GraphQLRequestContextWillSendResponse, GraphQLRequestListener } from "@apollo/server";
@@ -141,9 +141,9 @@ function toTransportErrorView(source: unknown): Record<string, unknown> {
 export const OPERATION_NAME_MAX_LENGTH = 128;
 
 /**
- * Echoable operation name reader (Task 10-d pentest hardening): the
- * client-supplied `operationName` rides straight into correlated log lines,
- * so an unbounded value is a one-request log-volume amplifier. Mirroring the
+ * Echoable operation name reader (pentest hardening): the client-supplied
+ * `operationName` rides straight into correlated log lines, so an unbounded
+ * value is a one-request log-volume amplifier. Mirroring the
  * {@link resolveRequestId} acceptance rule, a name longer than
  * {@link OPERATION_NAME_MAX_LENGTH} loses ENTIRELY (never truncated into a
  * spoofable prefix) and simply disappears from log metadata.
@@ -161,7 +161,7 @@ function readOperationName(operationName: string | null | undefined): string | u
 /**
  * Applies `finalizeGraphqlErrors` ONCE to the given request scope's
  * single-result body, consuming `contextValue.locale` / `contextValue.requestId`
- * (never re-resolving the request id — Decision D4).
+ * (never re-resolving the request id).
  *
  * Zero-op purity: unchanged results leave `scope.response` untouched.
  */

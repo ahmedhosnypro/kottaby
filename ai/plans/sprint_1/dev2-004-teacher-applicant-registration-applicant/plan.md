@@ -81,7 +81,7 @@ GraphQL integration (setupTestServerLifecycle + testClient)
 
 | #  | Decision | Options Considered | Pros / Cons | Rationale (Maintainability, Scalability, Reliability) |
 |----|----------|--------------------|-------------|--------------------------------------------------------|
-| D1 | `ApplicantStatus` as a plain TS enum over the existing `varchar(50)` | (a) add a `pgEnum("applicant_status", …)`; (b) TS enum + guard only | (a) Pros: DB-enforced values. Cons: requires schema change + `db push` + DBML drift — violates REQ-045; DEV1-001 already shipped varchar+note contract. (b) Pros: zero schema drift; app-layer guard is the canonical gate. Cons: DB doesn't reject raw junk writes. | (b). DBML ground truth documents status as varchar with noted value set; all writes in-scope are server-internal through the canonical enum. REQ-012 mandates exactly this. |
+| D1 | `ApplicantStatus` as a plain TS enum over the existing `varchar(50)` | (a) add a `pgEnum("applicant_status", …)`; (b) TS enum + guard only | (a) Pros: DB-enforced values. Cons: requires schema change + `db push` — violates REQ-045; DEV1-001 already shipped varchar contract. (b) Pros: zero schema drift; app-layer guard is the canonical gate. Cons: DB doesn't reject raw junk writes. | (b). The Drizzle schema ground truth defines status as varchar; the canonical value set is documented in this plan; all writes in-scope are server-internal through the canonical enum. REQ-012 mandates exactly this. |
 | D2 | Cooldown computed purely from `applicants.cooldown_until` (never `users.suspended`) | (a) single-source from users.suspended; (b) applicants.cooldown_until only; (c) read both | (a) conflates governance gates (login/session) with re-purchase eligibility — violates A.7/INV-TV3 two-source split. (c) ambiguous rules when values disagree. (b) unambiguous, duration-agnostic (INV-TV4 handled at write time by DEV2-008). | (b). REQ-015/016 explicitly fix this separation. The guard becomes: `cooldown_until IS NOT NULL AND cooldown_until > now()`. |
 | D3 | Attempt increment = single atomic `UPDATE … SET verification_attempts = verification_attempts + 1, last_attempt_at = now() … RETURNING *` | (a) SELECT then UPDATE; (b) advisory lock/multi-statement; (c) single in-place UPDATE | (a) Pros: simple reads. Cons: TOCTOU window; concurrent increments lose a write. (b) Reliable but heavier than needed; pointless on a counter row. (c) Pros: no TOCTOU, zero lost updates under concurrency; atomicity delegated to the DB. Cons: none material. | (c). REQ-014/042 mandate no read-modify-write for the counter; a single statement is the minimal correct primitive. |
 | D4 | Profile query is zero-argument; identity is `ctx.user.id` | (a) accept `userId: ID` arg; (b) context-only | (a) Pros: flexible for admin consumers. Cons: massive BOLA/IDOR surface on self-service data; REQ-030 forbids. (b) Pros: structurally impossible to read someone else's applicant file; resilient to client tamper. Cons: admin lateral read needed later (DEV3-016) — that's a separate privileged operation. | (b). REQ-030. Admin/supervisor lateral reads are out-of-scope and will be their own admin-scoped resolver in a later ticket. |
@@ -100,13 +100,13 @@ All required structures exist from DEV1-001. Verification targets (no edits are 
 
 | Element | Existing implementation | Verified at |
 |---|---|---|
-| `applicants` table | `id` shared PK → `users.id` (cascade), `verification_attempts integer default 0`, `last_attempt_at timestamp`, `cooldown_until timestamp`, `status varchar(50) default 'pending'`, timestamps | `backend/db/schema/teachers/applicants.ts`; DBML `applicants` |
+| `applicants` table | `id` shared PK → `users.id` (cascade), `verification_attempts integer default 0`, `last_attempt_at timestamp`, `cooldown_until timestamp`, `status varchar(50) default 'pending'`, timestamps | `backend/db/schema/teachers/applicants.ts` |
 | `user_role` enum (contains `parent`, C.1) | `pgEnum("user_role", ["admin","teacher","student","parent"])` | `backend/db/schema/enums.ts` |
 | `users` governance fields (A.7) | `is_deleted / suspended / is_blocked / *_at / suspended_period_days / last_active_at` | `backend/db/schema/users/users.ts` |
 | `teacher` table | exists but never written by registration | `backend/db/schema/teachers/teacher.ts` |
 | `teacher_verification` | present (INV-TV7) | `backend/db/schema/teachers/teacher-verification.ts` |
 
-**`db/schema.dbml` remains byte-stable for this ticket** (REQ-045) — no DBML diff is permitted; the applicants table already documents its value set verbatim in a `note:` under `status`.
+**`backend/db/schema/**` remains byte-stable for this ticket** (REQ-045) — no schema diff is permitted; the Drizzle schema in `backend/db/schema/` is the sole structural ground truth and the applicants value set is documented verbatim in this plan.
 
 ### 2.2 Canonical Enums (NEW — TypeScript only)
 
@@ -165,8 +165,7 @@ Note: `ApplicantStatusMendable` is realized as the `ApplicantStatus` union at co
 ### 2.4 Explicit Schema-Drift Prohibition (REQ-045)
 
 ```
-git diff -- backend/db/schema/** backend/db/migration/** db/schema.dbml  ⇒ MUST BE EMPTY
-bun validate:dbml ⇒ GREEN with zero new drift
+git diff -- backend/db/schema/** backend/db/migration/**  ⇒ MUST BE EMPTY
 ```
 
 ---
@@ -304,7 +303,7 @@ This ticket's runtime writes are minimal (one atomic counter update + one pure r
 | Rapid calls to `assertCanPurchaseVerification` at exact cooldown boundary | 1 caller, repetitive | flaky allow/block | Capture `now` once per call; deterministic results per request; the racing write is DEV2-005's responsibility (documented in canonical doc). |
 | Certified teacher probes profile | certified sheikh client | information leak about applicant state precedence | Service returns `null` strictly after checking `applicants` row existence; does not distinguish "never an applicant" from "passed" publicly (REQ-035); role gate keeps non-teachers out wholesale. |
 | Junk `status` strings committed outside app | admin scripts / future bug | UI/render inconsistency | `isApplicantStatus` guard at service boundary fails closed with `ValidationError`. |
-| `db push` drift mid-ticket | dev machine | DBML/schema divergence | REQ-045: empty-schema-diff gate + `bun validate:dbml` verification; no `db push` is ever run for this ticket. |
+| `db push` drift mid-ticket | dev machine | schema divergence | REQ-045: empty-schema-diff gate; no `db push` is ever run for this ticket. |
 
 **Explicit:** no `SELECT FOR UPDATE` and no advisory locks are introduced in this ticket; every mutable-state touch above is either already DB-atomic (single UPDATE) or read-only compute. No Redis/`SET NX EX` surface is added.
 
@@ -412,7 +411,7 @@ app/(dashboard)/teacher/dashboard/page.tsx          (Server Component, existing 
 
 ## Verification Anchors (used by tasks.md)
 
-1. `bun run db` is **never** invoked for schema changes in this ticket; `git diff` on schema/migration/DBML paths is empty; `bun validate:dbml` green.
+1. `bun run db` is **never** invoked for schema changes in this ticket; `git diff` on schema/migration paths is empty.
 2. `bun run generate:gqlSchema && bun codegen` after all GraphQL work, artifacts committed in the same change set.
 3. Per-file `bun run scripts/health/sub-loop.ts <file> --lifecycle duplicates` exit 0 for every created/modified file.
 4. Test suites: logic tests, service tests, GraphQL integration tests (via `setupTestServerLifecycle` + `testClient`), component tests — all green (`bun run test:db`, `bun run test:services`, `bun run test:graphql`, `bun run test:ui:components` as applicable), 100% statement/branch on new logic, `bun run test/scripts/run-test.ts` used for DB-bound tests.

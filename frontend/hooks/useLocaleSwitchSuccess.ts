@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-// NEW FOR PLAN v5: migrated hook from frontend/common/components/ui/input/localizedString/useLocaleSwitchSuccess.ts
-//   to frontend/common/hooks/ to satisfy specs.md §2.4 allowlist —
-//   @/frontend/hooks/** is the only hooks allowlist for tier imports.
+// Hooks tier-allowlist note: `@/frontend/hooks/**` is the only hooks
+// allowlist for tier imports, so this hook lives here rather than beside the
+// input component that consumes it.
 
 /**
  * Hook that drives a 500ms green-tint flash after a successful locale switch.

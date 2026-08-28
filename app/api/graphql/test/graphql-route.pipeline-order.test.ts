@@ -1,20 +1,18 @@
 /**
- * GraphQL route — PIPELINE-ORDER handler-unit suite (dev3-003 Task 3.2.TE,
- * injected-fake tier · REQ-010 / REQ-042; D5).
+ * GraphQL route — PIPELINE-ORDER handler-unit suite (injected-fake tier).
  *
  * The context factory is swapped for an INSTRUMENTED FAKE via Bun's module
  * mock registry BEFORE the route module loads — this is the spy that proves
  * the seven-step ordering contract at the route boundary:
  *
- *  - ORDERING (REQ-010 step 1): every transport rejection (`guardTransport`
- *    verdict) returns its envelope with ZERO context constructions — the
- *    engine, rate-limiter event path and context factory are provably never
- *    reached;
+ *  - ORDERING: every transport rejection (`guardTransport` verdict) returns
+ *    its envelope with ZERO context constructions — the engine, rate-limiter
+ *    event path and context factory are provably never reached;
  *  - CONTRAST: a passing `_health` POST constructs the context EXACTLY ONCE
  *    through the real Apollo/rate-limit/finalizer stack;
- *  - REQ-042 cookie-merge atomicity: cookies pushed into `ctx.authCookieOut`
- *    merge onto the outgoing response via append EVEN WHEN execution ends in
- *    a domain-error payload (`me` under anonymous scope → UNAUTHORIZED in the
+ *  - Cookie-merge atomicity: cookies pushed into `ctx.authCookieOut` merge
+ *    onto the outgoing response via append EVEN WHEN execution ends in a
+ *    domain-error payload (`me` under anonymous scope → UNAUTHORIZED in the
  *    SAME response that carries both Set-Cookie headers), and multiple
  *    entries land as independent appends (never collapsed by `headers.set`);
  *  - append hygiene: an empty accumulator produces NO Set-Cookie member.
@@ -115,7 +113,7 @@ function jsonPost(bodyText: string, requestId?: string): NextRequest {
 
 // ─── Ordering assertion — transport rejection never constructs context ──────
 
-describe("REQ-010 ordering — transport rejections never reach the factory", () => {
+describe("pipeline ordering — transport rejections never reach the factory", () => {
   test("CANARY: an executed request carries the FAKE factory's pinned correlation id", async () => {
     // Guards the entire suite against silent registry-miss drift: if the
     // swapped module ever stops shadowing the route's import, this fires
@@ -196,9 +194,9 @@ describe("happy-path ordering — real engine stack runs over the faked context"
   });
 });
 
-// ─── REQ-042 — cookie merge unconditional on domain errors, append-per-entry ─
+// ─── Cookie merge unconditional on domain errors, append-per-entry ──────────
 
-describe("REQ-042 cookie-merge atomicity across error paths", () => {
+describe("cookie-merge atomicity across error paths", () => {
   test("anonymous `me` ends UNAUTHORIZED yet BOTH accumulated cookies append independently", async () => {
     queuedAuthCookies.length = 0;
     queuedAuthCookies.push("__Host-kottaby-probe-a=alpha; Path=/; HttpOnly");

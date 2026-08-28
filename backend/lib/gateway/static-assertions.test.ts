@@ -1,5 +1,5 @@
 /**
- * Gateway static assertion suite — REQ-073 / D9 (dev3-003 Task 2.3).
+ * Gateway static assertion suite — repo-shape invariants enforced as tests.
  *
  * Five repo-shape assertions enforced as bun:test scans with ZERO server boot,
  * ZERO new dependencies (node:fs read-only traversal) and NO disk writes:
@@ -14,30 +14,28 @@
  *  - **A3** — no `console.` call site in production sources under
  *    `backend/lib/gateway/**`, `app/api/graphql/route.ts`,
  *    `app/api/health/route.ts`, `backend/services/gateway/**`
- *    (REQ-034 disclosure rule; logger only). Scan targets EXCLUDE `*.test.ts`
+ *    (disclosure rule — logger only). Scan targets EXCLUDE `*.test.ts`
  *    — this suite itself is a gateway source containing pattern literals BY
- *    DESIGN (documented accepted scope boundary, see outcome §"lexical caveats").
+ *    DESIGN (documented accepted scope boundary: lexical, not AST-level).
  *  - **A4** — EVERY physical route file under `app/api/` appears in the
  *    `ROUTE_INVENTORY` registry (and vice-versa) — no unclassified attack
- *    surface (REQ-019 security gate; Task 3.4 must append `/api/health` in the
- *    same change set that creates it).
+ *    surface.
  *  - **A5** — every `.types.ts` under `backend/types/gateway/` contains ZERO
  *     runtime exports (`export const/function/class/let/var`) and no imports
  *     outside the allowed layer set (intra-backend barrels/relative only — no
  *     shared/frontend/i18n value graphs may leak into the pure-type layer).
  *
- * NON-VACUITY (tasks.md 2.3.TE Tier 2): every scanner is a PURE function over
- * (path → content) maps, so each assertion also runs against CRAFTED IN-MEMORY
- * FIXTURES that MUST produce violations. Fixtures are strings only — nothing
- * here writes to disk (Tier 4).
+ * NON-VACUITY: every scanner is a PURE function over (path → content) maps,
+ * so each assertion also runs against CRAFTED IN-MEMORY FIXTURES that MUST
+ * produce violations. Fixtures are strings only — nothing here writes to disk.
  *
- * DETERMINISM (Tier 3): all file discovery sorts names with `localeCompare` at
- * READ time; repeated traversals yield identical orderings (CI/local parity).
+ * DETERMINISM: all file discovery sorts names with `localeCompare` at READ
+ * time; repeated traversals yield identical orderings (CI/local parity).
  *
- * LEXICAL CAVEAT (accepted per D9, recorded in 2.3-outcome.md): scans are
- * text-level by design — they can flag occurrences inside comments/strings;
- * false POSITIVES are visible and cheap, false NEGATIVES require intentionally
- * obfuscated code which fails review anyway.
+ * LEXICAL CAVEAT (accepted by design): scans are text-level — they can flag
+ * occurrences inside comments/strings; false POSITIVES are visible and cheap,
+ * false NEGATIVES require intentionally obfuscated code which fails review
+ * anyway.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -187,7 +185,7 @@ describe("A2 — zero literal-array enum registration in *.pothos.ts", () => {
 describe("A3 — zero console.* call sites in gateway production sources", () => {
   const appApiRouteTargets = [
     ...listExplicitFile(join("app", "api", "graphql", "route.ts")),
-    ...listExplicitFile(join("app", "api", "health", "route.ts")), // arrives with Task 3.4
+    ...listExplicitFile(join("app", "api", "health", "route.ts")), // GET-only LB liveness probe
   ];
   const files = [
     ...listTsFiles(join(process.cwd(), "backend", "lib", "gateway")).filter(file => !file.path.endsWith(".test.ts")),

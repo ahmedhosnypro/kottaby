@@ -54,7 +54,7 @@ function resolveRepoRoot(): string {
 }
 
 describe("KNOWN_DIAGRAM_KEYWORDS — curated list contract", () => {
-  test("contains every plan-mandated family plus tolerant variants", () => {
+  test("contains every required keyword family plus tolerant variants", () => {
     for (const required of [
       "flowchart",
       "graph",
@@ -397,7 +397,7 @@ describe("CLI integration — explicit mode over real processes", () => {
 });
 
 describe("CLI integration — default discovery over the ACTUAL repo docs tree", () => {
-  test("real docs tree passes clean (REQ-052 green-run guarantee)", async () => {
+  test("real docs tree passes clean (green-run guarantee)", async () => {
     const result = await runValidator([], resolveRepoRoot());
     expect(result.code).toBe(0);
     expect(result.err).toBe("");

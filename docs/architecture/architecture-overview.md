@@ -1,6 +1,6 @@
 # Draft Academy — Architecture Overview
 
-> **Source of truth:** `draft_docs/1-sc.en.md`, `draft_docs/2-admin-sc.en.md`, `db/schema.dbml`
+> **Source of truth:** `draft_docs/1-sc.en.md`, `draft_docs/2-admin-sc.en.md`, `backend/db/schema/` (Drizzle schema)
 > **Related diagrams:** `c4-system-context.mmd` (Level 1), `c4-container.mmd` (Level 2)
 
 ---

@@ -1,10 +1,10 @@
 /**
- * HealthCheckService + resolveAppVersion — dev3-003 Task 2.1 paired suite.
+ * HealthCheckService + resolveAppVersion — paired unit suite.
  *
- * Coverage map (tasks.md 2.1.TE):
+ * Coverage map:
  *  - Tier 1: happy path; each fallback arm of
  *    `APP_VERSION ?? npm_package_version ?? "dev"` (env fixture restored).
- *  - Tier 2: payload shape is EXACTLY four keys (REQ-034); fresh ISO-8601
+ *  - Tier 2: payload shape is EXACTLY four keys; fresh ISO-8601
  *    timestamp per call (two sequential calls parse + strictly differ under a
  *    monotonic harness tick).
  *  - Tier 3: `Promise.allSettled` storm of 50 parallel calls → all resolve,
@@ -106,7 +106,7 @@ describe("HealthCheckService.getHealthStatus", () => {
 
   // ─── Tier 2: boundaries ─────────────────────────────────────────────
 
-  test("payload discards nothing about its shape — EXACTLY four keys (REQ-034)", () => {
+  test("payload discards nothing about its shape — EXACTLY four keys", () => {
     const payload = HealthCheckService.getHealthStatus();
 
     expect(Object.keys(payload).toSorted((a, b) => a.localeCompare(b))).toEqual([
@@ -171,7 +171,7 @@ describe("HealthCheckService.getHealthStatus", () => {
     expect(uniqueRefs.size).toBe(50);
   });
 
-  // ─── Tier 4: disclosure-surface security scan (2.1.SEC twin) ───────
+  // ─── Tier 4: disclosure-surface security scan ──────────────────────
 
   test("serialized payload leaks no filesystem paths and no secret-shaped values", () => {
     snapshotEnv();

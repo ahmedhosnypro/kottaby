@@ -15,12 +15,12 @@ import { Auth, useAppTranslation } from "@/shared/locale";
  * the choice. On click, calls the set-locale API then refreshes the page so
  * the server component re-renders with the new locale.
  *
- * dev3-002 review-R1 fix: read the active locale from LocaleContext
- * (`useAppLocale` in providers/localeContext) instead of the params-derived
- * hook. There is no `[locale]` route segment in this app, so the params
- * lookup always resolved to `defaultLocale`, making the button render "EN"
- * and POST `locale=en` unconditionally — users could switch to English but
- * never back to Arabic.
+ * Reads the active locale from LocaleContext
+ * (`useAppLocale` in providers/localeContext). There is no `[locale]`
+ * route segment in this app, so a params-derived lookup would always
+ * resolve to `defaultLocale`, making the button render "EN" and POST
+ * `locale=en` unconditionally — users could switch to English but never
+ * back to Arabic.
  *
  * MUI v9: `sx` only, `*Outlined` icon, theme palette colors (no string-based
  * color props per frontend/AGENTS.md).

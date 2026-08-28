@@ -10,7 +10,7 @@
  * Each key corresponds to a `RecitationReading` enum value. The label is the
  * human-readable display name (e.g. "Hafs `an Asim" / "حفص عن عاصم").
  *
- * Per DEV1-003 REQ-010: labels are translated, never stored in code.
+ * Labels are translated, never stored in code.
  */
 export interface RecitationLabels {
   /** Section heading for the recitation selector */

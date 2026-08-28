@@ -1,5 +1,5 @@
 /**
- * Static Forbidden-Pattern Assertions Suite (REQ-073).
+ * Static Forbidden-Pattern Assertions Suite.
  * bun:test file-content scans enforcing structural invariants.
  */
 import { beforeAll, describe, expect, test } from "bun:test";
@@ -64,7 +64,7 @@ function sliceInterfaceBody(content: string, matchIndex: number): string {
   return content.slice(bodyStart, bodyEnd);
 }
 
-describe("REQ-073 Static Forbidden-Pattern Assertions", () => {
+describe("Static Forbidden-Pattern Assertions", () => {
   let files: Map<string, string>;
 
   beforeAll(async () => {
@@ -131,14 +131,14 @@ describe("REQ-073 Static Forbidden-Pattern Assertions", () => {
     }
   });
 
-  test("4. Zero imports from @/frontend or @/app (REQ-025/062)", () => {
+  test("4. Zero imports from @/frontend or @/app (cross-layer import ban)", () => {
     for (const [_name, content] of files) {
       expect(content).not.toMatch(/from\s+["']@\/frontend/);
       expect(content).not.toMatch(/from\s+["']@\/app/);
     }
   });
 
-  test("5. Zero spread-into-insert/call anti-patterns (REQ-031)", () => {
+  test("5. Zero spread-into-insert/call anti-patterns", () => {
     expect(files.size).toBe(LIB_FILES.length);
     for (const [_name, content] of files) {
       // No { ...input } or { ...data } spread-into-call patterns
@@ -150,7 +150,7 @@ describe("REQ-073 Static Forbidden-Pattern Assertions", () => {
     }
   });
 
-  test("6. Zero non-readonly exported mutable values (REQ-024/073)", () => {
+  test("6. Zero non-readonly exported mutable values", () => {
     for (const [_name, content] of files) {
       // No `let` or `var` exports
       const letVarExport = /export\s+(let|var)\s+/;
@@ -158,14 +158,14 @@ describe("REQ-073 Static Forbidden-Pattern Assertions", () => {
     }
   });
 
-  test("7. Zero DBTransaction/runInRollback usage (REQ-042)", () => {
+  test("7. Zero DBTransaction/runInRollback usage (types layer is DB-free)", () => {
     for (const [_name, content] of files) {
       expect(content).not.toMatch(/DBTransaction/);
       expect(content).not.toMatch(/runInRollback/);
     }
   });
 
-  test("8. Barrel-shape rule: only export * from, relative paths, max one / (REQ-010)", async () => {
+  test("8. Barrel-shape rule: only export * from, relative paths, max one / (barrel convention)", async () => {
     const barrelContent = files.get("index.ts");
     if (!barrelContent) throw new Error("index.ts not found in barrel check");
     const lines = barrelContent
@@ -188,9 +188,9 @@ describe("REQ-073 Static Forbidden-Pattern Assertions", () => {
     }
   });
 
-  test("9. Ownership-identifier presence heuristic (REQ-033)", () => {
+  test("9. Ownership-identifier presence heuristic (identity anchor required)", () => {
     const IDENTIFIER_FIELDS = /Id|userId|teacherId|studentId|walletId|sessionId|actorId|evaluatedId|evaluatorId/;
-    // Pure-value types exempted (REQ-033 whitelist)
+    // Pure-value types exempted from the ownership-identifier heuristic
     const EXEMPT_TYPES = new Set([
       "TeacherSubjectsParsed",
       "SessionEventNotificationEntityRef",

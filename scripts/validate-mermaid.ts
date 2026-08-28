@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 /**
- * Mermaid validation script (DBML-validator sibling — REQ-052 packaging fix).
+ * Mermaid validation script.
  *
  * Validates every Mermaid diagram in the given files using deterministic,
  * offline structural checks (NO network, NO headless renderer, NO npm deps —
- * minimal regex parsing + Bun.file, mirroring `scripts/validate-dbml.ts`).
+ * minimal regex parsing + Bun.file).
  *
  * Usage:
  *   bun run scripts/validate-mermaid.ts <file...>   explicit mode (.md / .mmd)
@@ -54,8 +54,8 @@
  *    flag argument; no flags exist by contract).
  *
  * Operator-facing messages are English-only strings written through
- * `process.stdout.write` / `process.stderr.write` — REQ-002 exemption for
- * script-layer output, recorded in outcome 2.4.
+ * `process.stdout.write` / `process.stderr.write` — script-layer output is
+ * exempt from the i18n requirement.
  */
 
 import { existsSync } from "node:fs";

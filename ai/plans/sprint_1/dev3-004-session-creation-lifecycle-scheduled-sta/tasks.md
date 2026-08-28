@@ -50,7 +50,7 @@
   - [ ] 0.2.IV **Instruction Verification**: Read root `AGENTS.md`, `backend/AGENTS.md`, `backend/db/AGENTS.md`, `backend/services/AGENTS.md`, `backend/graphql/AGENTS.md` and record applicable rules in the outcome
 
 - [ ] 0.3 **Plan-Review Gate (pre-implementation, MANDATORY)**
-  - Create `ai/plans/dev3-004-session-creation-lifecycle/outcome/plan-review-R1.md` covering: D1–D10 decision soundness; request-vs-accept reconciliation correctness vs DBML ground truth; traceability matrix completeness (specs §4); scope-negative confirmation (non-goals 1–11)
+  - Create `ai/plans/dev3-004-session-creation-lifecycle/outcome/plan-review-R1.md` covering: D1–D10 decision soundness; request-vs-accept reconciliation correctness vs the Drizzle schema ground truth; traceability matrix completeness (specs §4); scope-negative confirmation (non-goals 1–11)
   - GATE: implementation tasks (Phase 1+) MUST NOT start until this gate file exists and marks the plan APPROVED
   - _Requirements: REQ-082_
   - [ ] 0.3.QL **Quality Loop**: documented as skipped (Markdown artifact)
@@ -64,12 +64,12 @@
 ## Phase 1: Types, Enums & Database Schema
 
 - [ ] 1.1 **Read-Only Schema Ground-Truth Verification (zero schema change)**
-  - Files (READ-ONLY verification): `backend/db/schema/classes/session.ts`, `backend/db/schema/enums.ts`, `backend/db/schema/teachers/teacher.ts`, `backend/db/schema/students/students.ts`, `backend/db/schema/billing/plans.ts`, `backend/db/schema/billing/subscriptions.ts`, `backend/db/schema/users/users.ts`, `db/schema.dbml`
+  - Files (READ-ONLY verification): `backend/db/schema/classes/session.ts`, `backend/db/schema/enums.ts`, `backend/db/schema/teachers/teacher.ts`, `backend/db/schema/students/students.ts`, `backend/db/schema/billing/plans.ts`, `backend/db/schema/billing/subscriptions.ts`, `backend/db/schema/users/users.ts`
   - Verify: session lifecycle columns (`status` default `'scheduled'`, `session_type` default `'student_session'`, `intent`, `fee numeric(10,2)`, `fee_held`, `started_at`, `ended_at`, `confirmation_deadline`, `confirmed_by_student_at`, `confirmed_by_teacher_at`, `teacher_id NOT NULL`, `student_id NOT NULL`); `disputed` enum value exists but must remain unreachable; `teacher.isApproved`/`isOnline`/`requestPreference`; students' balance lanes incl. DEV1-004 trial lane; `plans.price`/`sessionCount`; `subscriptions.status/startDate/endDate`; `users.suspended/suspendedAt/suspendedPeriodDays/isBlocked/isDeleted`
-  - Run `bun validate:dbml` (must stay green); run `git diff --stat backend/db/schema/** db/schema.dbml` at task end (MUST be empty)
+  - Run `git diff --stat backend/db/schema/**` at task end (MUST be empty) — the Drizzle schema in `backend/db/schema/` is the sole structural ground truth
   - _Requirements: REQ-047, REQ-011, REQ-012_
   - [ ] 1.1.QL **Quality Loop**: N/A (no file edits) — record in outcome
-  - [ ] 1.1.TE **Test Engineering**: Evidence = `bun validate:dbml` output + empty diff captured in outcome
+  - [ ] 1.1.TE **Test Engineering**: Evidence = empty diff captured in outcome
   - [ ] 1.1.SEC **Security & Tenancy Audit**: Confirm NOT NULL ownership columns (INV-S4) and CHECK constraints on balances (INV-B1)
   - [ ] 1.1.SR **Semantic Review**: NO schema patch, NO `db push`, NO migration files; any discovered gap goes to `deferred-items.md` targeting DEV3-013 / DEV1-001 owners
   - [ ] 1.1.IV **Instruction Verification**: `docs/DATABASE_MIGRATIONS.md` read; `db reset`/`cleanGenerate` remain disabled
@@ -297,7 +297,7 @@
   - [ ] 5.2.TE **Test Engineering**: IS this task; table-driven forbidden matrix ensures no missed pair (5×5 minus allowed edges covered between 5.1/5.2)
   - [ ] 5.2.SEC **Security & Tenancy Audit**: wrong-teacher/wrong-participant probes on each transition ⇒ `SESSION_NOT_FOUND` before state change
   - [ ] 5.2.SR **Semantic Review**: post-state assertions prove zero partial writes; lock consistency asserted after each winning transition
-  - [ ] 5.2.IV **Instruction Verification**: Workflow-03 transition set matches DBML graph one-for-one
+  - [ ] 5.2.IV **Instruction Verification**: Workflow-03 transition set matches the canonical transition graph one-for-one
 
 - [ ] 5.3 **Concurrency & Chaos Suite (REQ-074 / REQ-045)**
   - File: `backend/db/test/logic/sessions/concurrency-chaos.test.ts`
@@ -352,7 +352,7 @@
   - [ ] 5.7.IV **Instruction Verification**: DEV2-003 static-assertion precedent file read and reused where applicable
 
 - [ ] 5.8 **Coverage & Baseline Delta Gate**
-  - Run `bun test --coverage` scoped to new modules: 100% statement + branch on `session.repository.ts`, `session.service.ts`, `session-state-guard.helpers.ts`, `assert-not-suspended.ts`, `session-request-idempotency.helpers.ts` (REQ-070); re-run full `bun tsgo` / `bun biome:check` / `bun run scripts/lint-service.ts` vs REQ-001 baseline ⇒ delta = +0 (REQ-079); `bun validate:dbml` green; `git diff backend/db/schema/** db/schema.dbml` empty (REQ-047); codegen artifacts committed (REQ-064)
+  - Run `bun test --coverage` scoped to new modules: 100% statement + branch on `session.repository.ts`, `session.service.ts`, `session-state-guard.helpers.ts`, `assert-not-suspended.ts`, `session-request-idempotency.helpers.ts` (REQ-070); re-run full `bun tsgo` / `bun biome:check` / `bun run scripts/lint-service.ts` vs REQ-001 baseline ⇒ delta = +0 (REQ-079); `git diff backend/db/schema/**` empty (REQ-047); codegen artifacts committed (REQ-064)
   - _Requirements: REQ-070, REQ-079, REQ-047, REQ-064_
   - [ ] 5.8.QL **Quality Loop**: all remaining edited files re-looped one final time
   - [ ] 5.8.TE **Test Engineering**: coverage snapshot archived in outcome
@@ -394,7 +394,7 @@
 ## Phase 7: Knowledge Propagation & Documentation
 
 - [ ] 7.1 **Canonical Documentation — `docs/sessions/session-lifecycle.md` (NEW)**
-  - Required sections (REQ-080): Why (revenue-bearing atom; INV-S/B.4 protection surface); request-vs-accept reconciliation (D1 — DBML ground truth, Contract 1); creation pipeline diagram (lock → guard → insert); guarded-transition pattern (`UPDATE … WHERE status RETURNING`); hold/release accounting formula + conservative mixed-intent approximation + refinement owner DEV3-013 (REQ-049); idempotency contract + client retry guidance (REQ-025: treat typed conflict after committed 5xx as success-equivalent); security matrix (permission table from plan §3.4); anti-patterns (NO read-then-write transitions; NO client fee; NO decrement on cancel; NO ad-hoc transition maps); consumption guide for DEV3-011/012/013/014/021/022 and DEV2-006 (REQ-026 primitives-only); related documents (Workflows 02/03, `docs/specs/state-machine-invariants.md`, `docs/IDEMPOTENCY.md`, `docs/auth/user-registration.md`, `docs/auth/qiraah-selection-and-c5.md`, `docs/graphql/domain-error-extensions-code.md`)
+  - Required sections (REQ-080): Why (revenue-bearing atom; INV-S/B.4 protection surface); request-vs-accept reconciliation (D1 — Drizzle schema ground truth in `backend/db/schema/`, Contract 1); creation pipeline diagram (lock → guard → insert); guarded-transition pattern (`UPDATE … WHERE status RETURNING`); hold/release accounting formula + conservative mixed-intent approximation + refinement owner DEV3-013 (REQ-049); idempotency contract + client retry guidance (REQ-025: treat typed conflict after committed 5xx as success-equivalent); security matrix (permission table from plan §3.4); anti-patterns (NO read-then-write transitions; NO client fee; NO decrement on cancel; NO ad-hoc transition maps); consumption guide for DEV3-011/012/013/014/021/022 and DEV2-006 (REQ-026 primitives-only); related documents (Workflows 02/03, `docs/specs/state-machine-invariants.md`, `docs/IDEMPOTENCY.md`, `docs/auth/user-registration.md`, `docs/auth/qiraah-selection-and-c5.md`, `docs/graphql/domain-error-extensions-code.md`)
   - _Requirements: REQ-080_
   - [ ] 7.1.QL **Quality Loop**: documented as skipped (Markdown); internal heading/style conventions of `docs/` checked
   - [ ] 7.1.TE **Test Engineering**: doc claims trace-checked against actual test names (each invariant claim cites a suite from Phase 5)
@@ -413,8 +413,8 @@
   - [ ] 7.2.IV **Instruction Verification**: each AGENTS file read fully before editing (append-only edits)
 
 - [ ] 7.3 **Final Outcome Synthesis & Completion Gate**
-  - Create `ai/plans/dev3-004-session-creation-lifecycle/outcome/dev3-004-completion-outcome.md` consolidating: ALL task outcomes (0.1–7.2) with checkbox state 100% `[x]`; gate evidence (baseline delta = +0; `validate:dbml` green + empty schema diff; codegen artifacts committed; coverage snapshot; two consecutive chaos-run results; M1 GraphQL evidence from 5.6); ledger closure (`grep -c "❌\|⚠️" = 0` for non-forward items, F1–F5 intact with owners); carry-forward traceability note for consumer tickets (DEV3-006/007/011/012/013/014/021/022, DEV2-006) citing REQ ranges per specs §4 note
-  - Final verification commands re-run and pasted: `bun tsgo`, `bun biome:check`, lint-service, canonical runner over the full session suite, `bun validate:dbml`, `git diff --name-only` filtered to expected files
+  - Create `ai/plans/dev3-004-session-creation-lifecycle/outcome/dev3-004-completion-outcome.md` consolidating: ALL task outcomes (0.1–7.2) with checkbox state 100% `[x]`; gate evidence (baseline delta = +0; empty schema diff; codegen artifacts committed; coverage snapshot; two consecutive chaos-run results; M1 GraphQL evidence from 5.6); ledger closure (`grep -c "❌\|⚠️" = 0` for non-forward items, F1–F5 intact with owners); carry-forward traceability note for consumer tickets (DEV3-006/007/011/012/013/014/021/022, DEV2-006) citing REQ ranges per specs §4 note
+  - Final verification commands re-run and pasted: `bun tsgo`, `bun biome:check`, lint-service, canonical runner over the full session suite, `git diff --name-only` filtered to expected files
   - _Requirements: REQ-082, REQ-083, REQ-029_
   - [ ] 7.3.QL **Quality Loop**: N/A (synthesis) — record
   - [ ] 7.3.TE **Test Engineering**: full-suite final run transcript archived

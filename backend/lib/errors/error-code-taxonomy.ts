@@ -1,42 +1,42 @@
 /**
- * Error-code taxonomy — REQ-010 category table encoded as pure data.
+ * Error-code taxonomy — canonical code-to-HTTP-status mapping encoded as pure
+ * data.
  *
  * Maps every canonical {@link ErrorCode} category onto its transport HTTP
  * status. This module is the SINGLE SOURCE OF TRUTH for code→status mapping:
  * boundary modules (finalizeGraphqlErrors, api-response envelopes) MUST derive
  * statuses through this map — hardcoded numeric literals elsewhere are
- * prohibited (Tier-4 grep gate).
+ * prohibited (grep-gated).
  *
  * Layer rules:
- *  - Pure, side-effect-free data module (REQ-040): no DB reads/writes, no
- *    cache access, no network calls, no logging.
+ *  - Pure, side-effect-free data module: no DB reads/writes, no cache access,
+ *    no network calls, no logging.
  *  - Both maps are `Object.freeze`d at module init AND typed `Readonly` —
- *    no runtime path can mutate the taxonomy (SEC audit, REQ-023).
+ *    no runtime path can mutate the taxonomy.
  *  - `ErrorCode` stays a transport string union, NOT a `pgEnum` /
- *    `backend/db/schema/enums.ts` entry / GraphQL enum (Decision D3 — codes
- *    are never persisted values).
+ *    `backend/db/schema/enums.ts` entry / GraphQL enum — codes are never
+ *    persisted values.
  *
- * Legacy alias (BLT-08 closure): production already emits
- * `RATE_LIMIT_EXCEEDED` (`RateLimitExceededError`, backend/lib/errors.ts, via
- * the GraphQL route's 429 transport path) while REQ-010 canonicalizes row 8 as
+ * Legacy alias: production already emits `RATE_LIMIT_EXCEEDED`
+ * (`RateLimitExceededError`, backend/lib/errors.ts, via the GraphQL route's
+ * 429 transport path) while the canonical category for the 429 row is
  * `RATE_LIMITED`. The alias is accepted by {@link isErrorCode} and normalized
- * to the RATE_LIMITED family by {@link normalizeErrorCode}; per plan-review-R1
- * correction #3, pass-through producers keep emitting the legacy code and ONLY
- * status/category derivation normalizes through this module.
+ * to the RATE_LIMITED family by {@link normalizeErrorCode}; pass-through
+ * producers keep emitting the legacy code and ONLY status/category derivation
+ * normalizes through this module.
  *
- * Case-sensitivity: the taxonomy is DATA (REQ-010 table); lookup keys are
- * matched exactly — casing variants like "bad_request" or "Bad_Request" are
- * rejected rather than silently coerced.
+ * Case-sensitivity: the taxonomy is DATA; lookup keys are matched exactly —
+ * casing variants like "bad_request" or "Bad_Request" are rejected rather
+ * than silently coerced.
  *
  * @see docs/graphql/domain-error-extensions-code.md
- * @see ai/plans/dev3-002-shared-error-handling-response-contracts/tasks.md Task 2.1
  */
 
 import type { ErrorCode } from "@/backend/types";
 
 /**
- * REQ-010 exhaustive code→HTTP-status table (plan-review-R1 correction #3:
- * sole source of HTTP semantics for error codes).
+ * Exhaustive code→HTTP-status table — the sole source of HTTP semantics for
+ * error codes.
  */
 export const ERROR_CODE_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = Object.freeze({
   BAD_REQUEST: 400,
@@ -52,7 +52,7 @@ export const ERROR_CODE_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = Objec
 
 /**
  * Legacy SCREAMING_SNAKE codes still emitted by existing producers, mapped to
- * their canonical REQ-010 base category (BLT-08). Custom domain codes (e.g.
+ * their canonical base category. Custom domain codes (e.g.
  * `USER_NOT_FOUND`) do NOT belong here — they fall through normalization as
  * `null` so no custom code can masquerade as a category for status mapping.
  */
@@ -79,7 +79,7 @@ const CANONICAL_SELF_MAP: Readonly<Record<ErrorCode, ErrorCode>> = Object.freeze
 
 /**
  * Normalization table: accepted code strings (nine canonical keys mapped to
- * themselves + documented legacy aliases) → their canonical REQ-010 category.
+ * themselves + documented legacy aliases) → their canonical category.
  * Typed `Record<string, ErrorCode>` so lookups return `ErrorCode` directly —
  * no type assertions anywhere (oxlint no-unsafe-type-assertion clean).
  * Own-property guards reject inherited names (`toString`, …). Alias entries
@@ -103,7 +103,7 @@ export function isErrorCode(value: unknown): value is ErrorCode {
 }
 
 /**
- * Normalizes a transport error code onto its canonical REQ-010 category.
+ * Normalizes a transport error code onto its canonical category.
  * Canonical codes map to themselves; legacy aliases map to their declared
  * base category; everything else — including custom SCREAMING_SNAKE_CASE
  * domain codes — returns `null` (callers decide their own fallback, e.g.

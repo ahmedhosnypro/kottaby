@@ -1,12 +1,11 @@
 /**
- * REQ-010/REQ-071 error-contract integration matrix — dev3-002 Task 5.1
- * (Task ID 8-a).
+ * Error-contract integration matrix over the canonical code↔HTTP taxonomy.
  *
- * Structure per the dispatch brief: a GRID of rows keyed by
+ * Structure: a GRID of rows keyed by
  * `{DomainError subclass × wire shape}`, exercised through the REAL boundary
  * composition (`finalizeGraphqlErrors` + `attachRawErrorHop`, imported from
  * the exact modules the single registration site consumes). Failure-side
- * assertions follow REQ-063: every row goes through real Apollo Client v4
+ * assertions all go through real Apollo Client v4
  * `CombinedGraphQLErrors` containers and the shared
  * `expectMutationError(container, expectedCode)` helper.
  *
@@ -20,8 +19,7 @@
  * Sections:
  *  1. Pass-through grid — subclass × shape; code/message/path/locations/
  *     requestId attachment; locale-invariant codes.
- *  2. authScopes pairing — UNAUTHORIZED vs FORBIDDEN non-interchange pinning
- *     (REQ-020).
+ *  2. authScopes pairing — UNAUTHORIZED vs FORBIDDEN non-interchange pinning.
  *  3. Masked tier — raw non-DomainError throwables → generic localized
  *     INTERNAL_SERVER_ERROR with requestId correlation and EXACTLY ONE redacted
  *     correlated `logger.error` per masked element (module-seam spy).
@@ -35,9 +33,7 @@
  *     anonymous-gated-field authScopes probe end-to-end through
  *     `setupTestServerLifecycle` + `testClient`.
  *
- * Sandbox session record (Task ID 8-a):
- *   mandated runner: bun run test/scripts/run-test.ts backend/graphql/test/error-contract-matrix.test.ts
- * Boot-probe verdict + consolidated CI-only ledger note: outcome/5.1-outcome.md.
+ * Mandated runner: bun run test/scripts/run-test.ts backend/graphql/test/error-contract-matrix.test.ts
  */
 
 import { describe, expect, spyOn, test } from "bun:test";
@@ -140,7 +136,7 @@ interface FinalizeOutcome {
 /**
  * Drives ONE wire element through the boundary classifier and re-wraps the
  * rebuilt element into a REAL v4 CombinedGraphQLErrors so assertions run
- * through the mandated REQ-063 helper (`expectMutationError`) instead of raw
+ * through the shared helper (`expectMutationError`) instead of raw
  * object equality on internal classification output.
  */
 function finalizeSingleElement(carrier: unknown, ctx: ErrorFinalizationContext): FinalizeOutcome {
@@ -248,7 +244,7 @@ describe("error-contract matrix — pass-through grid (subclass × shape)", () =
           requestId: "matrix-corr-1",
         });
 
-        // REQ-063 mandated helper drives every grid cell's code check.
+        // The shared helper drives every grid cell's code check.
         expectMutationError(outcome.container, row.expectedCode);
         const item = firstWireItem(outcome.container);
         expect(item.message).toBe(domainError.message);
@@ -308,7 +304,7 @@ describe("error-contract matrix — pass-through grid (subclass × shape)", () =
   });
 });
 
-// ─── Section 2 — authScopes pairing (non-interchange, REQ-020) ───────────────
+// ─── Section 2 — authScopes pairing (non-interchangeable) ───────────────────
 
 describe("error-contract matrix — UNAUTHORIZED vs FORBIDDEN pairing", () => {
   test("both scope failures classify at the boundary WITHOUT interchange or masking", () => {
@@ -464,7 +460,7 @@ describe("error-contract matrix — protocol-preset passthrough pins", () => {
   }
 });
 
-// ─── Section 5 — legacy alias cross-checks (BLT-08 consumption contract) ────
+// ─── Section 5 — legacy alias cross-checks ───────────────────────────────────
 
 describe("error-contract matrix — legacy alias cross-checks", () => {
   test("alias stays a legal producer literal while derivation normalizes it (only statuses fold)", () => {
@@ -557,7 +553,7 @@ describe("error-contract matrix — wire tier over live HTTP", () => {
     expectMutationError(result.error, "GRAPHQL_VALIDATION_FAILED");
   });
 
-  test("anonymous gated-field probe: schema-level me { id } yields UNAUTHORIZED (never FORBIDDEN, REQ-020)", async () => {
+  test("anonymous gated-field probe: schema-level me { id } yields UNAUTHORIZED (never FORBIDDEN)", async () => {
     const result = await testClient.query({
       query: gql`
         query AuthenticatedViewer {

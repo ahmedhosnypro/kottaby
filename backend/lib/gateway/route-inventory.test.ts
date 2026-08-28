@@ -1,15 +1,15 @@
 /**
- * Route-inventory registry tests — dev3-003 Task 2.2 paired suite.
+ * Route-inventory registry tests.
  *
- * Coverage map (tasks.md 2.2.TE + A4 twin):
+ * Coverage:
  *  - Tier 1: registry shape (exact entry keys, closed classification set).
  *  - Tier 2: ground-truth rows present (`/api/graphql` gateway,
- *    `/api/set-locale` envelope per BLT-04, `/api/health` envelope at birth
- *    per dev3-003 Task 3.4) and frozen ordering.
- *  - Tier 3: LIVE-TREE completeness twin — every physical route file under
+ *    `/api/set-locale` envelope, `/api/health` envelope from its first commit)
+ *    and frozen ordering.
+ *  - Tier 3: LIVE-TREE completeness — every physical route file under
  *    `app/api/` on disk maps to a registry path and vice-versa, both sides
- *    sorted for CI/local determinism. This is the same guarantee assertion A4
- *    enforces in the Task 2.3 suite (independent second implementation here).
+ *    sorted for CI/local determinism. This independently re-implements the
+ *    same guarantee the static-assertion suite enforces.
  *  - Tier 4: no unclassified/deferred drift — phantom pre-seed routes
  *    (webhooks/logs/cron) MUST NOT be registered while absent from disk.
  *
@@ -86,12 +86,12 @@ describe("ROUTE_INVENTORY — ground-truth rows (Tier 2)", () => {
     expect(graphqlEntry?.classification).toBe("gateway");
   });
 
-  test("/api/set-locale classified as envelope (adopted — ledger BLT-04)", () => {
+  test("/api/set-locale classified as envelope (adopted after its initial debut)", () => {
     const localeEntry = ROUTE_INVENTORY.find(entry => entry.path === "/api/set-locale");
     expect(localeEntry?.classification).toBe("envelope");
   });
 
-  test("/api/health classified as envelope (created enveloped — dev3-003 Task 3.4, REQ-013/D2)", () => {
+  test("/api/health classified as envelope (created enveloped from its first commit)", () => {
     const healthEntry = ROUTE_INVENTORY.find(entry => entry.path === "/api/health");
     expect(healthEntry?.classification).toBe("envelope");
   });
@@ -101,7 +101,7 @@ describe("ROUTE_INVENTORY — ground-truth rows (Tier 2)", () => {
   });
 });
 
-describe("ROUTE_INVENTORY ↔ live tree completeness (Tier 3 — A4 twin)", () => {
+describe("ROUTE_INVENTORY ↔ live tree completeness (Tier 3)", () => {
   test("every physical route file is registered; no registry row points at disk ghosts", () => {
     const appApiRoot = join(process.cwd(), "app", "api");
     const livePaths = discoverApiRoutePaths(appApiRoot).toSorted((a, b) => a.localeCompare(b));

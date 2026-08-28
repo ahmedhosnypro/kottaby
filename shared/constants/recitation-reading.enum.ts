@@ -2,14 +2,14 @@
  * Canonical recitation-reading (Qira'ah) catalog — the single source of truth
  * for all recitation-reading values across the platform.
  *
- * Per DEV1-003 REQ-010: values are stable lowercase snake_case API values.
+ * Values are stable lowercase snake_case API values.
  * Labels are translated (never stored in code) — see `shared/locale/types/recitation/`.
  *
- * C.5 guardrail (DEV1-003 REQ-003): the physical `recitation` table is
- * session-linked (`session_id UNIQUE NOT NULL`, 1:1 with `session`). This
- * catalog is for user-preference selection only — it MUST NOT be used to
- * create user-linked `recitation` rows. Session recitation creation is owned
- * by DEV3-007.
+ * Schema guardrail: the physical `recitation` table is session-linked
+ * (`session_id UNIQUE NOT NULL`, 1:1 with `session`). This catalog is for
+ * user-preference selection only — it MUST NOT be used to create user-linked
+ * `recitation` rows. Session recitation rows are created by the session
+ * workflow, not through this catalog.
  *
  * The 10 canonical Qira'at (the 7 canonical + 3 Shadhah variants):
  *  - Hafs `an Asim (the most widely practiced reading)
@@ -29,7 +29,7 @@
 /**
  * Stable API values for recitation readings (Qira'at).
  *
- * Values are lowercase snake_case to match the DBML / GraphQL enum convention.
+ * Values are lowercase snake_case to match the GraphQL enum convention.
  * Labels (display names) live in `shared/locale/{en,ar}/recitation/` and are
  * resolved at runtime via `useAppTranslation(Recitation)` (client) or
  * `getServerTranslations(locale).recitationTranslations` (server).

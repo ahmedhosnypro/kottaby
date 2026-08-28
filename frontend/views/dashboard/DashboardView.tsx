@@ -21,7 +21,7 @@ interface DashboardStat {
 interface DashboardViewProps {
   /**
    * Role-specific content slot mounted between the welcome header and the
-   * stat grid (DEV2-004 Task 4.3: the teacher dashboard passes
+   * stat grid (the teacher dashboard passes
    * `<ApplicantStatusCard />` so the lifecycle status card sits above the
    * fold, under the page header). The SERVER composition decides what — if
    * anything — goes here per role; this view adds no client-side gating of

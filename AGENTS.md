@@ -454,7 +454,6 @@ After reading the applicable instruction files and AGENTS.md, subagents check fo
 - `docs/graphql/error-handling-contract.md` — Shared error handling & response contract: REQ-010 code↔HTTP taxonomy + legacy alias normalization, masking/redaction pipeline & correlation bounds, API envelope shapes `{data,requestId}` / `{error:{…}}` with exemptions register, REQ-061 client mapping table, and the per-guarantee test-suite matrix
 - `docs/graphql/domain-error-extensions-code.md` - DomainError → GraphQLError extensions.code propagation pattern
 - `docs/observability/new-relic-integration.md` - New Relic APM integration (Hybrid Agent, GraphQL resolver tracing, zero dev/test overhead)
-- `docs/drizzle/dbml-to-drizzle-schema-migration.md` - DBML→Drizzle schema migration canonical method
 - `docs/auth/user-registration.md` — User registration canonical reference (role→child mapping, handshake generation, atomicity pattern, BOPLA/BFLA defenses, 23505→ConflictError translation, JWT auth flow)
 - `docs/auth/qiraah-selection-and-c5.md` — Qira'ah selection and the C.5 invariant (canonical RecitationReading catalog, public recitationReadings query, registration preferredRecitation contract, deferred persistence, security rules)
 - `docs/auth/jwt-authentication-service.md` — JWT authentication service canonical reference (token claims contract, cookie matrix, redirect-loop fix, authScopes, SSR auth, page guards, role-based dashboards, DEV2-002 RBAC consumption guide)

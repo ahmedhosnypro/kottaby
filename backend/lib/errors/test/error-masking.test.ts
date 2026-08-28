@@ -1,25 +1,25 @@
 /**
- * Error masking & log-redaction tests — dev3-002 Task 2.2 paired suite.
+ * Error masking & log-redaction tests.
  *
- * Coverage map (tasks.md 2.2.TE):
+ * Coverage map:
  *  - Tier 1: DomainError pass-through branch (direct + one-hop-wrapped);
- *    legacy `RATE_LIMIT_EXCEEDED` alias crossing VERBATIM while the Task 2.1
+ *    legacy `RATE_LIMIT_EXCEEDED` alias crossing VERBATIM while the error-code
  *    taxonomy still derives its RATE_LIMITED/429 family; plain-Error mask;
  *    primitive throws ("x", 42, null, undefined); unknown-object throw;
  *    DEV vs PROD masking divergence (dev-only `extensions.debug` snapshot).
- *  - Tier 2: cyclic `Error.cause` chains terminate bounded (REQ-042) and stay
+ *  - Tier 2: cyclic `Error.cause` chains terminate bounded and stay
  *    JSON-loggable; hop-limit proof (deeply wrapped domains do NOT unwrap
  *    recursively — reused translator owns deep traversal); ValidationError
- *    `fields` absent-vs-empty-vs-populated discrimination (REQ-015).
+ *    `fields` absent-vs-empty-vs-populated discrimination.
  *  - Tier 3: `Promise.allSettled` concurrency over the finalizer — pure
  *    functions, sequential outputs deep-equal concurrent outputs, inputs
- *    never mutated (REQ-040/076).
+ *    never mutated.
  *  - Tier 4: PROD-config forced driver failure — serialized client body free
  *    of stack frames, SQL text, parameter values, PG codes, file paths and
- *    hash-shaped material (REQ-030/074); reused cycle-guarded translation
+ *    hash-shaped material; reused cycle-guarded translation
  *    surfaces localized CONFLICT; `redactLogContext` fixtures for token /
  *    password / encryption-key / authorization/bearer / meeting-provider /
- *    WhatsApp credential shapes (REQ-035) with bounds + prototype immunity.
+ *    WhatsApp credential shapes with bounds + prototype immunity.
  *
  * All sentinel secret-like strings below are deliberately-obfuscated non-real
  * fixtures (matching the errors-fields-contract suite convention) — they are
@@ -279,7 +279,7 @@ describe("finalizeGraphqlErrors — DomainError pass-through (Tier 1)", () => {
     expect(item.extensions.requestId).toBe("req-hop-one");
   });
 
-  test("legacy alias RATE_LIMIT_EXCEEDED crosses VERBATIM; status layers derive 429 through the taxonomy (BLT-08)", () => {
+  test("legacy alias RATE_LIMIT_EXCEEDED crosses VERBATIM; status layers derive 429 through the taxonomy", () => {
     const source = new RateLimitExceededError(getServerTranslations("en").errorsTranslations.rateLimitExceeded);
     const finalized = finalizeGraphqlErrors({ errors: [source] }, { locale: "en", requestId: "req-alias" });
     const item = finalizedItemAt(finalized);
@@ -413,7 +413,7 @@ describe("maskInternalError — DEV vs PROD divergence fixture (Tier 1)", () => 
 
 // ─── Tier 2 — bounds & discrimination ───────────────────────────────────────
 
-describe("cyclic chains terminate boundedly (Tier 2, REQ-042)", () => {
+describe("cyclic chains terminate boundedly (Tier 2)", () => {
   test("self-looping cause AND hostile multi-ring chain mask promptly with serializable logs", () => {
     const startedAt = performance.now();
 
@@ -460,7 +460,7 @@ describe("classification hop discipline (Tier 2)", () => {
   });
 });
 
-describe("ValidationError fields — absent vs empty vs populated (Tier 2, REQ-015)", () => {
+describe("ValidationError fields — absent vs empty vs populated (Tier 2)", () => {
   test("absent fields → key absent from extensions (transport omission)", () => {
     const source = new ValidationError(getServerTranslations("en").errorsTranslations.validation);
     const finalized = finalizeGraphqlErrors({ errors: [source] }, { locale: "en", requestId: "r" });
@@ -504,7 +504,7 @@ describe("ValidationError fields — absent vs empty vs populated (Tier 2, REQ-0
       expect(entry.code).not.toBeNull();
       expect(entry.message).not.toBeNull();
     }
-    // Same reference discipline as the constructor mirror (carry-forward §2):
+    // Same reference discipline as the constructor mirror:
     // compared from the raw extensions bag so the ApiFieldErrorType narrowing
     // never fights bun:test's identity overload resolution.
     expect(item.extensions?.fields).toBe(source.fields);
@@ -562,7 +562,7 @@ describe("concurrency purity — Promise.allSettled over the finalizer (Tier 3)"
 
 // ─── Tier 4 — PROD leak-scan + redaction fixtures ───────────────────────────
 
-describe("PROD-config forced driver failure — client-body leak scan (Tier 4, REQ-030/074)", () => {
+describe("PROD-config forced driver failure — client-body leak scan (Tier 4)", () => {
   test("serialized masked body contains NONE of the driver payload", () => {
     withNodeEnv("production", () => {
       const driverCause: Record<string, unknown> = {
@@ -633,7 +633,7 @@ describe("reused cycle-guarded traversal — DB translation hop (Tier 4)", () =>
   });
 });
 
-describe("redactLogContext — credential-shape fixtures (Tier 4, REQ-035)", () => {
+describe("redactLogContext — credential-shape fixtures (Tier 4)", () => {
   test("token/password/secret/key/auth/bearer/meeting-provider/WhatsApp keys are replaced; benign keys survive", () => {
     const hostileBag: Record<string, unknown> = {
       requestId: "req-redact",
@@ -724,7 +724,7 @@ describe("redactLogContext — credential-shape fixtures (Tier 4, REQ-035)", () 
     expect(redacted.ordinaryPhrase).toBe("the bearers of bad news arrived");
   });
 
-  test("depth and array bounds surface explicit markers (bounded input, REQ-042)", () => {
+  test("depth and array bounds surface explicit markers (bounded input)", () => {
     let deepNode: Record<string, unknown> = { leaf: "visible-bottom" };
     for (let level = 0; level < 20; level += 1) {
       deepNode = { nested: deepNode };

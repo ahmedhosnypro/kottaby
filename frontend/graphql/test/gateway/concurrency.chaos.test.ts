@@ -1,5 +1,5 @@
 /**
- * Concurrency & Chaos Tier (dev3-003 Task 5.3 · REQ-074).
+ * Concurrency & Chaos Tier.
  *
  * Exercises the gateway under concurrent load through real HTTP requests
  * against a live Next.js dev server. Uses raw `fetch` for transport-level
@@ -12,9 +12,9 @@
  * Deferred (infrastructure gap):
  *  - Two CONCURRENT logins for distinct users → response isolation (requires
  *    PostgreSQL; SQLite sandbox cannot register users — same KNOWN issue as
- *    5.1 test (i)). Documented in deferred-items.md as BLT-11.
- *  - Concurrent refresh-rotation race → unchanged by gateway, deferred to
- *    DEV2-001 contract tests in PostgreSQL CI.
+ *    the gateway integration suite's login row).
+ *  - Concurrent refresh-rotation race → unchanged by gateway, deferred to the
+ *    auth contract tests in PostgreSQL CI.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -64,7 +64,7 @@ async function fireHealth(): Promise<HealthResult> {
 
 // ─── Test Suite ─────────────────────────────────────────────────────────────
 
-describe("Concurrency & Chaos Tier (REQ-074)", () => {
+describe("Concurrency & Chaos Tier", () => {
   setupTestServerLifecycle();
 
   // ── (1) _health storm — all 200, each with fresh ISO timestamp ──────────
@@ -126,15 +126,14 @@ describe("Concurrency & Chaos Tier (REQ-074)", () => {
   });
 
   // ── (deferred) Two concurrent logins → response isolation ─────────────
-  // DEFERRED: SQLite sandbox cannot register users (KNOWN issue documented
-  // in worklog). Login requires PostgreSQL for registration to succeed.
+  // DEFERRED: SQLite sandbox cannot register users (a KNOWN sandbox
+  // limitation). Login requires PostgreSQL for registration to succeed.
   // When CI has PostgreSQL, implement:
   //   1. Register user A and user B
   //   2. Fire login(A) and login(B) concurrently via raw fetch
   //   3. Assert response A carries only A's cookies
   //   4. Assert response B carries only B's cookies
   //   5. Assert no cross-contamination
-  // Documented in deferred-items.md as BLT-11.
   test.failing("(deferred) two concurrent logins → response cookie isolation", async () => {
     // Requires PostgreSQL CI environment for user registration.
     // Implementation pattern: register two users, fire parallel raw fetch

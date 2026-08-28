@@ -1,10 +1,10 @@
-# Shared Error Handling & Response Contract (DEV3-002)
+# Shared Error Handling & Response Contract
 
 ## Why
 
 Before this contract, error codes and transport shapes were split across three uncoordinated surfaces: GraphQL resolvers localized messages but had no guaranteed `extensions.code` taxonomy; REST-ish routes (`app/api/**`) invented ad-hoc JSON bodies per file; the Apollo `errorLink` branched on HTTP status and undocumented message text. Every new surface re-decided "what does an error look like on the wire", which leaked driver detail, made 401-vs-403 interchangeable, and left clients with no structured signal to map errors onto UX.
 
-This document consolidates the **transport contract** introduced by plan `dev3-002-shared-error-handling-response-contracts` (REQ-010..REQ-043, REQ-061): one taxonomy of codes with fixed HTTP semantics, one masking pipeline at each boundary, exact envelope shapes, exact client mapping, and the suites that guard each guarantee. Producer-side hierarchy conventions (how to *throw*) remain in [`docs/graphql/domain-error-extensions-code.md`](./domain-error-extensions-code.md) — that doc's code-table content is superseded **by reference** to the taxonomy below.
+This document consolidates the **transport contract**: one taxonomy of codes with fixed HTTP semantics, one masking pipeline at each boundary, exact envelope shapes, exact client mapping, and the suites that guard each guarantee. Producer-side hierarchy conventions (how to *throw*) remain in [`docs/graphql/domain-error-extensions-code.md`](./domain-error-extensions-code.md) — that doc's code-table content is superseded **by reference** to the taxonomy below.
 
 ## Pattern
 
@@ -35,7 +35,7 @@ Single ownership points:
 
 ## Rules
 
-### 1. Taxonomy — REQ-010 category table (sole source of HTTP semantics)
+### 1. Taxonomy — the category table (sole source of HTTP semantics)
 
 `ERROR_CODE_HTTP_STATUS` is frozen data. Deriving a status any other way (numeric literals in routes/resolvers) is prohibited and grep-gated.
 
@@ -62,7 +62,7 @@ Single ownership points:
 Exactly one `createGraphqlErrorsFinalizerPlugin()` registration exists, inside the single module-scope `ApolloServer` plugins array in `app/api/graphql/route.ts`. Applying it twice would mask previously classified items — treated as a hard defect. Per element, classification order:
 
 1. **DomainError pass-through:** `isDomainError` items keep their localized `message`, subclass code, `path`/`locations`. `extensions.requestId` (= `ctx.requestId`, never re-resolved) attached; `ValidationError.fields` mirrored only when present (absent vs empty-array distinction preserved end-to-end). Domain rejects are observed on the silent `logDomainError` channel — debug-level under `TEST_SERVER=1`/test runtime, no `[ERROR]` emission.
-2. **Protocol presets AS-IS:** graphql-js/Apollo-authored failures (`GRAPHQL_PARSE_FAILED`, `GRAPHQL_VALIDATION_FAILED`, `OPERATION_RESOLUTION_FAILURE`, `BAD_USER_INPUT`, `PERSISTED_QUERY_*`) pass through with `requestId` attached; `stacktrace` stripped. Known defense-in-depth gap (a resolver deliberately throwing a preset-coded Error would ride the same rule) is tracked as owning-ticket work — do not "fix" locally.
+2. **Protocol presets AS-IS:** graphql-js/Apollo-authored failures (`GRAPHQL_PARSE_FAILED`, `GRAPHQL_VALIDATION_FAILED`, `OPERATION_RESOLUTION_FAILURE`, `BAD_USER_INPUT`, `PERSISTED_QUERY_*`) pass through with `requestId` attached; `stacktrace` stripped. A known defense-in-depth gap remains: a resolver deliberately throwing a preset-coded Error would ride the same rule — do not "fix" it locally.
 3. **Mask everything else:** non-domain throwables become the localized generic `INTERNAL_SERVER_ERROR` item (`code`, `message`, `path`, `extensions.requestId`); DEV-only `extensions.debug` diagnostics are stripped under PROD (`includeDiagnostics:false` unconditionally on rebuilt boundary items). Exactly ONE correlated log line per masked element via `logger.error` (`[ERROR]` … "Unhandled non-domain error masked at GraphQL boundary") whose context bag passes through `redactLogContext`.
 
 **Redaction patterns** (`redactLogContext`, bounded depth 6 / 64 items with `[DEPTH_LIMITED]`/`[ITEMS_LIMITED]` markers): credential-shaped keys collapse to `[REDACTED]` across families `token`, `password`, `secret`, `key`, `auth*`, meeting-provider credential keys (zoom/meet token shapes), WhatsApp credentials (`accessToken`, `twoStepPin`), plus `Authorization:`/bearer-header-shaped VALUES case-insensitively at any nesting. Benign sibling keys survive; prototype-pollution and throwing-getter inputs are safe.
@@ -71,7 +71,7 @@ Exactly one `createGraphqlErrorsFinalizerPlugin()` registration exists, inside t
 
 The REST route boundary mirrors steps 1–3 through shared primitives (`isDomainError` / `translateDbError` / `maskInternalError` / `redactLogContext` / taxonomy) — the API-route masked log line also wraps its bag in `redactLogContext` before emit, keeping both boundaries byte-compatible in behavior.
 
-### 3. API envelope shapes — REQ-017/019
+### 3. API envelope shapes
 
 Every in-scope `app/api/**` route responds through the shared helpers:
 
@@ -95,15 +95,15 @@ Every in-scope `app/api/**` route responds through the shared helpers:
 
 | Surface | Exemption | Basis |
 |---|---|---|
-| `app/api/graphql/route.ts` | GraphQL-over-HTTP transport shape, NOT converted to the REST envelope (400/405/413/429/500 stay transport-local codes) | REQ-019 applies to REST bodies only |
+| `app/api/graphql/route.ts` | GraphQL-over-HTTP transport shape, NOT converted to the REST envelope (400/405/413/429/500 stay transport-local codes) | The envelope contract applies to REST bodies only |
 | `app/api/set-locale/route.ts` GET | Full-navigation success = cookie-carrying redirect (`Set-Cookie NEXT_LOCALE` + `Location`); a JSON body cannot coexist with navigation semantics. ALL GET **error** branches ARE enveloped (400 w/ requestId) | Product contract (browser lands on next document with locale applied) |
-| Future provider webhooks (e.g. WhatsApp `GET verification` / POST ack) | Reply-200-with-provider-contract bodies exempt from the envelope shape while still emitting correlated logs; registering the ack contract becomes an explicit exemption row when the route lands | REQ-019 webhook acknowledgment class |
+| Future provider webhooks (e.g. WhatsApp `GET verification` / POST ack) | Reply-200-with-provider-contract bodies exempt from the envelope shape while still emitting correlated logs; registering the ack contract becomes an explicit exemption row when the route lands | Webhook acknowledgment class exemption |
 
 New exemptions must be registered here before shipping.
 
-### 4. Client mapping table — REQ-061
+### 4. Client mapping table
 
-`mapGraphQLErrorByCode(code, context)` branches on normalized `extensions.code` ONLY. Branching on HTTP status for GraphQL errors is PROHIBITED (REQ-016). Consumers render handles: `useAppTranslation(Errors)[action.messageKey]` — server `message` text is never rendered for masked classes.
+`mapGraphQLErrorByCode(code, context)` branches on normalized `extensions.code` ONLY. Branching on HTTP status for GraphQL errors is PROHIBITED. Consumers render handles: `useAppTranslation(Errors)[action.messageKey]` — server `message` text is never rendered for masked classes.
 
 | Code | Context | Behavior |
 |---|---|---|
@@ -124,10 +124,10 @@ Component seams: `frontend/components/ui/PermissionDeniedFallback.tsx` (page/sec
 
 #### Surface host (`GraphQLErrorSurfaceHost`) — the app-scope receiver of published actions
 
-`frontend/components/ui/GraphQLErrorSurfaceHost.tsx` renders every REQ-061 action published by the dispatcher seam. It is mounted ONCE, app-scope, inside `AppClientProviders` (`AuthProvider` subtree, mounted last so sibling providers register their own seams first).
+`frontend/components/ui/GraphQLErrorSurfaceHost.tsx` renders every action published by the dispatcher seam. It is mounted ONCE, app-scope, inside `AppClientProviders` (`AuthProvider` subtree, mounted last so sibling providers register their own seams first).
 
 - **Single-slot listener rule:** the host owns `registerGraphQLErrorActionListener`; no other component may register over it. Page-level forms do NOT need the seam — they consume VALIDATION field pairs by calling `mapGraphQLErrorByCode` directly through `mutationFieldErrors.ts` (its module header records this division of ownership).
-- **Toast stacking:** `toast`/`notice` actions render into a bottom-center column anchored by ONE flex shell (`bottom: { xs:16, sm:24 }`); each Snackbar stays `position:"static"` inside that shell so concurrent toasts never overlap into one readable surface (independent fixed anchors would collide — a pre-host defect class). Cap = `MAX_CONCURRENT_TOASTS = 3`, overflow drops the OLDEST entries first; ids come from a monotonic counter (same-millisecond burst collisions once dropped siblings); autohide 6 s. `duplicateSuccessEquivalent` rows render neutral `info` (REQ-IDEMPOTENCY §3); masked INTERNAL_SERVER_ERROR rows append the correlation-id chip iff `requestIdCorrelationGuidance === true && correlationRequestId` is present (REQ-011/013).
+- **Toast stacking:** `toast`/`notice` actions render into a bottom-center column anchored by ONE flex shell (`bottom: { xs:16, sm:24 }`); each Snackbar stays `position:"static"` inside that shell so concurrent toasts never overlap into one readable surface (independent fixed anchors would collide — a pre-host defect class). Cap = `MAX_CONCURRENT_TOASTS = 3`, overflow drops the OLDEST entries first; ids come from a monotonic counter (same-millisecond burst collisions once dropped siblings); autohide 6 s. `duplicateSuccessEquivalent` rows render neutral `info` per the 24h-window idempotency contract ([`docs/IDEMPOTENCY.md`](../IDEMPOTENCY.md)); masked INTERNAL_SERVER_ERROR rows append the correlation-id chip iff `requestIdCorrelationGuidance === true && correlationRequestId` is present.
 - **Permission fallback rendering:** query-context `permission-fallback` actions render as a dismissible pinned banner near the top (`errors.forbiddenRole` title over the action's `forbidden` body, `LockOutlined`) covering GraphQL denials that slip past route guards; page-level role gating itself stays owned by `withPageAuth` redirects and dedicated page/section surfaces keep using the shared `PermissionDeniedFallback` component directly.
 - **Ignored kinds:** `auth-recovery` (owned by the deduped refresh link) and `form-fields` (form-bound projection) are consumed elsewhere by design. Link-level actions carry only the `retryable` FLAG — an inline retry BUTTON belongs to dedicated `RetryableNotice` consumers, not the global host.
 - **Idle posture:** with no active toast/banner the host renders `null` — zero-cost idle mount, client-event-only surfaces, SSR-safe (no hydration flash).
@@ -145,36 +145,32 @@ All suites run via the sanctioned runner: `bun run test/scripts/run-test.ts <pat
 | PROD zero-leak scans (stack/SQL/env/PII), fuzz corpus round-trips, byte-parity repeats | `backend/lib/errors/test/security-abuse.contract.test.ts` (58/1063 expects) |
 | Envelope shapes, status derivation, requestId acceptance rules | `backend/lib/api/test/api-response.test.ts` (39) |
 | `ctx.requestId` single-resolution & header acceptance | `backend/graphql/test/request-id.test.ts` (12) |
-| Boundary plugin contract: exactly-once, UNAUTHORIZED≠FORBIDDEN pairing (REQ-020), preset passthrough, operationName cap | `backend/graphql/test/error-finalizer.test.ts` (14) |
+| Boundary plugin contract: exactly-once, UNAUTHORIZED≠FORBIDDEN pairing, preset passthrough, operationName cap | `backend/graphql/test/error-finalizer.test.ts` (14) |
 | Subclass × carrier grid + live-wire tier | `backend/graphql/test/error-contract-matrix.test.ts` (36; needs exclusive-port boot window) |
 | Route-envelope adoption matrix + set-locale redirect exemption + open-redirect fold pins | `app/api/set-locale/test/set-locale-route.test.ts` (27) |
 | Client redirect guard contract (backslash-fold rejection) | `frontend/lib/safeRedirect.test.ts` (5) |
-| REQ-061 row parity, counter-freeness pin, deduped-refresh double path | `frontend/providers/apollo/error-link.map.test.ts` (29) |
+| Client-mapping row parity, counter-freeness pin, deduped-refresh double path | `frontend/providers/apollo/error-link.map.test.ts` (29) |
 | Field projection seams / form wiring / document conventions | `frontend/components/ui/fieldError.test.ts` (9) · `frontend/lib/mutationFieldErrors.test.ts` (14) · `frontend/graphql/sharedDocuments/documents.contract.test.ts` (11) |
 | Warning-surfacing propagation convention (payload-not-log) | `frontend/graphql/test/warnings/warning-surfacing.test.ts` (9; direct-invocation path per file header) |
 
-### 6. Method & CORS posture — same-origin-first (REQ-016/053 · dev3-003 D6–D8)
+### 6. Method & CORS posture — same-origin-first
 
-- **No CORS headers are introduced for the API surfaces (conservative default).** No wildcard `Access-Control-Allow-Origin` exists — and none may be added — on any authenticated surface: session cookies use the strict `sameSite` family (DEV2-001), so wildcard CORS on credentialed routes is a hard anti-pattern.
+- **No CORS headers are introduced for the API surfaces (conservative default).** No wildcard `Access-Control-Allow-Origin` exists — and none may be added — on any authenticated surface: session cookies use the strict `sameSite` family ([`docs/auth/jwt-authentication-service.md`](../auth/jwt-authentication-service.md)), so wildcard CORS on credentialed routes is a hard anti-pattern.
 - **Ambient behavior preserved and documented as-is:** `/api/graphql` serves same-origin browser traffic with no CORS treatment at all; the sole origin exception is the pre-existing preview-panel echo — requests whose `Origin` ends in `.space-z.ai` get that SAME origin echoed back (`Access-Control-Allow-Credentials: true`; never `*`, unknown-origin preflights answer 403). `/api/set-locale` keeps its own same-origin/allowlist POST gating; `/api/health` ships GET-only with zero CORS vocabulary (load balancers probe server-side).
-- **Preflight guarantee:** the no-wildcard preflight probe belongs to the Phase 5 integration matrix (dev3-003 Task 5.1); an executable static pin over all `/api` route sources already lives beside the health-probe suite (`app/api/health/test/health-route.probe.test.ts`).
+- **Preflight guarantee:** the no-wildcard preflight probe is part of the integration test matrix; an executable static pin over all `/api` route sources lives beside the health-probe suite (`app/api/health/test/health-route.probe.test.ts`).
 - **Forward contract:** if the mobile/desktop split ever requires real cross-origin access, codify the full matrix HERE first, then implement and test-lock it — ad-hoc CORS headers in individual route files are prohibited.
 
 ## What NOT to Do
 
 - ❌ Throwing plain `new Error("message")` in resolvers/services — becomes a masked `INTERNAL_SERVER_ERROR` with your message discarded. Throw `DomainError` subclasses.
-- ❌ `try/catch` that swallows GraphQL errors silently (REQ-026).
+- ❌ `try/catch` that swallows GraphQL errors silently.
 - ❌ Spreading `{ ...input }` (or any client-authored object) into `details`, `fields`, or extension keys — projections are explicit property maps.
 - ❌ Writing numeric HTTP-status literals for error responses anywhere outside the taxonomy module; branching on HTTP status client-side for GraphQL errors.
 - ❌ Interchanging `UNAUTHORIZED` ↔ `FORBIDDEN` in tests or resolvers (paired non-interchangeable assertions exist).
 - ❌ Rendering server `message` text for masked classes; string-literal i18n namespaces; new near-duplicate keys vs the `errors` namespace (see `shared/AGENTS.md`).
-- ❌ Persisting error codes as DB values — no `pgEnum`, no schema enum entry, no Pothos enum registration (codes are transport strings, Decision D3).
+- ❌ Persisting error codes as DB values — no `pgEnum`, no schema enum entry, no Pothos enum registration (codes are transport strings, not database state).
 - ❌ Registering the finalizer plugin more than once, or re-resolving the request id outside `resolveRequestId`.
-- ❌ Referencing dead doc paths (`docs/backend/login-cold-start-resilience.md`, `docs/services/meeting-providers.md`, `docs/services/whatsapp-cloud-api.md`) — see dev3-002 `deferred-items.md` BLT-03 annotations.
-
-## Rollout Summary
-
-Implemented by dev3-002 Phases 0–6 (commit range `dea88a9`…Phase-6 waves): contract types (`backend/types/errors/**`), taxonomy + masking modules under `backend/lib/errors/`, envelope helpers `backend/lib/api/api-response.ts`, `ctx.requestId` plumbing, the GraphQL finalizer plugin, envelope adoption across in-scope routes (`set-locale` full POST + GET-error; GraphQL transport exempt), frontend mapping/table wiring in `error-link.map.ts`, UI seams (`PermissionDeniedFallback`, `RetryableNotice`, `fieldError.ts`), form integration (`RegisterForm` + `mutationFieldErrors.ts`), ~20 paired test suites green via the mandated runner (201-test core grid + larger contract tiers totaling >300 assertions, 0 failures attributable), zero baseline drift (tsgo/biome/dbml parity held at every phase gate). Details per phase: `ai/plans/dev3-002-shared-error-handling-response-contracts/outcome/`.
+- ❌ Referencing doc paths that do not exist in the tree (`docs/backend/login-cold-start-resilience.md`, `docs/services/meeting-providers.md`, `docs/services/whatsapp-cloud-api.md`) — link only to files that are present.
 
 ## Related Documents
 

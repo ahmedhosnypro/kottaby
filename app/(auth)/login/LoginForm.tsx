@@ -25,7 +25,7 @@ export function LoginForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // audit-R10/F2 (carried R4-F04 / R7-F2): after a failed sign-in, keep focus
+  // After a failed sign-in, keep focus
   // inside the form (first field) instead of dropping it to <body>. The inline
   // role="alert" already announces; this restores a correction-ready anchor.
   const emailInputRef = useRef<HTMLInputElement>(null);
@@ -139,7 +139,7 @@ export function LoginForm() {
           </Stack>
 
           {errorMessage ? (
-            // audit-R7/P1: same radius token as the floating host toast that
+            // Same radius token as the floating host toast that
             // can accompany this surface on masked failures.
             <Alert severity="error" variant="filled" sx={{ borderRadius: 2 }}>
               {errorMessage}

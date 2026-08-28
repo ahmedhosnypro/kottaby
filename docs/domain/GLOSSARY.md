@@ -1,6 +1,6 @@
 # Draft Academy — Ubiquitous Language & Domain Glossary
 
-> **Source of truth:** `draft_docs/1-sc.en.md`, `draft_docs/2-admin-sc.en.md`, `db/schema.dbml`
+> **Source of truth:** `draft_docs/1-sc.en.md`, `draft_docs/2-admin-sc.en.md`, `backend/db/schema/` (Drizzle schema)
 > This glossary standardizes all domain terms used across the `docs/` specification suite.
 
 ---

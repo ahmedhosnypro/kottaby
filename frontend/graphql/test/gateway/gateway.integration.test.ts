@@ -1,5 +1,5 @@
 /**
- * GraphQL Gateway Integration Matrix (dev3-003 Task 5.1 · REQ-071).
+ * GraphQL Gateway Integration Matrix.
  *
  * Exercises the FULL gateway pipeline through real HTTP requests against a
  * live Next.js dev server — no mocked internals, no backend imports
@@ -10,13 +10,12 @@
  * server. Tests exercising GraphQL operations use the shared `testClient`
  * (Apollo Client) per AGENTS.md conventions.
  *
- * BLT-07 RESOLUTION: The `setupTestServerLifecycle` liveness probe in
- * `test/helpers/test-lifecycle.ts` was updated from `{ _health }` to
- * `{ _health { status } }` to match the retyped `HealthCheck!` object return
- * (Task 3.1). This fix is a prerequisite for ALL suites that call
- * `setupTestServerLifecycle()`.
+ * The `setupTestServerLifecycle` liveness probe in
+ * `test/helpers/test-lifecycle.ts` polls `{ _health { status } }` to match
+ * the retyped `HealthCheck!` object return; every suite calling
+ * `setupTestServerLifecycle()` depends on that shape.
  *
- * Deferred test rows (documented in outcome, no ❌ — infrastructure gaps):
+ * Deferred test rows (infrastructure gaps, marked test.failing):
  *  - (f) Authenticated-but-forbidden role-gated op: no role-gated operation
  *    exists in the current schema (only `authenticated: true` on `me`).
  *    Deferred until Sprint-1 admin surfaces land.
@@ -93,7 +92,7 @@ function parseHealthEnvelopeBody(raw: unknown): HealthEnvelopeBody {
 
 // ─── Test Suite ───────────────────────────────────────────────────────────
 
-describe("Gateway integration matrix (REQ-071)", () => {
+describe("Gateway integration matrix", () => {
   setupTestServerLifecycle();
 
   // ── (a) healthCheck unauthenticated → transport-200 + full payload ─────
@@ -194,7 +193,7 @@ describe("Gateway integration matrix (REQ-071)", () => {
   // ── (f) Authenticated-but-forbidden role-gated op → FORBIDDEN ───────────
   // DEFERRED: No role-gated operation exists in the current schema. The only
   // auth-gated field is `me` with `authenticated: true`. Role-gated surfaces
-  // (e.g. admin-only mutations) will land in Sprint-1. Documented in outcome.
+  // (e.g. admin-only mutations) will land in Sprint-1.
   test.failing("(f) authenticated-but-forbidden role-gated op → extensions.code = FORBIDDEN", async () => {
     // This test is intentionally marked failing — no role-gated operation
     // exists in the schema to probe. When Sprint-1 admin surfaces land,
@@ -206,7 +205,7 @@ describe("Gateway integration matrix (REQ-071)", () => {
   // ── (g) Synthetic raw non-DomainError throw → masked INTERNAL_SERVER_ERROR
   // DEFERRED: No test-only forced-failure fixture field exists in the schema.
   // Creating one requires an env-gated field registration that does not ship
-  // in production builds. Documented in outcome.
+  // in production builds.
   test.failing("(g) synthetic raw non-DomainError throw → masked INTERNAL_SERVER_ERROR; no stack/SQL/env/path leakage", async () => {
     // This test requires a test-only query field that throws a raw Error
     // (not a DomainError). When such a fixture is added (env-gated), this
@@ -238,18 +237,18 @@ describe("Gateway integration matrix (REQ-071)", () => {
   });
 
   // ── (i) login happy path → three Set-Cookie headers ───────────────────
-  // DEFERRED: Registration fails in the sandbox (SQLite provider; KNOWN issue
-  // documented in worklog: "Auth/RegistrationService integration tests fail —
-  // require PostgreSQL, sandbox has SQLite only (NOT a regression)"). Login
-  // cookie inspection requires a registered user. When the CI environment has
-  // PostgreSQL, this test should be re-enabled with the proven testClient
-  // register + raw fetch login pattern.
+  // DEFERRED: Registration fails in the sandbox (SQLite provider; KNOWN
+  // sandbox limitation: auth/registration integration tests require
+  // PostgreSQL — NOT a regression). Login cookie inspection requires a
+  // registered user. When the CI environment has PostgreSQL, this test
+  // should be re-enabled with the proven testClient register + raw fetch
+  // login pattern.
   test.failing("(i) login happy path → three Set-Cookie headers (session_id, refresh_token, access_token)", async () => {
     // Registration + login pattern (deferred — SQLite sandbox limitation):
     // 1. Register via testClient (proven pattern from auth.test.ts)
     // 2. Login via raw fetch to inspect Set-Cookie headers
     // 3. Assert three Set-Cookie: session_id, refresh_token, access_token
-    // 4. Verify cookie attribute flags per DEV2-001 matrix
+    // 4. Verify cookie attribute flags per the auth-cookie matrix
     expect(true).toBe(false);
   });
 
@@ -307,7 +306,7 @@ describe("Gateway integration matrix (REQ-071)", () => {
     // When a forced-failure mechanism exists, this test should call a
     // mutation that: (1) pushes clearing cookies to authCookieOut, then
     // (2) throws a raw error. Assert that the clearing Set-Cookie headers
-    // are still present on the response (REQ-042).
+    // are still present on the response.
     expect(true).toBe(false);
   });
 

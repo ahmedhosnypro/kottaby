@@ -1,7 +1,7 @@
 /**
  * TransactionType enum — mirrors the `transaction_type` pgEnum in
- * `backend/db/schema/enums.ts`. Values derived from `db/schema.dbml`
- * (ground truth per REQ-002). Used by `teacher_transaction`.
+ * `backend/db/schema/enums.ts`. Values are canonical.
+ * Used by `teacher_transaction`.
  */
 export enum TransactionType {
   Earning = "earning",

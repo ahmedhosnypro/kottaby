@@ -1,7 +1,6 @@
 /**
  * ApplicantProfilePothosObject — the single canonical GraphQL object type
- * for the teacher-applicant lifecycle profile (dev2-004 Task 3.2 ·
- * REQ-060, REQ-004, REQ-032, REQ-017).
+ * for the teacher-applicant lifecycle profile.
  *
  * Single Canonical Object Type Pattern (`backend/graphql/AGENTS.md`):
  *  - Backed EXCLUSIVELY by the canonical {@link ApplicantProfileReturnType}
@@ -14,19 +13,18 @@
  *      status                                     → `ApplicantStatus` registered enum
  *      lastAttemptAt / cooldownUntil              → nullable ISO-8601 UTC strings
  *      cooldownActive / canPurchaseVerification   → exposed Booleans (non-nullable)
- *  - Timestamp exposure per plan-review-R1 **DISP-5** (finding D3-A): there
- *    is NO DateTime scalar anywhere in this builder/registry, so both
- *    nullable timestamps ride the HealthCheck precedent
- *    (`timestamp: t.exposeString(...)` → ISO-8601 UTC string). The
- *    canonical TS shape stays `Date | null`; only this presentation layer
- *    converts with `toISOString()`.
+ *  - Timestamp exposure: there is NO DateTime scalar anywhere in this
+ *    builder/registry, so both nullable timestamps ride the HealthCheck
+ *    precedent (`timestamp: t.exposeString(...)` → ISO-8601 UTC string).
+ *    The canonical TS shape stays `Date | null`; only this presentation
+ *    layer converts with `toISOString()`.
  *  - NO inline business logic — every field is a structural map or
  *    passthrough; derivations (`cooldownActive`, `canPurchaseVerification`)
  *    are computed server-side in the service, never re-computed here.
  *
- * Consumed (from Task 3.3) by the zero-argument role-gated
- * `myApplicantProfile` query, whose import of this module transitively
- * registers the type through the `gqlSchema.ts` side-effect chain.
+ * Consumed by the zero-argument role-gated `myApplicantProfile` query, whose
+ * import of this module transitively registers the type through the
+ * `gqlSchema.ts` side-effect chain.
  */
 import { gqlSchemaBuilder } from "@/backend/graphql/pothos/builder";
 import { ApplicantStatusPothosEnum } from "@/backend/graphql/pothos/shared/enum.pothos";
@@ -37,7 +35,7 @@ export const ApplicantProfilePothosObject = gqlSchemaBuilder
   .implement({
     fields: t => ({
       // Int ID (= users.id) — Apollo cache normalization requires `id`
-      // on every entity-shaped object (REQ-060).
+      // on every entity-shaped object.
       id: t.exposeInt("id"),
       // Guard-validated `ApplicantStatus` member from the service boundary —
       // direct passthrough onto the enum registered in shared/enum.pothos.
@@ -46,13 +44,13 @@ export const ApplicantProfilePothosObject = gqlSchemaBuilder
         resolve: parent => parent.status,
       }),
       verificationAttempts: t.exposeInt("verificationAttempts"),
-      // Nullable ISO-8601 UTC string per DISP-5 (source is `Date | null`).
+      // Nullable ISO-8601 UTC string (source is `Date | null`).
       lastAttemptAt: t.field({
         type: "String",
         nullable: true,
         resolve: parent => parent.lastAttemptAt?.toISOString() ?? null,
       }),
-      // Nullable ISO-8601 UTC string per DISP-5 (source is `Date | null`).
+      // Nullable ISO-8601 UTC string (source is `Date | null`).
       cooldownUntil: t.field({
         type: "String",
         nullable: true,

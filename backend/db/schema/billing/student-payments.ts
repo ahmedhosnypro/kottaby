@@ -5,12 +5,12 @@ import { paymentGateway, paymentStatus } from "@/backend/db/schema/enums";
 import { students } from "@/backend/db/schema/students/students";
 
 /**
- * Student payments table (DBML `student_payments`, L385–L400).
+ * Student payments table (`student_payments`).
  *
  * Records every payment a student makes. `subscription_id` is nullable and
  * set to NULL on subscription deletion (`set null`) — the payment history
  * survives even if the linked subscription is removed. `amount` must be
- * non-negative (DBML CHECK). `payment_gateway` records the channel (B.9);
+ * non-negative (CHECK). `payment_gateway` records the channel;
  * `status` is the payment lifecycle (pending → paid → failed → refunded).
  *
  * IMMUTABLE: this table is append-only. UPDATE and DELETE are blocked by a
@@ -18,7 +18,7 @@ import { students } from "@/backend/db/schema/students/students";
  * compensating payment row, never by editing an existing one. This preserves
  * the audit trail for financial reconciliation.
  *
- * Indexes on `student_id` and `subscription_id` per DBML `indexes { ... }`.
+ * Indexes on `student_id` and `subscription_id`.
  */
 export const studentPayments = pgTable(
   "student_payments",

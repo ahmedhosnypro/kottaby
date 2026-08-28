@@ -1,6 +1,6 @@
 # Draft Academy — User Story Map (Jeff Patton Style)
 
-> **Source of truth:** `draft_docs/1-sc.en.md`, `draft_docs/2-admin-sc.en.md`, `db/schema.dbml`
+> **Source of truth:** `draft_docs/1-sc.en.md`, `draft_docs/2-admin-sc.en.md`, `backend/db/schema/` (Drizzle schema)
 > **Related:** `docs/scenarios/personas.md`, `docs/scenarios/customer-journey-maps.md`
 
 ---

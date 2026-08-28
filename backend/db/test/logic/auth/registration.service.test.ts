@@ -12,24 +12,21 @@
  *    pre-existing seed data.
  *  - Uses `bun:test` (describe/test/expect).
  *
- * Coverage map (REQ-060..REQ-064):
- *  - Role matrix (REQ-061): student → users + students rows, balances zeroed,
+ * Coverage map:
+ *  - Role matrix: student → users + students rows, balances zeroed,
  *    handshakeCode present; teacher → users + applicants rows, teacher
  *    rowcount delta = 0; parent → users + parents rows.
- *  - Duplicate email → ConflictError (REQ-062).
- *  - Missing/invalid fields → ValidationError (REQ-062).
- *  - Short password → ValidationError (REQ-062, REQ-041).
- *  - BOPLA: input with extra fields is ignored (REQ-062, REQ-023).
- *  - Atomicity: child-insert failure → zero residual rows (REQ-063, REQ-030).
- *  - Password stored hashed (REQ-063, REQ-020).
+ *  - Duplicate email → ConflictError.
+ *  - Missing/invalid fields → ValidationError.
+ *  - Short password → ValidationError.
+ *  - BOPLA: input with extra fields is ignored.
+ *  - Atomicity: child-insert failure → zero residual rows.
+ *  - Password stored hashed.
  *
- * DEV2-004 Task 5.1 extension — REQ-071 registration contract locks in the
- * dedicated "DEV2-004 registration contract locks" describe below:
- * exact-row-count teacher registration (REQ-010), applicants-defaults
- * signature (REQ-011), forced child-insert rollback residual proof on users
- * AND applicants (REQ-040), duplicate-email race convergence + ConflictError
- * mapping (REQ-040 idempotency). The existing DEV1-002 cases above are
- * untouched.
+ * A dedicated "registration contract locks" describe below pins:
+ * exact-row-count teacher registration, the applicants-defaults signature,
+ * forced child-insert rollback residual proof on users AND applicants, and
+ * duplicate-email race convergence + ConflictError mapping (idempotency).
  */
 
 import { describe, expect, test } from "bun:test";
@@ -54,7 +51,7 @@ const UNIQUE_VIOLATION_PG_CODE = "23505";
 
 /**
  * Marker message proving the forced failure fired at the applicants child-insert
- * stage inside the service-owned nested transaction (DEV2-004 REQ-040 proof).
+ * stage inside the service-owned nested transaction (rollback residual proof).
  */
 const FORCED_APPLICANT_FAILURE_MESSAGE = "DEV2-004 forced applicants-insert failure";
 
@@ -77,7 +74,7 @@ const TEST_DEFAULT_CREDENTIAL = "password123";
 /**
  * Type guard for the optional `passwordHash` property on a registration
  * result. Used to assert that the plaintext hash never leaks to the return
- * shape (REQ-020) without resorting to an unsafe cast.
+ * shape without resorting to an unsafe cast.
  */
 function getPasswordHash(value: unknown): unknown {
   if (typeof value === "object" && value !== null && "passwordHash" in value) {
@@ -113,8 +110,8 @@ async function countRows(tx: DBTransaction, table: PgTable): Promise<number> {
  * stub, runs `run`, then restores the original implementation. Returns how
  * many times the stub fired.
  *
- * Reuses the injection mechanism proven by this module's DEV1-002 atomicity
- * test: because the test passes an outer tx, the failure erupts INSIDE the
+ * Reuses the injection mechanism proven by this module's service-level
+ * atomicity tests: because the test passes an outer tx, the failure erupts INSIDE the
  * service-owned nested transaction at the child-insert stage, exercising the
  * SAVEPOINT-aware rollback without touching any production file.
  */
@@ -179,7 +176,7 @@ function hasUniqueViolationCode(error: unknown): boolean {
 }
 
 describe("RegistrationService.registerUser", () => {
-  // ─── Role matrix (REQ-061) ──────────────────────────────────────────
+  // ─── Role matrix ─────────────────────────────────────────────────────
 
   test("student: creates users + students rows with zeroed balances + handshakeCode", async () => {
     await runInRollback(async tx => {
@@ -192,10 +189,10 @@ describe("RegistrationService.registerUser", () => {
       expect(result.email).toBe(input.email);
       expect(result.fullName).toBe(input.fullName);
       expect(result.role).toBe("student");
-      // passwordHash MUST NOT be present in the return shape (REQ-020).
+      // passwordHash MUST NOT be present in the return shape.
       expect(getPasswordHash(result)).toBeUndefined();
 
-      // Students row created with zeroed balances + handshakeCode (REQ-012).
+      // Students row created with zeroed balances + handshakeCode.
       const studentRows = await tx.select().from(students).where(eq(students.id, result.id));
       expect(studentRows).toHaveLength(1);
       const studentRow = studentRows[0];
@@ -217,7 +214,7 @@ describe("RegistrationService.registerUser", () => {
       const result = await RegistrationService.registerUser(input, LOCALE, tx);
       expect(result.role).toBe("teacher");
 
-      // Applicants row created with status='pending' (REQ-013).
+      // Applicants row created with status='pending'.
       const applicantRows = await tx.select().from(applicants).where(eq(applicants.id, result.id));
       expect(applicantRows).toHaveLength(1);
       const applicantRow = applicantRows[0];
@@ -225,7 +222,7 @@ describe("RegistrationService.registerUser", () => {
       expect(applicantRow.status).toBe("pending");
       expect(applicantRow.verificationAttempts).toBe(0);
 
-      // Teacher row MUST NOT be created for an applicant (B.7, FR-3.1).
+      // Teacher row MUST NOT be created for an applicant.
       const finalTeacherCount = await countRows(tx, teacher);
       expect(finalTeacherCount).toBe(initialTeacherCount);
     });
@@ -243,7 +240,7 @@ describe("RegistrationService.registerUser", () => {
     });
   });
 
-  test("governance defaults: isDeleted=false, suspended=false, isBlocked=false, lastActiveAt set (REQ-011)", async () => {
+  test("governance defaults: isDeleted=false, suspended=false, isBlocked=false, lastActiveAt set", async () => {
     await runInRollback(async tx => {
       const input = makeValidInput();
       const before = Date.now();
@@ -266,7 +263,7 @@ describe("RegistrationService.registerUser", () => {
     });
   });
 
-  // ─── Failure paths (REQ-062) ────────────────────────────────────────
+  // ─── Failure paths ──────────────────────────────────────────────────
 
   test("duplicate email → ConflictError", async () => {
     await runInRollback(async tx => {
@@ -296,7 +293,7 @@ describe("RegistrationService.registerUser", () => {
     });
   });
 
-  test("short password (< 8 chars) → ValidationError (REQ-041)", async () => {
+  test("short password (< 8 chars) → ValidationError", async () => {
     await runInRollback(async tx => {
       const input = makeValidInput({ password: "short" });
       const error = await expectRepoError(() => RegistrationService.registerUser(input, LOCALE, tx));
@@ -312,7 +309,7 @@ describe("RegistrationService.registerUser", () => {
     });
   });
 
-  // ─── BOPLA defense (REQ-023, REQ-024, REQ-062) ─────────────────────
+  // ─── BOPLA defense ──────────────────────────────────────────────────
 
   test("BOPLA: extra fields (isDeleted, balance, id, handshakeCode) are ignored", async () => {
     await runInRollback(async tx => {
@@ -357,7 +354,7 @@ describe("RegistrationService.registerUser", () => {
     });
   });
 
-  // ─── Atomicity (REQ-030, REQ-063) ──────────────────────────────────
+  // ─── Atomicity ──────────────────────────────────────────────────────
 
   test("atomicity: child-insert failure → zero residual users rows (full rollback)", async () => {
     await runInRollback(async tx => {
@@ -392,7 +389,7 @@ describe("RegistrationService.registerUser", () => {
     });
   });
 
-  // ─── Password hashing (REQ-020, REQ-063) ───────────────────────────
+  // ─── Password hashing ───────────────────────────────────────────────
 
   test("password stored hashed (not plaintext) and is bcrypt-verifiable", async () => {
     await runInRollback(async tx => {
@@ -422,7 +419,7 @@ describe("RegistrationService.registerUser", () => {
     });
   });
 
-  // ─── Admin privileged path (REQ-015, REQ-022) ──────────────────────
+  // ─── Admin privileged path ──────────────────────────────────────────
 
   test("createAdminUser (privileged service path) creates users + admin rows", async () => {
     await runInRollback(async tx => {
@@ -459,11 +456,11 @@ describe("RegistrationService.registerUser", () => {
   });
 });
 
-describe("DEV2-004 registration contract locks", () => {
-  // ─── REQ-010 / REQ-071: one users row + one applicants row, zero teachers ──
+describe("registration contract locks", () => {
+  // ─── one users row + one applicants row, zero teachers ───────────────
 
   test(
-    "contract lock (REQ-010): teacher registration via production registerUser → exactly one users row" +
+    "contract lock: teacher registration via production registerUser → exactly one users row" +
       " + exactly one applicants row sharing the user PK + teacher rowcount delta = 0",
     async () => {
       await runInRollback(async tx => {
@@ -489,7 +486,7 @@ describe("DEV2-004 registration contract locks", () => {
         if (!userRowByEmail) throw new Error("expected users row by email");
         expect(userRowByEmail.id).toBe(userRow.id);
 
-        // Exactly ONE applicants row sharing the user's PK (R10 shared-PK child).
+        // Exactly ONE applicants row sharing the user's PK (shared-PK child).
         const applicantRowsByPk = await tx.select().from(applicants).where(eq(applicants.id, userRow.id));
         expect(applicantRowsByPk).toHaveLength(1);
         const applicantRow = applicantRowsByPk[0];
@@ -499,15 +496,15 @@ describe("DEV2-004 registration contract locks", () => {
         // Table-level deltas captured before/after INSIDE the same transaction.
         expect(await countRows(tx, users)).toBe(initialUsersCount + 1);
         expect(await countRows(tx, applicants)).toBe(initialApplicantsCount + 1);
-        expect(await countRows(tx, teacher)).toBe(initialTeacherCount); // delta = 0 (B.7)
+        expect(await countRows(tx, teacher)).toBe(initialTeacherCount); // delta = 0
       });
     }
   );
 
-  // ─── REQ-011 / REQ-071: exact defaults signature on the applicants row ─────
+  // ─── exact defaults signature on the applicants row ──────────────────
 
   test(
-    "contract lock (REQ-011): created applicants row exact defaults — status='pending'," +
+    "contract lock: created applicants row exact defaults — status='pending'," +
       " verificationAttempts=0, lastAttemptAt=null, cooldownUntil=null, timestamps set",
     async () => {
       await runInRollback(async tx => {
@@ -520,20 +517,20 @@ describe("DEV2-004 registration contract locks", () => {
         const row = applicantRows[0];
         if (!row) throw new Error("expected applicants row");
 
-        // Canonical status vocabulary — enum member, never a raw literal (REQ-012).
+        // Canonical status vocabulary — enum member, never a raw literal.
         expect(row.status).toBe(ApplicantStatus.Pending);
         expect(row.verificationAttempts).toBe(0);
         expect(row.lastAttemptAt).toBeNull();
         expect(row.cooldownUntil).toBeNull();
 
-        // Timestamps set by database defaults (B.6): both present as real
+        // Timestamps set by database defaults: both present as real
         // timestamps, updatedAt not earlier than createdAt.
         //
         // NOTE: no application-wall-clock lower bound is asserted here ON
         // PURPOSE — `defaultNow()` resolves to PostgreSQL's transaction-start
         // time (BEGIN precedes the test body), so comparing against
         // `Date.now()` is off-by-milliseconds nondeterministic even on the
-        // same host. The contract (REQ-011) only requires the defaults to be
+        // same host. The contract only requires the defaults to be
         // SET; intra-database ordering is deterministic and asserted instead.
         if (!row.createdAt) throw new Error("expected createdAt set by DB default");
         if (!row.updatedAt) throw new Error("expected updatedAt set by DB default");
@@ -542,10 +539,10 @@ describe("DEV2-004 registration contract locks", () => {
     }
   );
 
-  // ─── REQ-040 / REQ-071: forced child-insert failure ⇒ zero residual rows ───
+  // ─── forced child-insert failure ⇒ zero residual rows ────────────────
 
   test(
-    "contract lock (REQ-040): forced applicants-insert failure inside the nested transaction" +
+    "contract lock: forced applicants-insert failure inside the nested transaction" +
       " → zero residual users AND applicants rows (SAVEPOINT-aware rollback)",
     async () => {
       await runInRollback(async tx => {
@@ -576,10 +573,10 @@ describe("DEV2-004 registration contract locks", () => {
     }
   );
 
-  // ─── REQ-040 / idempotency: duplicate-email race convergence ────────────────
+  // ─── idempotency: duplicate-email race convergence ─────────────────────
 
   test(
-    "contract lock (REQ-040/idempotency): duplicate-email race → exactly one winner + unique-violation loser," +
+    "contract lock (idempotency): duplicate-email race → exactly one winner + unique-violation loser," +
       " replay maps to ConflictError(CONFLICT) via the production surface, no duplicate rows",
     async () => {
       await runInRollback(async tx => {
@@ -625,7 +622,7 @@ describe("DEV2-004 registration contract locks", () => {
         expect(afterRaceRows).toHaveLength(0);
 
         // ── Layer 2 — production surface creates the REAL account for that
-        // identity (users + applicants rows, full DEV1-002 contract shape).
+        // identity (users + applicants rows, full registration contract shape).
         const raceInput = makeValidInput({ email: racedEmail, role: "teacher" });
         const winner = await RegistrationService.registerUser(raceInput, LOCALE, tx);
         expect(winner.role).toBe("teacher");
@@ -633,7 +630,7 @@ describe("DEV2-004 registration contract locks", () => {
         // ── Layer 3 — production-surface REPLAY: registering the raced email
         // again through registerUser hits the same users_email_unique
         // violation and maps it to ConflictError with code CONFLICT
-        // (23505 inheritance per REQ-040 / idempotency contract).
+        // (23505 inheritance per the idempotency contract).
         const replayError = await expectRepoError(() =>
           RegistrationService.registerUser(makeValidInput({ email: racedEmail, role: "teacher" }), LOCALE, tx)
         );

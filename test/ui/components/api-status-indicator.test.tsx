@@ -9,8 +9,8 @@
  *   teardown leak-guard (no further polls after unmount).
  *
  * Every user-facing string resolves through the compile-time translation
- * system (`Landing.getLabels(getTranslations(locale))`) — REQ-075 style,
- * no hardcoded literals.
+ * system (`Landing.getLabels(getTranslations(locale))`) — no hardcoded
+ * literals.
  */
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";

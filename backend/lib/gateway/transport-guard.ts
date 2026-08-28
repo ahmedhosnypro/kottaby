@@ -1,30 +1,27 @@
 /**
  * Pure transport guards for the GraphQL route's pre-engine tier
- * (dev3-003 Task 2.2 · REQ-010 steps 1–3, REQ-015/016; Decision D5).
+ * (method, content-type, declared-length, drained-length, and JSON parse).
  *
- * D5 CONTRACT — result unions, never throw-as-control-flow:
+ * RESULT-UNION CONTRACT — never throw-as-control-flow:
  *  - NOTHING in this module throws. Every guard returns a
  *    {@link TransportGuardResult}; narrowing happens at the consumer.
  *  - Guards are PURE: fixed header whitelist only (BOPLA), no identity reads,
  *    no ctx mutation, no module-level mutable state; concurrent calls are
- *    fully independent (REQ-040).
- *  - Failure results carry ONLY the machine kind — never raw header echoes,
- *    body fragments, paths or stack data crossing this boundary (REQ-033/034).
- *    Kind→HTTP mapping + localized envelopes live ROUTE-side (Task 3.2):
+ *    fully independent.
+ *  - Failure results carry ONLY the machine kind — no raw header echoes,
+ *    body fragments, paths or stack data ever cross this boundary.
+ *    Kind→HTTP mapping + localized envelopes live ROUTE-side:
  *    METHOD_NOT_ALLOWED→405+`Allow: POST` · UNSUPPORTED_CONTENT_TYPE→400 ·
  *    PAYLOAD_TOO_LARGE→413 · MALFORMED_JSON→400.
  *
- * WIRE-CODE RECONCILIATION (extend-in-place R1 F2 / Correction #4 — carried
- * by Task 3.2): the LIVE `app/api/graphql/route.ts` block previously kept its
- * inline `GRAPHQL_MAX_BODY_BYTES = 2_000_000`; Task 3.2 moved the block onto
- * {@link MAX_GRAPHQL_BODY_BYTES} (byte-identical value) and retired the inline
- * copy in the same change set. The route maps kinds onto the LIVE transport
- * codes: keep `PAYLOAD_TOO_LARGE`
- * reused verbatim and map BOTH malformed-JSON sources (`MALFORMED_JSON`)
- * onto the existing `GRAPHQL_PARSE_FAILED` behavior — NO new wire code is
- * introduced anywhere; the GraphQL-local `{errors:[{extensions:{code,requestId}}]}`
- * rejection shape (documented exemption row) stays untouched. Route.ts itself
- * is NOT rewired in Task 2.2 — library-only landing.
+ * WIRE-CODE RECONCILIATION: the live `app/api/graphql/route.ts` block moved
+ * its inline `GRAPHQL_MAX_BODY_BYTES = 2_000_000` onto
+ * {@link MAX_GRAPHQL_BODY_BYTES} (byte-identical value). The route maps
+ * kinds onto the existing transport codes: `PAYLOAD_TOO_LARGE` is reused
+ * verbatim and BOTH malformed-JSON sources (`MALFORMED_JSON`) map onto the
+ * existing `GRAPHQL_PARSE_FAILED` behavior — NO new wire code is introduced
+ * anywhere; the GraphQL-local `{errors:[{extensions:{code,requestId}}]}`
+ * rejection shape (documented exemption row) stays untouched.
  *
  * GUARD ORDER inside `guardTransport` preserves the live pipeline order:
  * cheap constant-work checks first (method → content-type → declared length),
@@ -37,15 +34,13 @@ import type { TransportErrorKind, TransportGuardResult } from "@/backend/types";
 /** Accepted JSON media types for GraphQL-over-HTTP POST bodies (+ parameters such as `; charset=utf-8`). */
 const ALLOWED_CONTENT_TYPES = ["application/json", "application/graphql-response-json"] as const;
 
-/** The only method the engine route accepts (GET is excluded by design — CSRF posture; Task 3.2 wires explicit 405 handlers). */
+/** The only method the engine route accepts (GET is excluded by design — CSRF posture; the route wires explicit 405 handlers). */
 const ONLY_ALLOWED_METHOD = "POST";
 
 /**
  * Hard cap for GraphQL request bodies — THE canonical transport-tier constant
- * (frozen). Formerly a byte-identical twin of the inline
- * `GRAPHQL_MAX_BODY_BYTES = 2_000_000` in `app/api/graphql/route.ts`; Task 3.2
- * deleted the inline copy in the same change set that started consuming this
- * module (never two competing constants in consumers).
+ * (frozen). Single source shared by every consumer, so no competing inline
+ * copy ever exists side-by-side.
  *
  * 2 MB comfortably exceeds the largest legitimate batched operation while
  * rejecting payload-bomb abuse. TRANSPORT-tier constant — deliberately NOT a
@@ -58,7 +53,7 @@ function pass(body: unknown): TransportGuardResult {
   return { ok: true, body };
 }
 
-/** Failure result carrying only the machine kind (no payload echo — REQ-034). */
+/** Failure result carrying only the machine kind (never a payload echo). */
 function fail(kind: TransportErrorKind): TransportGuardResult {
   return { ok: false, kind };
 }
@@ -118,7 +113,7 @@ export function assertWithinBodyLimit(bodyByteLength: number): TransportGuardRes
 }
 
 /**
- * Composed pipeline guard for a GraphQL POST request (REQ-010 steps 1–3).
+ * Composed pipeline guard for a GraphQL POST request.
  * Order-preserved port of the live transport block:
  *
  *  1. method allowlist;

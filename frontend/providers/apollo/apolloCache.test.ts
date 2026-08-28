@@ -1,7 +1,7 @@
 /**
- * dev3-003 Task 4.1.TE — HealthCheck Apollo cache-policy suite (Tier 1).
- * · REQ-061 / plan D4 — embedded-type normalization opt-out pairing for the
- *   scalar-only `_health` probe object registered by Phase 3.
+ * HealthCheck Apollo cache-policy suite.
+ * Embedded-type normalization opt-out (`keyFields: false`) for the
+ * scalar-only `_health` probe object.
  *
  * WHAT THIS LOCKS
  *   1. CONFIG EXPOSURE (the task-def gate): an `InMemoryCache` built by
@@ -131,7 +131,7 @@ describe("createApolloCache — initialised InMemoryCache config exposure", () =
     expect(cache).toBeInstanceOf(InMemoryCache);
   });
 
-  test("typePolicies.HealthCheck.keyFields === false (REQ-061/D4 gate)", () => {
+  test("typePolicies.HealthCheck.keyFields === false", () => {
     const cache = createApolloCache();
     const policies = typePoliciesOf(cache);
     expect(keyFieldsOf(policies, "HealthCheck")).toBe(false);

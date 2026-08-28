@@ -78,7 +78,7 @@ DROP TABLE IF EXISTS users;
 -- -----------------------------------------------------------------------------
 -- 3. DROP TYPES (15 PostgreSQL enums)
 --    SQLite represents enums as TEXT + CHECK constraints — no types to drop.
---    Order mirrors DBML declaration order (enums have no inter-dependencies).
+--    Order mirrors canonical declaration order (enums have no inter-dependencies).
 -- -----------------------------------------------------------------------------
 DROP TYPE IF EXISTS user_role;
 DROP TYPE IF EXISTS gender;

@@ -9,9 +9,9 @@
  *    Next.js route handler after Apollo processes the mutation. Used by the
  *    AuthProvider to silently rotate tokens via `refreshToken`.
  *  - `session_id`   — opaque session correlation id (`crypto.randomUUID()`).
- *    Set as an httpOnly cookie alongside `refresh_token`. (In DEV2-001 we
- *    trust the refresh-token signature alone; a server-side session store
- *    lands with DEV2-002 revocation support.)
+ *    Set as an httpOnly cookie alongside `refresh_token`. (For now we trust
+ *    the refresh-token signature alone; a server-side session store lands
+ *    alongside revocation support.)
  *
  * Secrets:
  *  - Production: set `JWT_ACCESS_SECRET` + `JWT_REFRESH_SECRET` separately.

@@ -3,7 +3,7 @@
  *
  * Design:
  *  - `AuthSession` is the service return shape for `login` — `user` (with
- *    `passwordHash` stripped per REQ-020) + the JWT pair (`accessToken`,
+ *    `passwordHash` stripped) + the JWT pair (`accessToken`,
  *    `refreshToken`) + the opaque `sessionId`. The GraphQL `LoginPayload`
  *    exposes `user` + `accessToken` + `refreshToken` (NOT `sessionId` — the
  *    server controls the cookie; the client doesn't need the correlation id).
@@ -27,7 +27,7 @@ import type { RegistrationReturnType } from "@/backend/types/users/registration.
  * registration and login mutations.
  */
 export interface AuthSession {
-  /** Authenticated user with `passwordHash` stripped (REQ-020). */
+  /** Authenticated user with `passwordHash` stripped. */
   readonly user: RegistrationReturnType;
   /** Short-lived access token (15 min). Returned in the mutation payload. */
   readonly accessToken: string;

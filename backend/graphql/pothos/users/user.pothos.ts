@@ -9,7 +9,7 @@
  *    `role`, plus the profile-page fields (`phone`, `country`, `gender`) and
  *    the read-only governance fields (`isDeleted`, `suspended`, `isBlocked`).
  *    The `passwordHash` field is structurally omitted from
- *    `RegistrationReturnType` so it can never leak (REQ-020).
+ *    `RegistrationReturnType` so it can never leak.
  *
  * Additional fields (relationships, computed props) may be added on this same
  * object in future tickets — GraphQL's selection mechanism lets clients
@@ -68,8 +68,8 @@ export const UserPothosObject = gqlSchemaBuilder.objectRef<RegistrationReturnTyp
         return role;
       },
     }),
-    // DEV1-003: echo the validated preferred recitation reading (contract
-    // metadata — NOT persisted to `recitation` per C.5). Nullable: null when
+    // Echo the validated preferred recitation reading (contract
+    // metadata — NOT persisted to the `recitation` table). Nullable: null when
     // the user didn't select a reading during registration.
     preferredRecitation: t.field({
       type: RecitationReadingPothosEnum,
@@ -79,7 +79,7 @@ export const UserPothosObject = gqlSchemaBuilder.objectRef<RegistrationReturnTyp
       resolve: parent => parent.preferredRecitation ?? null,
     }),
     // Read-only governance fields — exposed so the profile page can show
-    // account status badges. These are server-controlled (REQ-023) — clients
+    // account status badges. These are server-controlled — clients
     // cannot mutate them through any input type. The DB columns are
     // `boolean | null` (Drizzle types them as nullable since they lack
     // `.notNull()`), so we resolve null → false at the GraphQL layer to

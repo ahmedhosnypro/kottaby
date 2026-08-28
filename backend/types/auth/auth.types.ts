@@ -2,7 +2,7 @@
  * Auth canonical types — public + internal DTOs for the JWT authentication
  * surface (`login`, `logout`, `refreshToken`, `me`).
  *
- * Design (DEV2-001 REQ-003 — type discipline):
+ * Design (type discipline):
  *  - `LoginSubmitInput` is the **public** contract submitted by the login
  *    form. It structurally permits ONLY `email` + `password` —
  *    mass-assignment / role spoofing (BOPLA/BFLA) is impossible at the
@@ -15,7 +15,7 @@
  *    only; the session id is the server-side correlation handle.
  *  - `AuthUserReturnType` is `UserSelectType` with `passwordHash` stripped
  *    so the plaintext hash can NEVER leak to a resolver payload, log, or
- *    GraphQL response (REQ-020 / REQ-053).
+ *    GraphQL response.
  *  - `LoginPayloadReturnType` is the `login` mutation payload — `user` +
  *    `accessToken` + `refreshToken`. The `sessionId` is intentionally
  *    absent (server-controlled; client doesn't need the correlation id).
@@ -25,15 +25,13 @@
  * `@/backend/types/users/auth.types`. They pre-date this canonical location
  * and remain re-exported for backward compatibility. New code SHOULD import
  * from this file.
- *
- * @see specs.md REQ-003, REQ-010, REQ-011, REQ-053
  */
 import type { UserSelectType } from "@/backend/types/users/user.types";
 
 /**
  * Public login input contract.
  *
- * Field whitelist (BOPLA — REQ-051): only `email` + `password` appear here.
+ * Field whitelist (BOPLA): only `email` + `password` appear here.
  * `role`, `id`, governance fields, etc. are server-controlled and
  * structurally absent from this type — login never mutates them, and the
  * issued `role` claim comes solely from the DB.
@@ -61,7 +59,7 @@ export interface AuthTokensReturnType {
 
 /**
  * Authenticated user return type — `UserSelectType` with `passwordHash`
- * structurally omitted so the hash can never leak (REQ-020 / REQ-053).
+ * structurally omitted so the hash can never leak.
  */
 export type AuthUserReturnType = Omit<UserSelectType, "passwordHash">;
 
@@ -72,7 +70,7 @@ export type AuthUserReturnType = Omit<UserSelectType, "passwordHash">;
  * httpOnly cookie; the client doesn't need the correlation id.
  */
 export interface LoginPayloadReturnType {
-  /** Authenticated user with `passwordHash` stripped (REQ-020). */
+  /** Authenticated user with `passwordHash` stripped. */
   readonly user: AuthUserReturnType;
   /** Short-lived access token (15 min). Returned in payload + httpOnly cookie. */
   readonly accessToken: string;

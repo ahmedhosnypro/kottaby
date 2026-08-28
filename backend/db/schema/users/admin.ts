@@ -2,7 +2,7 @@ import { integer, pgTable, timestamp } from "drizzle-orm/pg-core";
 import { users } from "@/backend/db/schema/users/users";
 
 /**
- * Admin role-child table (DBML `admin`).
+ * Admin role-child table (`admin`).
  *
  * Shared PK = FK to users.id with cascade delete (no auto-increment; the row
  * is created only after a users row with role 'admin' is inserted).

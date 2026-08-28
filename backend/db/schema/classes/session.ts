@@ -4,7 +4,7 @@ import { students } from "@/backend/db/schema/students/students";
 import { teacher } from "@/backend/db/schema/teachers/teacher";
 
 /**
- * Session table (DBML `session`, L297–L319).
+ * Session table (`session`).
  *
  * The central scheduling entity: a single meeting between a teacher and a
  * student. `teacher_id` → teacher.id (restrict: cannot delete a teacher who
@@ -14,20 +14,20 @@ import { teacher } from "@/backend/db/schema/teachers/teacher";
  * Lifecycle is driven by `status` (session_status enum, default "scheduled"):
  * scheduled → started → completed | cancelled | disputed. `session_type`
  * distinguishes regular student sessions from teacher evaluations and
- * re-evaluations (A.8). `intent` (A.10) is an optional classification of what
- * the session is for (hifz, tajweed, evaluation) — nullable per DBML.
+ * re-evaluations. `intent` is an optional classification of what
+ * the session is for (hifz, tajweed, evaluation) — nullable.
  *
- * Financial escrow (B.3/B.4): `fee` is the platform-set session fee (nullable
+ * Financial escrow: `fee` is the platform-set session fee (nullable
  * decimal); `fee_held` flags whether the fee is currently in escrow (held at
- * request, decremented at completion). Dual confirmation (B.2):
+ * request, decremented at completion). Dual confirmation:
  * `confirmed_by_student_at` + `confirmed_by_teacher_at` track each side's
  * confirmation; `confirmation_deadline` is the 24h window from request.
  *
  * No circular deps: imports only teacher, students, enums. The reverse FKs
  * (evaluations.session_id, teacher_transaction.session_id) reference this
  * table from those domains — they import `session`, session does NOT import
- * them. Authored first in the classes domain to unblock T5 (evaluations) and
- * T6 (teacher-transaction) cross-domain resolution.
+ * them. Authored first in the classes domain to unblock the evaluations and
+ * teacher-transaction cross-domain resolution.
  */
 export const session = pgTable(
   "session",

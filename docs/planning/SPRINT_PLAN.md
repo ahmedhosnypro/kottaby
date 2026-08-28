@@ -27,14 +27,14 @@
 
 | Ticket ID | Title | Owner | SP | Blocked By |
 |---|---|---|---|---|
-| DEV1-001 | Database schema migration from DBML | Dev 1 | 5 | — |
+| DEV1-001 | Database schema migration | Dev 1 | 5 | — |
 | DEV1-002 | User registration with role-specific child table creation | Dev 1 | 5 | DEV1-001 |
 | DEV1-003 | Recitation selection on registration | Dev 1 | 2 | DEV1-002 |
 | DEV1-004 | Free trial session provisioning | Dev 1 | 3 | DEV1-002 |
 | DEV2-001 | JWT authentication service | Dev 2 | 5 | DEV1-001 |
 | DEV2-002 | Role-based authorization middleware | Dev 2 | 3 | DEV2-001 |
 | DEV2-003 | Shared types & interface contracts | Dev 2 | 3 | DEV1-001 |
-| DEV3-001 | CI/CD pipeline with DBML & Mermaid validation | Dev 3 | 5 | — |
+| DEV3-001 | CI/CD pipeline with Mermaid validation | Dev 3 | 5 | — |
 | DEV3-002 | Shared error handling & response contracts | Dev 3 | 3 | — |
 | DEV3-003 | API gateway & routing skeleton | Dev 3 | 3 | DEV3-002 |
 
@@ -44,12 +44,12 @@
 
 ### Definition of Done (Sprint 0)
 
-- [ ] Database schema migrated and validates with `bun validate:dbml`
+- [ ] Database schema migrated into `backend/db/schema/` and type-checks
 - [ ] User registration works for all 4 roles (admin, teacher, student, parent)
 - [ ] Role-specific child tables created on registration (admin, teacher, students, parents, applicants)
 - [ ] JWT authentication issues and validates tokens
 - [ ] RBAC middleware enforces role-based access
-- [ ] CI/CD pipeline runs on every PR with DBML and Mermaid validation
+- [ ] CI/CD pipeline runs on every PR with Mermaid validation
 - [ ] API gateway routes to health-check endpoints
 - [ ] Shared types and interface contracts documented and committed
 - [ ] All tests passing (unit + integration)

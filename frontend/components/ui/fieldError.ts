@@ -1,6 +1,6 @@
 /**
  * Pure projection of GraphQL error `extensions.fields[]` onto MUI `TextField`
- * error props (REQ-015 → REQ-061 UI contract).
+ * error props.
  *
  * Layer note: the wire shape mirrors the canonical
  * `ApiFieldErrorType` value object declared in
@@ -9,8 +9,8 @@
  * (`.dependency-cruiser.js`) forbids frontend→backend imports. The local
  * structural mirror keeps this helper layer-pure and trivially unit-testable.
  *
- * Security/UX rules enforced by construction (REQ-033 spirit, applied to the
- * UI boundary):
+ * Security/UX rules enforced by construction (whitelist posture applied to
+ * the UI boundary):
  *  - EXPLICIT WHITELIST: only `{ field, message }` are read; every other
  *    property on a wire entry (`code`, unknown extras) is dropped. The output
  *    object shape is exactly `{ error, helperText }`.
@@ -32,7 +32,7 @@
 export interface FieldErrorContractEntry {
   /** RHF-consumable form path, e.g. `"email"`, `"homeWork.currentGrade"`. */
   readonly field: string;
-  /** Localized, user-facing message (REQ-050) — the ONLY echoed string. */
+  /** Localized, user-facing message — the ONLY echoed string. */
   readonly message: string;
 }
 

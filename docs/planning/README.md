@@ -1,6 +1,6 @@
 # Draft Academy — Planning & Delivery Index
 
-> **Source of truth:** `docs/specs/`, `db/schema.dbml`, `docs/scenarios/user-story-map.md`
+> **Source of truth:** `docs/specs/`, `backend/db/schema/`, `docs/scenarios/user-story-map.md`
 > **Mission:** 3-developer engineering management & production delivery plan
 
 ---
@@ -92,7 +92,6 @@ See the [Decision Coverage table in TICKETS.md](TICKETS.md#decision-coverage) fo
 
 | Artifact | Validator | Command |
 |---|---|---|
-| `db/schema.dbml` | DBML | `bun validate:dbml` |
 | `docs/planning/ROADMAP.md` (Gantt chart) | Mermaid | `bun run scripts/validate-mermaid.ts docs/planning/ROADMAP.md` |
 | `docs/planning/SPRINT_PLAN.md` (dependency graphs) | Mermaid | `bun run scripts/validate-mermaid.ts docs/planning/SPRINT_PLAN.md` |
 | All other `.mmd` / `.md` files with Mermaid | Mermaid | `bun run scripts/validate-mermaid.ts <file>` |
@@ -107,7 +106,7 @@ See the [Decision Coverage table in TICKETS.md](TICKETS.md#decision-coverage) fo
 | `docs/specs/functional-requirements.md` | 11 FR categories — mapped to tickets |
 | `docs/specs/state-machine-invariants.md` | 10 state machines — acceptance criteria source |
 | `docs/scenarios/user-story-map.md` | 9 activities, 60+ tasks — ticket breakdown source |
-| `db/schema.dbml` | 22 tables, 13 enums — schema ground truth |
+| `backend/db/schema/` | Drizzle schema — schema ground truth |
 | `docs/domain/GLOSSARY.md` | Ubiquitous language — ticket vocabulary |
 | `docs/architecture/` | C4 diagrams — system architecture reference |
 | `docs/workflows/` | Workflow sequence diagrams — process reference |

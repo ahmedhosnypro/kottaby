@@ -1,11 +1,10 @@
 import type { applicants } from "@/backend/db/schema/teachers/applicants";
 // NOTE: `ApplicantStatus` is used ONLY at type positions in this file. The
 // mandated value-import form is auto-normalized to `import type` by Biome
-// `lint/style/useImportType` (safe fix applied by `biome check --write`);
-// see outcome/1.2-outcome.md Deviation #1. Runtime consumers (Task 2.2
-// service guard validation / cooldown math; Task 3.2
-// `gqlSchemaBuilder.enumType(ApplicantStatus, …)`) MUST keep their OWN
-// value imports of `ApplicantStatus`.
+// `lint/style/useImportType` (safe fix applied by `biome check --write`).
+// Runtime consumers (service guard validation / cooldown math; the Pothos
+// `gqlSchemaBuilder.enumType(ApplicantStatus, …)` registration) MUST keep
+// their OWN value imports of `ApplicantStatus`.
 import type { ApplicantStatus } from "@/backend/enum/teachers/applicant-status.enum";
 
 export type ApplicantSelectType = typeof applicants.$inferSelect;
@@ -17,7 +16,7 @@ export type ApplicantInsertType = typeof applicants.$inferInsert;
  * `ApplicantLifecycleService.getMyApplicantProfile`, later exposed through
  * the Pothos `ApplicantProfile` object ref).
  *
- * Closed, readonly output shape per REQ-017/REQ-032: contains NO governance
+ * Closed, readonly output shape: contains NO governance
  * fields, NO secrets, and NO client-writable fields (zero overlap with any
  * mutation input surface — BOPLA self-scope read-only data only).
  *
@@ -25,7 +24,7 @@ export type ApplicantInsertType = typeof applicants.$inferInsert;
  * - `status` re-applies the canonical `ApplicantStatus` TS enum over the raw
  *   varchar column (`applicants.status`, varchar(50), no pgEnum). Stored
  *   values are validated with `isApplicantStatus` at the service boundary
- *   (fail-closed, REQ-075) before any value carries this type.
+ *   (fail-closed) before any value carries this type.
  * - `cooldownActive` / `canPurchaseVerification` are computed server-side
  *   derivations, never mirrored from client input.
  */

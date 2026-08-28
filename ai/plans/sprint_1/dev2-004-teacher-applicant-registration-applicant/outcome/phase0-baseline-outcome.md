@@ -13,7 +13,7 @@
 | `bun x eslint --cache --concurrency=2` (direct, full-repo) | exit 0 — **0 errors** |
 | `bun run scripts/lint-service.ts --json --id baseline` | `success:false, exitCode:1, output:"", fileCount:0` — **PRE-EXISTING SERVICE QUIRK**: the unified lint-service CLI returns failure with empty output even on the pristine tree (direct eslint proves the repo is clean). Baseline anomaly logged; differentials for this ticket use direct eslint + biome + tsgo. Not caused by this ticket; NOT fixed here (out of scope). |
 | `git diff --name-only` | **EMPTY** — no pre-existing modified files; the "exempt file set" is empty |
-| `git diff -- backend/db/schema/** backend/db/migration/** db/schema.dbml` | **EMPTY** — zero schema drift at baseline (REQ-045 anchor established) |
+| `git diff -- backend/db/schema/** backend/db/migration/**` | **EMPTY** — zero schema drift at baseline (REQ-045 anchor established) |
 
 ## Deferred-Items Ledger
 

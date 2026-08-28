@@ -84,7 +84,7 @@ Server Component: app/(dashboard)/admin/plans/page.tsx
 
 | # | Decision | Options Considered | Pros / Cons | Rationale (Maintainability, Scalability, Reliability) |
 |---|---|---|---|---|
-| D1 | **Lifecycle via `is_active` + `deactivated_at` delta on `plans`** (DEV1-004-style per-ticket schema delta) | (a) `status` enum (`active`/`deactivated`/…); (b) boolean + timestamp; (c) separate lifecycle table | (a) Pros: extensible states. Cons: new pgEnum + enum files + DBML for a binary lifecycle today — over-engineering (YAGNI); migration churn. (b) Pros: minimal, self-documenting, `deactivated_at` is audit-adjacent metadata, default `true` backfills all existing rows (zero backfill migration). Cons: future states require a follow-up delta. (c) Pros: normalized. Cons: unjustified for a two-state toggle. | REQ-010. Boolean + nullable timestamp is the smallest contract that satisfies "no longer visible to students for purchase; existing subscriptions remain active." Default `true` makes `db push` non-destructive. DBML + Drizzle + `$infer*` types land in one commit set (REQ-042). |
+| D1 | **Lifecycle via `is_active` + `deactivated_at` delta on `plans`** (DEV1-004-style per-ticket schema delta) | (a) `status` enum (`active`/`deactivated`/…); (b) boolean + timestamp; (c) separate lifecycle table | (a) Pros: extensible states. Cons: new pgEnum + enum files for a binary lifecycle today — over-engineering (YAGNI); migration churn. (b) Pros: minimal, self-documenting, `deactivated_at` is audit-adjacent metadata, default `true` backfills all existing rows (zero backfill migration). Cons: future states require a follow-up delta. (c) Pros: normalized. Cons: unjustified for a two-state toggle. | REQ-010. Boolean + nullable timestamp is the smallest contract that satisfies "no longer visible to students for purchase; existing subscriptions remain active." Default `true` makes `db push` non-destructive. Drizzle schema + `$infer*` types land in one commit set (REQ-042). |
 | D2 | **State transitions via single guarded conditional `UPDATE … WHERE id AND is_active = <opposite> RETURNING *`** | (a) SELECT-then-UPDATE; (b) advisory lock; (c) guarded conditional UPDATE | (a) TOCTOU: two concurrent deactivations both read `is_active=true`, both succeed silently — REQ-040 violated. (b) Serializes correctly but adds lock plumbing for a trivially lock-free statement. (c) Row-lock inside the statement serializes; loser sees empty RETURNING → mapped to `PLAN_ALREADY_*`. Zero extra infra. | REQ-014/015/040. Direct reuse of the DEV1-004 `grantFreeTrialOnce` atomicity pattern (proven, reviewed). TOCTOU window = 0; the predicate is evaluated under the row's write lock. |
 | D3 | **Guard-ambiguity resolution: empty RETURNING → `existsById` probe → NotFound vs Conflict** | (a) probe first, then update; (b) update first, probe on empty | (a) Reintroduces TOCTOU on the *state* branch (row could flip between probe and guarded update — harmless here because the second update would empty-match, but adds a wasted round-trip on the hot path). (b) One statement hot path; probe only on the failure path (cold). | (b). Plan state churn is admin-frequency (rare); correctness preserved because the guarded UPDATE remains the only mutation primitive. The probe is read-only and its result cannot be stale-misused (a re-check after a concurrent flip still yields the correct user-facing outcome class: the row *is* in the target state → `PLAN_ALREADY_*` is accurate at response time if we re-read post-update — see §4.3 race table). |
 | D4 | **Price as decimal STRING end-to-end (`String!` in GraphQL, `string` in TS, regex-validated in service)** | (a) `Float!`; (b) `String!`; (c) fixed-point Int (cents) | (a) Float precision loss violates money discipline (e.g., 19.99 corruptible). (b) Preserves Drizzle `decimal(10,2)` → `string` inference verbatim; regex `^\d{1,8}(\.\d{1,2})?$` fits the column exactly; UI renders without conversion. (c) Requires a unit contract (`priceInCents`) diverging from DEV1-001 schema — forbidden drift. | REQ-012/022. Follows the schema as-is; zero arithmetic is performed on price in this ticket, so string carry is safe and lossless. |
@@ -97,9 +97,9 @@ Server Component: app/(dashboard)/admin/plans/page.tsx
 
 ## 2. Data Models & Database Schema
 
-### 2.1 Existing Schema Verification (from `db/schema.dbml` / `backend/db/schema/`)
+### 2.1 Existing Schema Verification (from `backend/db/schema/`)
 
-Verified against `backend/db/schema/billing/plans.ts` + `db/schema.dbml`:
+Verified against `backend/db/schema/billing/plans.ts`:
 
 | Contract dependency | Existing implementation | Verified at |
 |---|---|---|
@@ -117,20 +117,9 @@ deactivatedAt: timestamp("deactivated_at"),                  // REQ-010 — life
 ```
 
 - No new enums, no new indexes (catalog-scale scan of `WHERE is_active` is trivially acceptable — the no-index ruling is documented per REQ-010's decision note).
-- **Application discipline (REQ-042):** exclusively `bun run db push`. `db reset` / `db cleanGenerate` remain permanently disabled by repo policy. No custom SQL migration — pure Drizzle schema.
-- `bun validate:dbml` MUST stay green; DBML updated in the same commit set.
+- **Application discipline (REQ-042):** exclusively `bun run db push`. `db reset` / `db cleanGenerate` remain permanently disabled by repo policy. No custom SQL migration — pure Drizzle schema. The Drizzle schema in `backend/db/schema/` is the sole structural ground truth.
 
-### 2.3 DBML Reconciliation — `db/schema.dbml` (MODIFIED, same unit of work per the DBML skill core rule)
-
-```
-Table plans {
-  ...
-  is_active       boolean   [not null, default: true, note: 'INV-PC1: deactivated plans are hidden from the purchase catalog and cannot be purchased (purchases re-validate at DEV1-006). Lifecycle managed by admin guarded updates only.']
-  deactivated_at  timestamp [note: 'INV-PC1 metadata: set at deactivation, cleared on reactivation. NULL while active.']
-}
-```
-
-### 2.4 Canonical Types — `backend/types/billing/plan.types.ts` (EXTENDED, no new file)
+### 2.3 Canonical Types — `backend/types/billing/plan.types.ts` (EXTENDED, no new file)
 
 ```ts
 import type { plans } from "@/backend/db/schema/billing/plans";
@@ -511,7 +500,7 @@ frontend/views/admin/plans/PlanCatalogContainer.tsx       (client)
 
 ### 6.6 Verification Anchors (tie-ins for tasks)
 
-- `bun run db push` + `bun validate:dbml` in the same commit set (REQ-010/042); column-presence DB test proves `is_active`/`deactivated_at` exist with correct nullability/defaults.
+- `bun run db push` with the Drizzle schema change in the same commit set as the code (REQ-010/042); column-presence DB test proves `is_active`/`deactivated_at` exist with correct nullability/defaults.
 - `bun run generate:gqlSchema && bun codegen`; REQ-020 no-delete grep assertion on the generated schema; role-matrix integration tests (`setupTestServerLifecycle` + `testClient`) asserting every §3.3 cell's `extensions.code`.
 - `bun test --coverage` on new service/repo suites — 100% statements/branches (REQ-070); chaos probes per §4.3 (REQ-074); fixture-immutability test proving subscriptions/balances byte-identical after deactivate/edit (REQ-075).
 - `bun run scripts/health/sub-loop.ts <file> --lifecycle duplicates` exit 0 per created/modified file (REQ-077).

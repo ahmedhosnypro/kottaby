@@ -21,7 +21,7 @@
 4. **Semantic Review Self-Check** — BEFORE marking any task `[x]`, the agent SHALL self-review against the semantic checklist: atomicity of transactions, env-config hygiene, zero dead code, zero cross-layer imports (`shared/` purity; services never import GraphQL), enums as **value imports** with enum members (never raw string literals like `"completed"`), no `console.*` (logger only), no `{ ...input }` spreads, canonical types only (no new `.types.ts` anywhere).
 5. **Outcome Documentation** — EVERY task X.Y SHALL produce `ai/plans/dev3-005-session-state-machine-enforcement/outcome/<task-id>-outcome.md` recording: what was done, files touched, command outputs (exit codes), deviations, and requirement coverage. The task's checkbox is only flipped to `[x]` AFTER its outcome file exists and the QL gate is green.
 6. **Checkbox Discipline** — `[ ]` → `[x]` strictly in order; a task is never marked done while any of its subtasks is open.
-7. **Zero-Drift Hard Gates** — At EVERY task boundary the agent SHALL verify: `git diff --name-only` touches no paths outside this ticket's sanctioned file list; `backend/db/schema/**`, `db/schema.dbml`, `frontend/**`, `app/**`, `backend/graphql/**` remain byte-identical to baseline (Tasks 0.1 records the baseline hashes; Phase 5.7 and Phase 6 re-verify them).
+7. **Zero-Drift Hard Gates** — At EVERY task boundary the agent SHALL verify: `git diff --name-only` touches no paths outside this ticket's sanctioned file list; `backend/db/schema/**`, `frontend/**`, `app/**`, `backend/graphql/**` remain byte-identical to baseline (Tasks 0.1 records the baseline hashes; Phase 5.7 and Phase 6 re-verify them).
 
 ---
 
@@ -73,7 +73,7 @@ _No code is written in Phase 0. Its outcome artifacts are the reference point fo
 
 ## Phase 1 — Types, Enums & Database Schema
 
-> **Scope constraint (REQ-003/REQ-044):** NO new `.types.ts` file exists anywhere in this ticket. DB schema and DBML are touched with exactly **zero edits**. The only "type-system" work in Phase 1 is the compile-time i18n `MessageSchema` extension — a locale-types file, not an entity-types file (sanctioned by REQ-051).
+> **Scope constraint (REQ-003/REQ-044):** NO new `.types.ts` file exists anywhere in this ticket. The DB schema is touched with exactly **zero edits**. The only "type-system" work in Phase 1 is the compile-time i18n `MessageSchema` extension — a locale-types file, not an entity-types file (sanctioned by REQ-051).
 
 - [ ] 1.1 **i18n Key Additions — `errors.sessionLifecycle` Grouping (REQ-051)**
   - **Files to modify:**
@@ -95,15 +95,14 @@ _No code is written in Phase 0. Its outcome artifacts are the reference point fo
   - [ ] 1.1.SR **Semantic Review:** `shared/` purity (no imports from `frontend`/`backend`/`app`); flat string types in the schema interface; no runtime logic in locale files; zero dead keys.
   - [ ] 1.1.IV **Instruction Verification:** Validate against `shared/locale/AGENTS.md` structure and `shared/AGENTS.md` import-boundary rules; record counts in outcome.
   - [ ] 1.1.OUT **Outcome:** write `outcome/1.1-i18n-keys-outcome.md`.
-- [ ] 1.2 **Schema & DBML Zero-Drift Verification (Read-Only Gate — REQ-044)**
-  - **Files verified (zero edits):** `backend/db/schema/**` (entire tree), `db/schema.dbml`
+- [ ] 1.2 **Schema Zero-Drift Verification (Read-Only Gate — REQ-044)**
+  - **Files verified (zero edits):** `backend/db/schema/**` (entire tree)
   - **Actions:**
-    1. Record `git diff --stat backend/db/schema/** db/schema.dbml` — MUST be empty (baseline from 0.1 already stored).
-    2. Run `~/.bun/bin/bun validate:dbml` — MUST stay green; archive output.
-    3. Verify the plan §2.1 contract dependencies structurally (grep/assertions in the outcome): `session.teacherId NOT NULL`, `session.studentId NOT NULL`, `session_status` enum has 5 members, `reports.sessionId NOT NULL FK (cascade)`, reports rating CHECK 0–5, `home_work` Jadid/Madi grade CHECKs, `teacher.isApproved`/`isOnline`, financial tables present.
-    4. Confirm `bun run db push` is NOT executed anywhere in this ticket; `db reset`/`cleanGenerate` remain disabled (`docs/DATABASE_MIGRATIONS.md`).
+    1. Record `git diff --stat backend/db/schema/**` — MUST be empty (baseline from 0.1 already stored).
+    2. Verify the plan §2.1 contract dependencies structurally (grep/assertions in the outcome): `session.teacherId NOT NULL`, `session.studentId NOT NULL`, `session_status` enum has 5 members, `reports.sessionId NOT NULL FK (cascade)`, reports rating CHECK 0–5, `home_work` Jadid/Madi grade CHECKs, `teacher.isApproved`/`isOnline`, financial tables present.
+    3. Confirm `bun run db push` is NOT executed anywhere in this ticket; `db reset`/`cleanGenerate` remain disabled (`docs/DATABASE_MIGRATIONS.md`).
   - _Requirements: REQ-004, REQ-044_
-  - [ ] 1.2.QL **Quality Loop:** n/a for read-only verification — gate is the recorded empty diff + green `validate:dbml` in the outcome.
+  - [ ] 1.2.QL **Quality Loop:** n/a for read-only verification — gate is the recorded empty diff in the outcome.
   - [ ] 1.2.SR **Semantic Review:** any discovered schema gap is routed to `deferred-items.md` (❌ blocking entry) — never patched ad hoc.
   - [ ] 1.2.OUT **Outcome:** write `outcome/1.2-schema-zero-drift-outcome.md`.
 - [ ] 1.3 **Enum Value-Import Compliance Audit (REQ-002)**
@@ -383,7 +382,7 @@ _No code is written in Phase 0. Its outcome artifacts are the reference point fo
   - [ ] 6.1.OUT **Outcome:** write `outcome/6.1-review-types-outcome.md` with a finding table (each finding: severity, file:line, resolution or ledger entry).
 - [ ] 6.2 **Review Wave 2 — `review-backend` (Service/Repo/Transaction Discipline)**
   - **Scope:** REQ-010/016/017/021/022/023/040/041/042/043/044/045/046/050/052/053 correctness of implementation and tests.
-  - **Checks:** guards read-then-assert only (zero writes/locks); `tx` param position on every repo call; consumer-tx rollback composition proven by 5.2 test; guarded-transition single-statement discipline unchanged (zero read-then-write windows); frozen module constants; DomainError subclass discipline + code-mapping table (REQ-052: `SESSION_NOT_FOUND`→404-class, `SESSION_NOT_COMPLETED`/`SESSION_REPORT_REQUIRED`→422-class custom ValidationError codes, malformed ID→`VALIDATION` pre-DB, unexpected→masked `INTERNAL_SERVER_ERROR` at DEV3-002 boundary); `logger.logDomainError` structured-context usage (no payload dumps); schema/DBML zero-drift.
+  - **Checks:** guards read-then-assert only (zero writes/locks); `tx` param position on every repo call; consumer-tx rollback composition proven by 5.2 test; guarded-transition single-statement discipline unchanged (zero read-then-write windows); frozen module constants; DomainError subclass discipline + code-mapping table (REQ-052: `SESSION_NOT_FOUND`→404-class, `SESSION_NOT_COMPLETED`/`SESSION_REPORT_REQUIRED`→422-class custom ValidationError codes, malformed ID→`VALIDATION` pre-DB, unexpected→masked `INTERNAL_SERVER_ERROR` at DEV3-002 boundary); `logger.logDomainError` structured-context usage (no payload dumps); schema zero-drift.
   - [ ] 6.2.QL **Quality Loop:** sub-loop re-verify touched backend files — exit 0.
   - [ ] 6.2.OUT **Outcome:** write `outcome/6.2-review-backend-outcome.md`.
 - [ ] 6.3 **Review Wave 3 — `review-frontend` (Zero-Artifact + Codegen No-Drift Verification)**
@@ -437,7 +436,7 @@ _No code is written in Phase 0. Its outcome artifacts are the reference point fo
     1. Verify EVERY task in this file has a corresponding `outcome/<task-id>-outcome.md`.
     2. Verify the plan-review gate outcome (`plan-review-R1.md`) predates the first implementation commit.
     3. Re-run the Phase-0.1 baseline comparison one final time — zero NEW errors (`tsgo`, `biome:check`, lint json diff archived).
-    4. Re-verify zero-drift gates: `backend/db/schema/**`, `db/schema.dbml`, `backend/graphql/**`, `frontend/**`, `app/**` empty diffs; `bun validate:dbml` green.
+    4. Re-verify zero-drift gates: `backend/db/schema/**`, `backend/graphql/**`, `frontend/**`, `app/**` empty diffs.
     5. Final deferred-items gate: `grep -c "❌\|⚠️"` = 0 except pre-seeded non-blocking D1/D2 (owner tickets referenced, targeted status per template).
     6. Write the synthesis: `outcome/final-completion-synthesis.md` — requirement-by-requirement closure table for REQ-001..REQ-083, test-evidence index, coverage table, and M1-gate artifact statement ("session lifecycle works" + "state machine invariants are enforced" — machine-checkable proof = green REQ-072 matrix + guard matrix + purity + unreachability suites).
   - _Requirements: REQ-077, REQ-083_
@@ -449,4 +448,4 @@ _No code is written in Phase 0. Its outcome artifacts are the reference point fo
 
 - **Blocking chain:** Phase 0 → Phase 1 → Phase 2 (2.1 before 2.3; 2.2 before 2.3 — the service consumes the promoted map) → **2.M gate** → Phase 3 → Phase 4 (gate-only) → Phase 5 (5.1–5.6 may parallelize AFTER 2.3 ships; 5.7 LAST within Phase 5) → Phase 6 (6.1–6.4 parallel; 6.5 last) → Phase 7.
 - **Never parallelize:** 2.2 with 2.3 (type/contract interlock); 5.7 with any other test task; 7.3 with anything.
-- **Absolute prohibitions for the entire ticket:** new GraphQL operations; new frontend/app artifacts; schema/DBML edits (`bun run db push` FORBIDDEN); new `.types.ts` files; second transition-map modules; `SessionStatus.Disputed` writes; `console.*`; `{ ...input }` spreads; raw status string literals; seed-data usage in tests; raw `bun test` for DB suites; `expect(...).rejects.toThrow()` inside `runInRollback`.
+- **Absolute prohibitions for the entire ticket:** new GraphQL operations; new frontend/app artifacts; schema edits (`bun run db push` FORBIDDEN); new `.types.ts` files; second transition-map modules; `SessionStatus.Disputed` writes; `console.*`; `{ ...input }` spreads; raw status string literals; seed-data usage in tests; raw `bun test` for DB suites; `expect(...).rejects.toThrow()` inside `runInRollback`.

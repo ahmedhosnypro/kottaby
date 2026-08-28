@@ -1,5 +1,5 @@
 /**
- * Security & abuse contract tests — dev3-002 Phase 5, Task 5.3 (REQ-074).
+ * Security & abuse contract tests.
  *
  * Composition-tier abuse battery over the shared error-handling producers
  * (`finalizeGraphqlErrors`, `maskInternalError`, `redactLogContext`,
@@ -13,24 +13,22 @@
  *    REST envelope body, masked extensions payload, correlated log line) for
  *    stack frames, SQL text with parameter placeholders, driver detail
  *    strings, PII parameter values, hash-shaped material, env names and file
- *    paths (REQ-030/REQ-074).
+ *    paths.
  *  - Tier 2 — `redactLogContext` abuse battery: nested token forests,
  *    meeting-provider tokens, WhatsApp credentials, bearer-header values,
- *    bounded-depth enforcement probes (REQ-035/REQ-042).
+ *    bounded-depth enforcement probes.
  *  - Tier 3 — injection-shaped payloads (SQLi fragments, LIKE wildcards,
  *    script tags, traversal + RTL strings) thrown AS errors and echoed ONLY
  *    through the whitelist projection channel; envelope integrity round-trip
- *    without shape corruption (REQ-033/REQ-074 LIKE row).
+ *    without shape corruption (including LIKE-wildcard payloads).
  *  - Tier 4 — enum/case-abuse fuzz against `isErrorCode` /
  *    `normalizeErrorCode`: casing variants, inherited-property names,
  *    non-string coercers, alias confusion, frozen-table mutation probes.
  *  - Tier 5 — public-endpoint rejection repetition parity: identical bytes
- *    on repeat failures, counter/threshold-free copy (REQ-034 shadow).
+ *    on repeat failures, counter/threshold-free copy.
  *
- * Server-boot cells of REQ-074 (cross-tenant oracle probe REQ-031, BFLA
- * schema-gate probe REQ-032) are intentionally ABSENT here — they require a
- * live GraphQL process and are consolidated in deferred-items BLT-13 with
- * exact CI commands.
+ * Server-boot cells (cross-tenant oracle probes, BFLA schema-gate probes) are
+ * intentionally ABSENT here — they require a live GraphQL process.
  *
  * All sentinel secret-like strings below are deliberately-obfuscated non-real
  * fixtures shipped solely as leak probes (established suite convention).
@@ -389,7 +387,7 @@ function asDefined<T>(maybeValue: T | undefined): T {
 
 // ─── Tier 2 — redactLogContext abuse battery ────────────────────────────────
 
-describe("Tier 2 · redactLogContext — credential forests & bounded depth (REQ-035/042)", () => {
+describe("Tier 2 · redactLogContext — credential forests & bounded depth", () => {
   test("nested token forest: every planted credential collapses; benign keys survive", () => {
     const zoneLeaf: Record<string, unknown> = { ok: 1 };
     installCredentialEntries(zoneLeaf, [
@@ -527,7 +525,7 @@ function projectedValidationError(hostileEchoSlot: string): ValidationError {
   ]);
 }
 
-describe("Tier 3 · injection-shaped payloads — masked everywhere, whitelist-only echo (REQ-033/074)", () => {
+describe("Tier 3 · injection-shaped payloads — masked everywhere, whitelist-only echo", () => {
   const INJECTION_CORPUS: readonly string[] = [
     "%",
     "_%",
@@ -787,9 +785,9 @@ describe("Tier 4 · taxonomy enum/case-abuse fuzz (alias confusion battery)", ()
   });
 });
 
-// ─── Tier 5 — public-endpoint rejection repetition parity (REQ-034 shadow) ──
+// ─── Tier 5 — public-endpoint rejection repetition parity ───────────────────
 
-describe("Tier 5 · repeated public-endpoint rejections — parity without counters (REQ-034)", () => {
+describe("Tier 5 · repeated public-endpoint rejections — parity without counters", () => {
   test("N rate-limit rejections serialize byte-identically with digit-free generic copy", () => {
     const serializedRejections: string[] = [];
     pinNodeEnv("production", () => {

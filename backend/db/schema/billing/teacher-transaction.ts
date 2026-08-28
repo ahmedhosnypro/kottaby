@@ -5,10 +5,10 @@ import { session } from "@/backend/db/schema/classes/session";
 import { transactionStatus, transactionType } from "@/backend/db/schema/enums";
 
 /**
- * Teacher transaction ledger table (DBML `teacher_transaction`, L355–L370).
+ * Teacher transaction ledger table (`teacher_transaction`).
  *
  * Append-only ledger of every financial movement against a teacher's wallet:
- * earnings (session completion), withdrawals (B.10 payout), and bonuses.
+ * earnings (session completion), withdrawals (payouts), and bonuses.
  * `wallet_id` references the owning wallet (restrict delete — cannot delete
  * a wallet with transactions). `session_id` is nullable and set to NULL on
  * session deletion (`set null`) — the transaction survives as a record of
@@ -21,10 +21,7 @@ import { transactionStatus, transactionType } from "@/backend/db/schema/enums";
  * balance/total_earning are updated atomically by the same trigger that
  * blocks row mutation.
  *
- * CROSS-FILE DEP: imports `session` from the classes domain (`session.ts`,
- * authored in parallel by T7). The import path is stable; tsgo may report an
- * unresolved-module error until T7 creates the file — that is EXPECTED and
- * documented in the worklog. Authored correctly per CONTRACT.
+ * Imports `session` from the classes domain for the nullable session link.
  */
 export const teacherTransaction = pgTable(
   "teacher_transaction",

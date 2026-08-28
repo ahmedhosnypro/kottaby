@@ -1,20 +1,18 @@
 /**
- * REQ-061 Frontend Error Mapping Contract — pure code → behavior table.
- * (dev3-002 Phase 4, Task 4.1.)
+ * Frontend GraphQL error-mapping contract — pure code → behavior table.
  *
  * This module is a PURE mapping function over GraphQL `extensions.code`
- * values (REQ-016: never branch on HTTP status for GraphQL errors):
+ * values (never branch on HTTP status for GraphQL errors):
  *
  *  - No React, no hooks, no DOM reads, no network, no side effects.
  *  - Every user-visible string is a TRANSLATION HANDLE (`keyof ErrorsLabels`)
- *    resolved by consumers via `useAppTranslation(Errors)[action.messageKey]`
- *    — REQ-002/075. Server `message` text is NEVER propagated for masked or
+ *    resolved by consumers via `useAppTranslation(Errors)[action.messageKey]`.
+ *    Server `message` text is NEVER propagated for masked or
  *    security-sensitive errors; localized copy comes exclusively from the
- *    `errors.errors` namespace contract (Task 1.2 final key list).
- *  - Branch table follows tasks.md §4.1 / specs.md REQ-061 verbatim and the
- *    plan-review-R1 corrections (#3 legacy `RATE_LIMIT_EXCEEDED` alias carried
- *    into this table; #7 no readTranslation/TestWrapper scaffold ⇒ consumers/
- *    tests resolve labels directly from the namespace objects).
+ *    `errors.errors` translation namespace.
+ *  - The branch table also honors the legacy `RATE_LIMIT_EXCEEDED` alias
+ *    (folded onto the `RATE_LIMITED` row) so stale/proxied producers keep
+ *    mapping correctly.
  *
  * Integration point: `createErrorLinkHandler` in `frontend/providers/apollo/
  * utils.ts` normalizes each GraphQL error item's code through
@@ -35,7 +33,7 @@ import type { ErrorsLabels } from "@/shared/locale/types/errors";
  *
  * Duplicated locally on purpose: `.dependency-cruiser.js` rule
  * `frontend-no-backend-deps` (severity error) forbids ANY backend import from
- * `frontend/**`, even type-only ones (`fieldError.ts`, Task 4.2, mirrors
+ * `frontend/**`, even type-only ones (`fieldError.ts` mirrors the entry
  * identically). KEEP THE THREE FIELDS IN SYNC with the canonical contract.
  */
 export interface WireFieldError {
@@ -43,12 +41,12 @@ export interface WireFieldError {
   readonly field: string;
   /** Machine-readable field code, SCREAMING_SNAKE_CASE, e.g. `"EMAIL_INVALID"`. */
   readonly code: string;
-  /** Fully localized user-facing message (REQ-015/REQ-050). */
+  /** Fully localized user-facing message (the only string ever echoed). */
   readonly message: string;
 }
 
 // ---------------------------------------------------------------------------
-// Legacy producer compatibility (plan-review-R1 correction #3 / BLT-08)
+// Legacy producer compatibility
 
 /**
  * Mirror of the server-side taxonomy alias rule
@@ -61,7 +59,7 @@ export const LEGACY_ERROR_CODE_ALIASES: Readonly<Record<string, string>> = {
   RATE_LIMIT_EXCEEDED: "RATE_LIMITED",
 };
 
-/** Resolves the canonical REQ-010 category for any transported code. */
+/** Resolves the canonical taxonomy code for any transported code. */
 export function normalizeGraphQLErrorCode(rawCode: string): string {
   return LEGACY_ERROR_CODE_ALIASES[rawCode] ?? rawCode;
 }
@@ -129,11 +127,11 @@ export interface GraphQLErrorMappingContext {
   readonly hasForm: boolean;
   /** `extensions.fields[]` narrowed via {@link extractWireFieldErrors}. */
   readonly fields?: readonly WireFieldError[];
-  /** `extensions.requestId` correlation id when present (REQ-013). */
+  /** `extensions.requestId` correlation id when present. */
   readonly requestId?: string;
 }
 
-/** Coarse UI behavior bucket selected by the REQ-061 table. */
+/** Coarse UI behavior bucket selected by the mapping table. */
 export type GraphQLErrorActionKind =
   /** UNAUTHORIZED family — deduped token-refresh-then-login (owned by utils.ts). */
   | "auth-recovery"
@@ -154,7 +152,7 @@ export type GraphQLErrorNoticeKind =
   | "retry-later"
   | "retryable-service-unavailable";
 
-/** MUI-severity-compatible copy tone consumed by Task 4.2 surfaces. */
+/** MUI-severity-compatible copy tone consumed by the UI surfaces. */
 export type GraphQLErrorActionTone = "error" | "warning" | "info";
 
 /**
@@ -164,8 +162,7 @@ export type GraphQLErrorActionTone = "error" | "warning" | "info";
 export interface GraphQLErrorAction {
   readonly kind: GraphQLErrorActionKind;
   /**
-   * Translation HANDLE into the `errors.errors` namespace (18-key surface,
-   * Task 1.2 final key list). Consumers render
+   * Translation HANDLE into the `errors.errors` namespace. Consumers render
    * `useAppTranslation(Errors)[messageKey]` — never the server `message`.
    */
   readonly messageKey: keyof ErrorsLabels;
@@ -179,7 +176,7 @@ export interface GraphQLErrorAction {
   /** Fallback key ALSO present so form-less contexts can toast (VALIDATION). */
   readonly correlationRequestId?: string;
   /**
-   * Masked INTERNAL_SERVER_ERROR guidance flag (REQ-011/013): surfaces show
+   * Masked INTERNAL_SERVER_ERROR guidance flag: surfaces show
    * "include the correlation id when reporting" guidance using
    * {@link GraphQLErrorAction.correlationRequestId}.
    */
@@ -192,9 +189,9 @@ export interface GraphQLErrorAction {
 }
 
 // ---------------------------------------------------------------------------
-// The REQ-061 branch table — row resolvers
+// The branch table — row resolvers
 
-/** Action shape before the optional correlation id is attached (REQ-013). */
+/** Action shape before the optional correlation id is attached. */
 type BaseGraphQLErrorAction = Omit<GraphQLErrorAction, "correlationRequestId">;
 
 /** Copies `context.requestId` onto an action when the wire provided one. */
@@ -261,7 +258,7 @@ function mapValidationRow(code: string, context: GraphQLErrorMappingContext): Gr
  * Rows 4–8 — inline notices: not-found family, conflict, duplicate-replay
  * (success-equivalent per docs/IDEMPOTENCY.md §3), rate-limited retry-later,
  * and service-unavailable manual retry. RATE_LIMITED deliberately copies NO
- * thresholds/counters/rate-window metadata onto the action (REQ-034).
+ * thresholds/counters/rate-window metadata onto the action.
  */
 function mapInlineNoticeRow(code: string, context: GraphQLErrorMappingContext): GraphQLErrorAction | null {
   if (isNotFoundErrorFamily(code)) {
@@ -315,8 +312,7 @@ function mapInlineNoticeRow(code: string, context: GraphQLErrorMappingContext): 
 
 /**
  * Row 9 — masked INTERNAL_SERVER_ERROR: generic localized copy + correlation
- * guidance ONLY; the masked wire message must never reach users
- * (REQ-011/REQ-033).
+ * guidance ONLY; the masked wire message must never reach users.
  */
 function mapMaskedInternalRow(code: string, context: GraphQLErrorMappingContext): GraphQLErrorAction | null {
   if (code !== "INTERNAL_SERVER_ERROR") return null;
@@ -330,7 +326,7 @@ function mapMaskedInternalRow(code: string, context: GraphQLErrorMappingContext)
 }
 
 /**
- * REQ-061 mapping entry point — one row per extensions.code family.
+ * Mapping entry point — one row per extensions.code family.
  *
  * | Normalized code                              | Context            | Action |
  * |----------------------------------------------|--------------------|--------|
@@ -348,10 +344,11 @@ function mapMaskedInternalRow(code: string, context: GraphQLErrorMappingContext)
  * | anything else                                | any                | `null` — caller keeps pre-existing behavior |
  *
  * `BAD_REQUEST` and transport-preset carriers (GRAPHQL_PARSE_FAILED,
- * PAYLOAD_TOO_LARGE…) intentionally fall through to `null`: REQ-061 defines
- * no row for them and surfacing would double-report transport diagnostics.
+ * PAYLOAD_TOO_LARGE…) intentionally fall through to `null`: the mapping
+ * defines no row for them and surfacing would double-report transport
+ * diagnostics.
  *
- * Dispatches through the per-row resolvers in REQ-010 canonical order and
+ * Dispatches through the per-row resolvers in canonical taxonomy order and
  * returns `null` when no row applies so callers keep their existing behavior.
  */
 export function mapGraphQLErrorByCode(rawCode: string, context: GraphQLErrorMappingContext): GraphQLErrorAction | null {

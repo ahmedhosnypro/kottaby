@@ -1,5 +1,5 @@
 /**
- * ApplicantStatus + isApplicantStatus 4-Tier Test Suite (REQ-012, REQ-075).
+ * ApplicantStatus + isApplicantStatus 4-Tier Test Suite.
  * Pure unit tier — NO DB, NO schema imports.
  * Tier 1: 100% branch/statement coverage of the guard.
  * Tier 2: Boundary cases — case mismatch, whitespace, empty, primitive types.
@@ -37,7 +37,7 @@ function memberReturningFunction(): string {
 describe("isApplicantStatus", () => {
   // ---- Tier 1: Branch/Statement Coverage ----
   describe("Tier 1 — branch coverage", () => {
-    test("canonical value set frozen exactly as planned (DBML note / REQ-012)", () => {
+    test("canonical value set frozen exactly as declared", () => {
       expect((Object.values(ApplicantStatus) as string[]).join("|")).toBe("pending|in_evaluation|failed|passed");
     });
 
@@ -138,7 +138,7 @@ describe("isApplicantStatus", () => {
       }
     });
 
-    test("strings containing LIKE wildcards, underscores, backslashes and quotes are rejected (REQ-075)", () => {
+    test("strings containing LIKE wildcards, underscores, backslashes and quotes are rejected", () => {
       const hostileInputs = [
         "%",
         "_",

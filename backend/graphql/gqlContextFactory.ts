@@ -4,7 +4,7 @@
  * type-only by the Pothos builder so the schema's `Context` slot stays in
  * sync with the runtime context object.
  *
- * AUTH1 — extended from DEV1-002:
+ * Auth wiring:
  *  - Parses cookies from the request.
  *  - If `access_token` cookie present → verifies it via `verifyAccessToken`
  *    → fetches the user via `UserRepository.findById` → populates `ctx.user`,
@@ -44,9 +44,9 @@ export interface Context {
   /** Lazy namespace loader — `await ctx.t("auth")` → `AuthLabels`. */
   readonly t: (namespace: keyof Translations) => Promise<Translations[keyof Translations]>;
   /**
-   * Per-request correlation id (REQ-013 / Decision D4) — resolved ONCE here
-   * from the inbound `X-Request-Id` header (opaque, bounded, control-char
-   * free) or a locally generated UUID v4 when absent/unacceptable.
+   * Per-request correlation id — resolved ONCE here from the inbound
+   * `X-Request-Id` header (opaque, bounded, control-char free) or a locally
+   * generated UUID v4 when absent/unacceptable.
    *
    * Correlation-only by contract: consumers may echo it into logs/envelopes
    * but MUST NOT feed it into any authorization decision.
@@ -54,17 +54,15 @@ export interface Context {
   readonly requestId: string;
   /**
    * Propagation-only idempotency echo from the inbound `X-Idempotency-Key`
-   * header (dev3-003 REQ-010 step 3 / REQ-043; Task 3.3): raw header value
-   * verbatim, `null` when the header is ABSENT — never empty-string-coalesced,
-   * never trimmed/sanitized here. Gateway obligations stop at propagation:
-   * duplicate-blocking/expiry semantics belong to the mutation's service
-   * transaction (`docs/IDEMPOTENCY.md`, REQ-041).
+   * header: raw header value verbatim, `null` when the header is ABSENT —
+   * never empty-string-coalesced, never trimmed/sanitized here. Gateway
+   * obligations stop at propagation: duplicate-blocking/expiry semantics
+   * belong to the mutation's service transaction (`docs/IDEMPOTENCY.md`).
    *
    * NON-AUTHORIZATION by contract (see `GatewayRequestMetadata`):
    * a client-supplied key can never grant, influence, or substitute identity —
-   * identity stays exclusively factory-derived (REQ-030). Context-whitelist
-   * member (REQ-031); captured at exactly ONE site (this factory — D10/REQ-004,
-   * no parallel helper).
+   * identity stays exclusively factory-derived. Captured at exactly ONE site
+   * (this factory — no parallel helper).
    *
    * Optional in the TYPE only so pre-existing `Context`-shaped fixtures stay
    * compile-clean; `createGraphQLContext` ALWAYS materializes the field at
@@ -102,10 +100,10 @@ const SUPPORTED_LOCALES = new Set(["en", "ar"]);
  * Extracts the locale from the request — checks the `next-locale` cookie
  * first, then the `Accept-Language` header, falling back to `DEFAULT_LOCALE`.
  *
- * Exported ONLY for the route's transport-tier preflight (dev3-002 Task 3.1
- * REQ-016): the malformed-JSON/oversize responses must localize their error
- * text WITHOUT constructing a full GraphQL context. `createGraphQLContext`
- * calls this SAME function, so both layers agree on the active locale.
+ * Exported ONLY for the route's transport-tier preflight: the
+ * malformed-JSON/oversize responses must localize their error text WITHOUT
+ * constructing a full GraphQL context. `createGraphQLContext` calls this SAME
+ * function, so both layers agree on the active locale.
  */
 export function extractLocale(request: NextRequest | Request): string {
   // 1. Cookie (client-side routing sets this on locale switch).
@@ -156,17 +154,17 @@ function extractAccessToken(request: NextRequest | Request): string | null {
 export async function createGraphQLContext(request: NextRequest | Request): Promise<Context> {
   const locale = extractLocale(request);
 
-  // Resolve the per-request correlation id EXACTLY ONCE (Decision D4 — this
-  // is THE single request-id resolution point in the GraphQL path; the helper
-  // honors a bounded inbound `X-Request-Id` verbatim, else mints a UUID v4).
+  // Resolve the per-request correlation id EXACTLY ONCE (this is THE single
+  // request-id resolution point in the GraphQL path; the helper honors a
+  // bounded inbound `X-Request-Id` verbatim, else mints a UUID v4).
   const requestId = resolveRequestId(request.headers);
 
-  // Capture the propagation-only idempotency key EXACTLY ONCE (REQ-010 step 3
-  // / REQ-043; dev3-003 Task 3.3). Raw passthrough: an absent header yields
-  // `null` (never empty string, never fabricated); no trim/disqualification
-  // policy lives here — classification belongs to the owning mutation's
-  // idempotency transaction (`docs/IDEMPOTENCY.md`). Header-derived metadata
-  // can never touch the auth hop below (REQ-030).
+  // Capture the propagation-only idempotency key EXACTLY ONCE.
+  // Raw passthrough: an absent header yields `null` (never empty string,
+  // never fabricated); no trim/disqualification policy lives here —
+  // classification belongs to the owning mutation's idempotency transaction
+  // (`docs/IDEMPOTENCY.md`). Header-derived metadata can never touch the auth
+  // hop below.
   const idempotencyKey = request.headers.get("x-idempotency-key");
 
   // Pre-load the translations bundle once per request — `ctx.t` returns the
@@ -200,8 +198,8 @@ export async function createGraphQLContext(request: NextRequest | Request): Prom
         // Strip passwordHash before exposing on ctx (defense-in-depth — the
         // Pothos UserPothosObject also omits it via the RegistrationReturnType
         // type, but we want ctx.user itself to be safe to log/inspect).
-        // DEV1-003: preferredRecitation is null for ctx.user (the me query
-        // path doesn't re-fetch it; only registration returns it).
+        // preferredRecitation is null for ctx.user (the me query path
+        // doesn't re-fetch it; only registration returns it).
         const { passwordHash: _stripped, ...rest } = fetched;
         user = { ...rest, preferredRecitation: null };
         // Validate the JWT role claim against the canonical `UserRole` enum.

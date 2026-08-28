@@ -8,7 +8,7 @@
  * backend-only import path is preferred by the consuming module — but the
  * canonical source is always the shared constant.
  *
- * C.5 guardrail: this enum is for user-preference selection only. The physical
+ * Schema guardrail: this enum is for user-preference selection only. The physical
  * `recitation` table is session-linked (1:1 with `session` via unique
  * `session_id`). Backend code MUST NOT use this enum to create user-linked
  * recitation rows.

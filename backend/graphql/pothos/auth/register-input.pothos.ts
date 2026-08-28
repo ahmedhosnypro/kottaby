@@ -2,11 +2,11 @@
  * RegisterUserInput — Pothos input type for the public `registerUser`
  * mutation.
  *
- * Field whitelist mirrors `RegistrationSubmitInput` (BOPLA — REQ-023):
+ * Field whitelist mirrors `RegistrationSubmitInput` (BOPLA-safe):
  *  - `password` is required (min 8 chars enforced by service-layer validation).
  *  - `gender` is optional (schema column is nullable).
  *  - `role` uses `RegisterPublicRolePothosEnum` — the BFLA-safe subset that
- *    excludes `admin` (REQ-022). The Pothos enum type rejects unknown values
+ *    excludes `admin`. The Pothos enum type rejects unknown values
  *    at the GraphQL layer before the resolver runs.
  *
  * No `id`, no governance fields, no balances, no `handshakeCode` — these are
@@ -30,8 +30,8 @@ export const RegisterUserInput = gqlSchemaBuilder.inputType("RegisterUserInput",
     gender: t.field({ type: GenderPothosEnum, required: false }),
     country: t.string({ required: true }),
     role: t.field({ type: RegisterPublicRolePothosEnum, required: true }),
-    // DEV1-003: optional preferred recitation reading (Qira'ah).
-    // C.5 guardrail: NOT persisted to the `recitation` table — contract metadata only.
+    // Optional preferred recitation reading (Qira'ah).
+    // Guardrail: NOT persisted to the `recitation` table — contract metadata only.
     preferredRecitation: t.field({ type: RecitationReadingPothosEnum, required: false }),
   }),
 });

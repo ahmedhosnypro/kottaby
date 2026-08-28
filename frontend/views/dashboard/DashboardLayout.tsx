@@ -32,7 +32,7 @@ interface DashboardLayoutProps {
  * anonymous users). Once loading completes, if `!isAuthenticated`, the
  * layout pushes the user to `/login?redirect=<currentPath>` — the
  * `?redirect=` param lets the login form navigate back here on success
- * (DEV2-CORE redirect-loop fix).
+ * (avoids the redirect loop where login returns here unauthenticated).
  *
  * SSR/CSR hydration: `useMediaQuery(theme.breakpoints.up("lg"))` returns
  * `false` on the server and during the first client render (MUI's default
@@ -60,9 +60,9 @@ export function DashboardLayout({ children }: Readonly<DashboardLayoutProps>): R
 
   // Auth redirect: when the session has resolved and the user is anonymous,
   // push to `/login?redirect=<currentPath>`. The `?redirect=` param lets
-  // the LoginForm navigate back here on success (DEV2-CORE redirect-loop
-  // fix). Skipped during `isLoading` so we don't redirect a user whose
-  // session is still being restored (e.g. via `refreshToken`).
+  // the LoginForm navigate back here on success (avoids the login/landing
+  // redirect loop). Skipped during `isLoading` so we don't redirect a user
+  // whose session is still being restored (e.g. via `refreshToken`).
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) {

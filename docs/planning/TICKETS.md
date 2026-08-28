@@ -1,7 +1,7 @@
 # Draft Academy — Tracer-Bullet Ticket Catalog
 
 > **Format:** `to-tickets` tracer-bullet vertical slices
-> **Source of truth:** `docs/specs/`, `db/schema.dbml`, `docs/scenarios/user-story-map.md`
+> **Source of truth:** `docs/specs/`, `backend/db/schema/`, `docs/scenarios/user-story-map.md`
 > **Related:** `docs/planning/SPRINT_PLAN.md`, `docs/planning/TEAM_ALLOCATION.md`
 
 ---
@@ -28,7 +28,7 @@ Each ticket follows the tracer-bullet format: a vertical slice cutting through e
 
 ---
 
-### [DEV1-001] Database Schema Migration from DBML
+### [DEV1-001] Database Schema Migration
 
 | Field | Value |
 |---|---|
@@ -38,11 +38,11 @@ Each ticket follows the tracer-bullet format: a vertical slice cutting through e
 | **Blocked By** | None — can start immediately |
 
 **Description & Scope:**
-Migrate the canonical `db/schema.dbml` to a runnable PostgreSQL migration. All 22 tables, 13 enums, and all relationships must be created. This is the foundation for all three streams.
+Migrate the canonical schema (`backend/db/schema/`, Drizzle) to a runnable PostgreSQL migration. All 22 tables, 13 enums, and all relationships must be created. This is the foundation for all three streams.
 
 **Acceptance Criteria:**
 ```gherkin
-Given the db/schema.dbml file
+Given the Drizzle schema in backend/db/schema/
 When the migration is executed
 Then all 22 tables are created with correct columns and types
 And all 13 enums are created with correct values
@@ -50,7 +50,7 @@ And all foreign key relationships are established
 And all check constraints are enforced
 And all indexes are created
 And the migration is reversible (down migration exists)
-And `bun validate:dbml` passes
+And the Drizzle schema type-checks (`bun tsgo`)
 ```
 
 **Test Scenarios:**
@@ -300,7 +300,7 @@ And the types are validated at compile time
 
 ---
 
-### [DEV3-001] CI/CD Pipeline with DBML & Mermaid Validation
+### [DEV3-001] CI/CD Pipeline with Mermaid Validation
 
 | Field | Value |
 |---|---|
@@ -310,7 +310,7 @@ And the types are validated at compile time
 | **Blocked By** | None — can start immediately |
 
 **Description & Scope:**
-Set up CI/CD pipeline that runs on every PR: lint, test, DBML validation (`bun validate:dbml`), and Mermaid validation (`bun run scripts/validate-mermaid.ts`). Pipeline must be green before merge.
+Set up CI/CD pipeline that runs on every PR: lint, test, and Mermaid validation (`bun run scripts/validate-mermaid.ts`). Pipeline must be green before merge.
 
 **Acceptance Criteria:**
 ```gherkin
@@ -318,14 +318,12 @@ Given a pull request is opened
 When CI/CD pipeline runs
 Then linting is executed and must pass
 And unit tests are executed and must pass
-And `bun validate:dbml` is executed and must pass
 And `bun run scripts/validate-mermaid.ts` is executed on changed .mmd/.md files
 And the PR cannot be merged if any check fails
 ```
 
 **Test Scenarios:**
 - PR with valid code and schema — all checks pass
-- PR with invalid DBML — DBML check fails, merge blocked
 - PR with invalid Mermaid — Mermaid check fails, merge blocked
 - PR with failing tests — test check fails, merge blocked
 

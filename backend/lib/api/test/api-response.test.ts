@@ -1,20 +1,20 @@
 /**
- * API-route envelope helper tests — dev3-002 Task 2.4 paired suite.
+ * API-route envelope helper tests.
  *
- * Coverage map (tasks.md 2.4.TE):
- *  - Tier 1: success 200/201 exact-shape bodies; every REQ-010 category row's
- *    envelope (status through taxonomy consumption, legacy RATE_LIMIT_EXCEEDED
- *    crossing verbatim while still mapping to its 429 row); Drizzle-wrapped
- *    PG `23505` cause chain AND SQLite UNIQUE parity → localized CONFLICT;
- *    masked unknown throw → INTERNAL_SERVER_ERROR.
- *  - Tier 2: `X-Request-Id` honored vs generated; malformed/non-Error throws;
- *    `fields` present/absent/empty discrimination (REQ-015 presence semantics).
+ * Coverage map:
+ *  - Tier 1: success 200/201 exact-shape bodies; every error-code category
+ *    row's envelope (status through taxonomy consumption, legacy
+ *    `RATE_LIMIT_EXCEEDED` crossing verbatim while still mapping to its 429
+ *    row); Drizzle-wrapped PG `23505` cause chain AND SQLite UNIQUE parity →
+ *    localized CONFLICT; masked unknown throw → INTERNAL_SERVER_ERROR.
+ *  - Tier 2: `X-Request-Id` honored vs generated; malformed/non-Error
+ *    throws; `fields` present/absent/empty discrimination.
  *  - Tier 3: hostile header fuzz (multiple/huge/control-character values);
- *    concurrent invocation purity with unmutated inputs (REQ-040/076);
- *    single-delegation + sole-status-source hygiene pins.
- *  - Tier 4: PROD-config leakage scan (stack/SQL/driver-text/PII/markers,
- *    REQ-030/074) and BOPLA absence proofs (no `details`, no input echo,
- *    REQ-033); whitelist projection proven via exact field-entry key sets.
+ *    concurrent invocation purity with unmutated inputs; single-delegation +
+ *    sole-status-source hygiene pins.
+ *  - Tier 4: PROD-config leakage scan (stack/SQL/driver-text/PII/markers)
+ *    and BOPLA absence proofs (no `details`, no input echo); whitelist
+ *    projection proven via exact field-entry key sets.
  *
  * All sentinel secret-like strings are obfuscated non-real fixtures shipped
  * solely as leak probes. DB-free unit tier — runs via
@@ -161,7 +161,7 @@ interface EnvelopeRowFixture {
 
 const LOCALE_EN = "en";
 
-// ─── resolveRequestId — REQ-013 / Decision D4 ────────────────────────────────
+// ─── resolveRequestId — single correlation-id resolution point ───────────────
 
 describe("resolveRequestId", () => {
   test("honors an inbound X-Request-Id after trimming surrounding whitespace", () => {
@@ -208,7 +208,7 @@ describe("resolveRequestId", () => {
   });
 
   test("bounded non-UUID shapes stay OPAQUELY acceptable (correlation ids are not format-policed)", () => {
-    // REQ-013 posture: a bounded printable string is an opaque correlation
+    // Acceptance posture: a bounded printable string is an opaque correlation
     // token even when it LOOKS like data — no shape inference, ever.
     const structuredLooking = '{"spoof":true}';
     expect(resolveRequestId(buildHeadersWithValue(structuredLooking))).toBe(structuredLooking);
@@ -245,7 +245,7 @@ describe("resolveRequestId", () => {
   });
 });
 
-// ─── apiSuccessResponse — REQ-019 ────────────────────────────────────────────
+// ─── apiSuccessResponse — exact success envelope ─────────────────────────────
 
 describe("apiSuccessResponse", () => {
   const sampleRequestId = "11111111-2222-4333-8444-555555555555";
@@ -277,7 +277,7 @@ describe("apiSuccessResponse", () => {
 
 // ─── apiErrorResponse — Tier 1: per-code envelope rows ───────────────────────
 
-describe("apiErrorResponse — REQ-010 category envelope rows", () => {
+describe("apiErrorResponse — error-code category envelope rows", () => {
   const fixedRequestId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 
   const envelopeRows: readonly EnvelopeRowFixture[] = [
@@ -353,12 +353,12 @@ describe("apiErrorResponse — REQ-010 category envelope rows", () => {
       expect(typeof errorMember.message).toBe("string");
       const messageText = typeof errorMember.message === "string" ? errorMember.message : "";
       expect(messageText.length).toBeGreaterThan(0);
-      // BOPLA anchor: no unreviewed `details` channel exists in this task scope.
+      // BOPLA anchor: no unreviewed `details` channel exists in the envelope.
       expect(Object.hasOwn(errorMember, "details")).toBe(false);
     }
   );
 
-  test("legacy RATE_LIMIT_EXCEEDED message + code cross VERBATIM (BLT-08 posture)", async () => {
+  test("legacy RATE_LIMIT_EXCEEDED message + code cross VERBATIM", async () => {
     const producerMessage = "Too many attempts today.";
     const response = apiErrorResponse(new RateLimitExceededError(producerMessage), {
       locale: LOCALE_EN,
@@ -464,7 +464,7 @@ describe("apiErrorResponse — masked INTERNAL_SERVER_ERROR fallback", () => {
     expect(errorLines[0]?.text).toContain('"errorKind":"object"');
   });
 
-  test("domain pass-through and success paths stay silent on the error stream (REQ-025 split)", () => {
+  test("domain pass-through and success paths stay silent on the error stream", () => {
     const { lines } = captureLogLines(() => {
       apiErrorResponse(new ConflictError("benign business rejection"), {
         locale: LOCALE_EN,
@@ -476,7 +476,7 @@ describe("apiErrorResponse — masked INTERNAL_SERVER_ERROR fallback", () => {
   });
 });
 
-// ─── Tier 2: fields presence discrimination (REQ-015) ────────────────────────
+// ─── Tier 2: fields presence discrimination ──────────────────────────────────
 
 describe("apiErrorResponse — ValidationError fields discrimination", () => {
   const fixedRequestId = "22222222-3333-4777-8888-999999999999";
@@ -610,15 +610,15 @@ describe("invocation purity & delegation hygiene", () => {
     expect(snapshotAfter).toEqual(snapshotBefore);
   });
 
-  test("module hygiene: single walker delegation, D4 single-site minting, forbidden-import bans", () => {
+  test("module hygiene: single walker delegation, single-site request-id minting, forbidden-import bans", () => {
     const moduleSource = readFileSync(new URL("../api-response.ts", import.meta.url), "utf8");
 
     // Single-cause-walker rule: exactly ONE live delegation call site.
     const walkerCallSites = moduleSource.split("translateDbError(").length - 1;
     expect(walkerCallSites).toBe(1);
 
-    // Decision D4: this module is THE single request-id minting call site
-    // (the GraphQL context factory composes resolveRequestId instead).
+    // Single request-id minting site (the GraphQL context factory composes
+    // resolveRequestId instead of minting its own).
     const mintingCallSites = moduleSource.split("randomUUID(").length - 1;
     expect(mintingCallSites).toBe(1);
 

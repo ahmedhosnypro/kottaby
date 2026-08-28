@@ -1,6 +1,6 @@
 # Pothos DataLoader Batching
 
-This document is the canonical reference for using Pothos DataLoader (`@pothos/plugin-dataloader`) to eliminate N+1 query patterns in Kottaby's GraphQL layer. It consolidates all learnings from the Neon Database Performance Optimization GraphQL pilot (Task 3.1).
+This document is the canonical reference for using Pothos DataLoader (`@pothos/plugin-dataloader`) to eliminate N+1 query patterns in Kottaby's GraphQL layer.
 
 ## Why DataLoader Batching
 
@@ -249,7 +249,7 @@ DataLoader is for read-only batching. Mutations should not use DataLoader.
 
 Fields that are already exposed from the parent object (via `t.exposeString`, `t.expose`) don't need DataLoader — they're already resolved.
 
-## Rollout Summary (Task 3.1)
+## Currently Batched Surface
 
 ### Files Created/Modified
 
@@ -281,16 +281,6 @@ Fields that are already exposed from the parent object (via `t.exposeString`, `t
 | `parentId` | N queries (1 per user) | 1 batched query |
 | `permissions` | N queries (1 per user) | N queries (Pothos limitation — `t.loadable` doesn't support list types) |
 
-### Quality Verification
-
-```
-✅ bun tsgo          — 0 errors
-✅ bun biome:check   — 0 errors
-✅ bun run lint      — 0 errors, 0 warnings
-✅ bun generate:gqlSchema + bun codegen — schema and types generated
-✅ bun test:graphql  — 313 pass, 17 pre-existing failures (unrelated)
-```
-
 ## Adding DataLoader to a New Domain
 
 1. **Identify N+1 patterns**: Look for field resolvers that call services/repos per parent object
@@ -308,6 +298,3 @@ Fields that are already exposed from the parent object (via `t.exposeString`, `t
 - `backend/services/AGENTS.md` — Service layer rules
 - `backend/db/repo/AGENTS.md` — Repository layer rules
 - `docs/drizzle/prepared-statements.md` — Prepared statements pattern (used by batch repo methods)
-- `ai/plans/neon/outcome/3.1-graphql-dataloader-pilot-outcome.md` — Pilot implementation details
-- `ai/plans/neon/spec.md` — Neon optimization specification
-- `ai/plans/neon/design.md` — Technical design document

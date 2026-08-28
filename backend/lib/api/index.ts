@@ -1,5 +1,5 @@
 /**
- * API-route response helpers barrel (dev3-002 Task 2.4).
+ * API-route response helpers barrel.
  *
  * Consumers import from the highest available barrel:
  * `import { resolveRequestId, apiSuccessResponse, apiErrorResponse } from "@/backend/lib/api";`

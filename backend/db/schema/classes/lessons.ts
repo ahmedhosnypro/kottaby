@@ -2,14 +2,13 @@ import { index, integer, pgTable, timestamp, varchar } from "drizzle-orm/pg-core
 import { plans } from "@/backend/db/schema/billing/plans";
 
 /**
- * Lessons table (DBML `lessons`, L434–L444).
+ * Lessons table (`lessons`).
  *
  * A lesson is a discrete teaching unit optionally tied to a subscription plan
  * (`plan_id` → plans.id, set null on plan deletion — the lesson survives as
- * a standalone unit). `title` is a short human-readable label (nullable per
- * DBML).
+ * a standalone unit). `title` is a short human-readable label (nullable).
  *
- * CROSS-FILE DEP: imports `plans` from the billing domain. No circular dep
+ * Imports `plans` from the billing domain. No circular dep
  * (plans does not import lessons).
  *
  * Lessons are referenced by `progress` (same classes domain, see

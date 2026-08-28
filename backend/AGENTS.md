@@ -85,7 +85,6 @@ The backend follows a consistent pattern for defining and using types across all
 
 - `docs/services/meeting-providers.md` - Meeting provider adapter/factory pattern reference (auto URL generation for Zoom, Google Meet, Microsoft Teams) *(doc file absent from this tree — pending the meeting-services ticket; see `ai/plans/dev3-002-shared-error-handling-response-contracts/deferred-items.md` BLT-03)*
 - `docs/services/zoom-token-types.md` - Zoom token kinds (SDK JWT, OBF, ZAK, S2S OAuth, per-user OAuth) semantics and constraints
-- `docs/drizzle/dbml-to-drizzle-schema-migration.md` — DBML→Drizzle schema migration canonical method
 
 ## WhatsApp Cloud API Integration
 

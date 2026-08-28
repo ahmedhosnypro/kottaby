@@ -2,10 +2,9 @@
  * Open-redirect prevention helpers contract tests (paired with
  * `frontend/lib/safeRedirect.ts`).
  *
- * Added by dev3-002 review wave Task 10-d (pentest): pins the backslash fold
- * vector ("/\\host" ≡ "//host" under WHATWG URL parsing) alongside the
- * pre-existing absolute/scheme/protocol-relative rejections, so future edits
- * cannot silently reopen the same-origin guarantee.
+ * Pins the backslash fold vector ("/\\host" ≡ "//host" under WHATWG URL
+ * parsing) alongside the absolute/scheme/protocol-relative rejections, so
+ * future edits cannot silently reopen the same-origin guarantee.
  */
 
 import { describe, expect, test } from "bun:test";

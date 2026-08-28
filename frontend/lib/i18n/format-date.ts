@@ -1,14 +1,12 @@
 /**
- * Locale-aware timestamp formatting for frontend consumers (DEV2-004 Task
- * 4.2 — 0.2 Adaptation #2 / 0.2 finding #19: this is the FRONTEND half of
- * the project's first shared date-format util; `date-fns` stays out of the
- * stack per task instruction).
+ * Locale-aware timestamp formatting for frontend consumers. This is the
+ * FRONTEND half of the project's shared date-format util; `date-fns` stays
+ * out of the stack.
  *
  * Current consumer: `ApplicantStatusCard` expands the ICU `{cooldownUntil}`
- * placeholder of `applicant.cooldownExpiryLine` (1.3 CF-1 procedure) with
- * the stamp produced here.
+ * placeholder of `applicant.cooldownExpiryLine` with the stamp produced here.
  *
- * Client/server CONSISTENCY contract (REQ-015 display path): the option set
+ * Client/server CONSISTENCY contract: the option set
  * and locale-tag resolution below MIRROR the module-private
  * `COOLDOWN_FORMATTERS` table in
  * `backend/services/teachers/applicant-lifecycle.service.ts` exactly —
@@ -50,7 +48,7 @@ function resolveLocaleTag(locale: string): "ar" | "en" {
  * Latin digits under `en`).
  *
  * @param iso - ISO-8601 instant (GraphQL exposes applicant timestamps as
- *   nullable ISO-8601 UTC strings per DISP-5 — pass only non-null values).
+ *   nullable ISO-8601 UTC strings — pass only non-null values).
  * @param locale - app locale ("ar" | "en"; other inputs resolve to "ar").
  * @returns The formatted date+time stamp produced by
  *   `Intl.DateTimeFormat` with the fixed option set documented above.

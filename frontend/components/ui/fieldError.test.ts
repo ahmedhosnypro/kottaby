@@ -5,8 +5,7 @@
  * Happy DOM + Testing Library) are DEFERRED: the `test/ui/` scaffold this
  * repo's package.json scripts expect (happydom-preload.ts /
  * translation-preload.ts / next-dynamic-mock.ts / TestWrapper) does not exist
- * in-tree — see dev3-002 deferred-items.md BLT-05 and plan-review-R1 §(b)
- * [LOW][TESTS/UI] correction #7. No scaffold was faked to force this tier.
+ * in-tree. No scaffold was faked to force this tier.
  *
  * Assertion discipline: these tests assert STRUCTURE, not user-facing copy —
  * no hardcoded UI strings are introduced here (messages are opaque pass-through

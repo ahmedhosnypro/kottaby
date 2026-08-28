@@ -1,17 +1,15 @@
 /**
- * Locale-switch API routes (`/api/set-locale`) — dev3-002 Task 3.2 envelope
- * adoption.
+ * Locale-switch API routes (`/api/set-locale`) using the shared API envelope.
  *
- * Envelope decision (plan-review-R1 correction #4 required an explicit
- * adopt-or-exempt call per surface):
+ * Envelope decision (an explicit adopt-or-exempt call per surface):
  *
  *  - **POST — ADOPTED.** Every JSON response uses the shared envelope:
  *    success `{ data, requestId }` via `apiSuccessResponse`, errors
  *    `{ error: { code, message, requestId } }` via `apiErrorResponse` with
- *    statuses derived EXCLUSIVELY through the REQ-010 taxonomy map (no
+ *    statuses derived EXCLUSIVELY through the error-code taxonomy map (no
  *    numeric error-status literals in this file). The correlation id is
- *    resolved ONCE per request through `resolveRequestId` (Decision D4) and
- *    echoed on both envelope shapes.
+ *    resolved ONCE per request through `resolveRequestId` (single mint
+ *    source) and echoed on both envelope shapes.
  *  - **GET full-navigation switch — FORMALLY EXEMPT success body.** Success is
  *    a redirect (`Set-Cookie` + `Location`) so the browser lands on the next
  *    document with the cookie already applied; a JSON envelope cannot coexist
@@ -55,7 +53,7 @@ const SET_COOKIE_HEADER = "set-cookie";
 /**
  * Canonical BAD_REQUEST carrier for client-contract violations. The HTTP
  * status is NOT declared here — `apiErrorResponse` derives it exclusively
- * from the REQ-010 taxonomy map (`BAD_REQUEST` row).
+ * from the error-code taxonomy map (`BAD_REQUEST` row).
  */
 function badRequestError(message: string): DomainError {
   return new DomainError("BAD_REQUEST", message);
@@ -193,7 +191,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       if (parseError instanceof SyntaxError) {
         // Malformed client JSON is a transport-class client fault → localized
         // HTTP-level BAD_REQUEST envelope BEFORE any domain handling (mirrors
-        // the REQ-016 GraphQL preflight posture in app/api/graphql/route.ts).
+        // the GraphQL preflight posture in app/api/graphql/route.ts).
         // Non-syntax read faults (dying stream / infra) fall through to the
         // single masked boundary hop below instead of lying about the class.
         return apiErrorResponse(badRequestError(tErrors.badRequest), {
@@ -216,7 +214,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   } catch (error) {
     // Masked INTERNAL_SERVER_ERROR hop: localized generic message,
     // `error.requestId` in the body, exactly one correlated redacted
-    // logger.error carrying the SAME requestId (REQ-012/013/030/033).
+    // logger.error carrying the SAME requestId.
     return apiErrorResponse(error, { locale: acceptLanguageLocale, requestId });
   }
 }

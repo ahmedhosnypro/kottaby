@@ -9,8 +9,7 @@
  *  - To add a new mutation: create `<entity>.mutation.ts` and add a
  *    side-effect import here.
  *
- * DEV1-002 wires the `registerUser` mutation. Subsequent tickets
- * (DEV2-001 login, DEV2-002 auth gating, DEV1-005 subscriptions, …) will
- * add their mutations as additional side-effect imports.
+ * `auth.mutation.ts` wires the auth mutations (`registerUser`, `login`,
+ * `refreshToken`, `logout`).
  */
 import "./auth.mutation";

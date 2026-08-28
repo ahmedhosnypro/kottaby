@@ -186,12 +186,11 @@ No code changes — the same schema files compile to `pgTable` for PG and `sqlit
 
 - **`colBuilder.buildExtraConfigColumn is not a function`** during `drizzle-kit generate --config=drizzle.config.sqlite.ts` — means a schema file still imports from `drizzle-orm/pg-core` at runtime. Check: `grep -rlE from drizzle-orm/pg-core backend/db/schema/` (should be empty modulo type-only imports).
 - **`Cannot use a pool after calling end`** — only happens for PG; SQLite has no pool. The migrate script now skips pool-close for SQLite.
-- **FK rename hint on PG `bun db migrate`** — one-time artifact from Phase 1c: `suggestions.duplicate_of_id` was converted from standalone `foreignKey()` to inline `.references()`. Choose `rename` when prompted.
+- **FK rename hint on PG `bun db migrate`** — one-time artifact from the initial SQLite port: `suggestions.duplicate_of_id` was converted from standalone `foreignKey()` to inline `.references()`. Choose `rename` when prompted.
 
 ## See also
 
 - `docs/SQLITE_MIGRATION_PROGRESS.md` — full per-domain porting status.
-- `ai/plans/sqlite-drizzle-support/` — spec-driven-development plan (specs, design, tasks, outcomes).
 - `backend/db/schema/shared/dialectAwareBuilder.ts` — the dialect-aware builder + type-erasure pattern.
 - `backend/db/dialect.ts` — dialect resolver.
 - `scripts/dbActions/dialect.ts` — CLI dialect helpers (config path + migrations folder).

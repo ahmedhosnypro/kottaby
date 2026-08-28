@@ -1,44 +1,40 @@
 /**
- * API-route response-envelope helpers — non-GraphQL `app/api/**` contract
- * (dev3-002 Phase 2, Task 2.4; plan Decision D5).
+ * API-route response-envelope helpers — non-GraphQL `app/api/**` contract.
  *
- * Two pure helpers + one correlation resolver implementing REQ-017/018/019:
+ * Two pure helpers + one correlation resolver:
  *
  *  - {@link resolveRequestId}    — honors an inbound `X-Request-Id` (opaque,
  *    bounded) or generates a UUID v4. THE single requestId resolution point
- *    for the whole request path (Decision D4 — the GraphQL context factory
- *    composes this same function; no other call site may mint request ids).
- *  - {@link apiSuccessResponse}  — exact `{ data, requestId }` body (REQ-019).
+ *    for the whole request path (the GraphQL context factory composes this
+ *    same function; no other call site may mint request ids).
+ *  - {@link apiSuccessResponse}  — exact `{ data, requestId }` body.
  *  - {@link apiErrorResponse}    — DomainError pass-through / DB
  *    unique-violation CONFLICT translation / masked INTERNAL_SERVER_ERROR
- *    fallback (REQ-017/018/011), with exactly one correlated redacted log per
- *    masked failure (REQ-012).
+ *    fallback, with exactly one correlated redacted log per masked failure.
  *
  * Layer rules:
  *  - Pure & deterministic given their inputs and the process environment —
- *    no DB reads/writes, no cache mutations, no network calls (REQ-040). The
- *    only side effect is the single boundary `logger.error` on the masked
- *    path.
+ *    no DB reads/writes, no cache mutations, no network calls. The only
+ *    side effect is the single boundary `logger.error` on the masked path.
  *  - NO duplicated classification/masking logic: hierarchy guards, the
  *    cycle-safe cause walker, masking, redaction, and status derivation are
- *    all consumed from the `@/backend/lib/errors` barrel (2.1/2.2 modules).
- *  - HTTP error statuses derive EXCLUSIVELY through the REQ-010 taxonomy map
- *    (`normalizeErrorCode` → `ERROR_CODE_HTTP_STATUS`); this file contains no
- *    numeric error-status literals. 200/201 success statuses are outside the
- *    taxonomy's domain (REQ-010 governs ERROR rows only) and live in named
- *    constants below.
+ *    all consumed from the `@/backend/lib/errors` barrel.
+ *  - HTTP error statuses derive EXCLUSIVELY through the error-code taxonomy
+ *    (`normalizeErrorCode` → `ERROR_CODE_HTTP_STATUS`); this file contains
+ *    no numeric error-status literals. 200/201 success statuses are outside
+ *    the taxonomy's domain (error rows only) and live in named constants
+ *    below.
  *  - `details` is never synthesized here: the shipped DomainError producers
  *    carry structured payloads exclusively via `ValidationError.fields`
- *    (mirrored verbatim), and REQ-022 duplicate-entity references belong to
- *    the idempotency producer landing with that service. Unreviewed thrown
- *    material can therefore NEVER enter the envelope (REQ-033 BOPLA).
- *  - Returns plain fetch `Response`s (`Content-Type: application/json`) which
- *    compose directly with Next.js route handlers without coupling
+ *    (mirrored verbatim), and duplicate-entity references belong to the
+ *    idempotency producer where they land. Unreviewed thrown material can
+ *    therefore NEVER enter the envelope (BOPLA hygiene).
+ *  - Returns plain fetch `Response`s (`Content-Type: application/json`)
+ *    which compose directly with Next.js route handlers without coupling
  *    `backend/lib` to the app framework.
  *
  * @see docs/graphql/domain-error-extensions-code.md
- * @see docs/IDEMPOTENCY.md (REQ-022/043 wording ownership)
- * @see ai/plans/dev3-002-shared-error-handling-response-contracts/tasks.md Task 2.4
+ * @see docs/IDEMPOTENCY.md
  */
 
 import { randomUUID } from "node:crypto";
@@ -58,13 +54,13 @@ import { getServerTranslations } from "@/shared/locale/server-graphql";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-/** Inbound correlation header honored by {@link resolveRequestId} (REQ-013). */
+/** Inbound correlation header honored by {@link resolveRequestId}. */
 const REQUEST_ID_HEADER = "x-request-id";
 
 /**
- * Upper character budget for an accepted inbound X-Request-Id (SEC 2.5:
+ * Upper character budget for an accepted inbound X-Request-Id: the value is
  * length-bounded before acceptance — oversized values fall back to a locally
- * generated id rather than being truncated into a spoofable prefix).
+ * generated id rather than being truncated into a spoofable prefix.
  */
 export const REQUEST_ID_MAX_LENGTH = 128;
 
@@ -89,11 +85,11 @@ function containsControlCharacter(value: string): boolean {
   return false;
 }
 
-/** Success statuses live OUTSIDE the REQ-010 taxonomy (error rows only). */
+/** Success statuses live OUTSIDE the error-code taxonomy (error rows only). */
 export const API_STATUS_OK = 200;
 export const API_STATUS_CREATED = 201;
 
-/** Degenerate DomainError code fallback (mirrors the 2.2 boundary guard). */
+/** Degenerate DomainError code fallback (mirrors the masking boundary guard). */
 const MASKED_FALLBACK_CODE = "INTERNAL_SERVER_ERROR";
 
 /** Log-scalar render budget for the masked-path correlated error line. */
@@ -111,7 +107,7 @@ export interface ApiSuccessResponseOptions {
 
 /** Options accepted by {@link apiErrorResponse}. */
 export interface ApiErrorResponseOptions {
-  /** Request locale driving every localization decision (REQ-002/050). */
+  /** Request locale driving every localization decision. */
   readonly locale: string;
   /** Correlation id echoed into `error.requestId` and the masked-path log. */
   readonly requestId: string;
@@ -128,7 +124,7 @@ export interface ApiErrorResponseOptions {
 export type RequestHeaderReader = { readonly get: (name: string) => unknown };
 
 /**
- * Resolves the per-request correlation id ONCE (Decision D4).
+ * Resolves the per-request correlation id ONCE.
  *
  * Accepts the inbound `X-Request-Id` as an opaque correlation string when it
  * survives the acceptance bounds (non-empty after trimming, at most
@@ -155,7 +151,7 @@ export function resolveRequestId(headers: RequestHeaderReader): string {
 // ─── apiSuccessResponse ──────────────────────────────────────────────────────
 
 /**
- * Builds the exact REQ-019 success envelope as a JSON `Response`.
+ * Builds the exact success envelope as a JSON `Response`.
  *
  * Body is exactly `{ data, requestId }` — key order pinned by explicit
  * property assembly; default status {@link API_STATUS_OK}, pass
@@ -177,7 +173,7 @@ interface ClassifiedRouteError {
 }
 
 /**
- * Builds the exact REQ-017 error envelope as a JSON `Response`.
+ * Builds the exact error envelope as a JSON `Response`.
  *
  * Classification mirrors the GraphQL boundary finalizer hop-for-hop WITHOUT
  * duplicating its machinery:
@@ -193,7 +189,7 @@ interface ClassifiedRouteError {
  *  - Hop C — everything else is masked behind the localized generic failure
  *    via the shipped {@link maskInternalError} primitive, plus exactly ONE
  *    correlated redacted `logger.error` line carrying the original's
- *    whitelisted scalars + `requestId` (REQ-012/030/035).
+ *    whitelisted scalars + `requestId`.
  */
 export function apiErrorResponse(error: unknown, options: ApiErrorResponseOptions): Response {
   const classified = classifyRouteError(error, options.locale, options.requestId);
@@ -274,7 +270,7 @@ function buildDomainEnvelope(source: DomainError): ClassifiedRouteError {
  * map. Canonical codes use their own row; legacy aliases normalize through
  * the declared alias rule (RATE_LIMIT_EXCEEDED → RATE_LIMITED row); custom
  * SCREAMING_SNAKE domain codes get the declared-base BAD_REQUEST-classification
- * fallback (2.1 carry-forward #5 — never force-fit into a foreign category).
+ * fallback (never force-fit into a foreign category).
  */
 function statusForTransportCode(code: string): number {
   const canonical = normalizeErrorCode(code);
@@ -296,7 +292,7 @@ function maskedEnvelope(carrier: unknown, locale: string, requestId: string): Cl
 
 /**
  * Redacted correlated context bag for the masked-path log. Built by explicit
- * scalar mapping (NO spread of the throwable — BOPLA/REQ-033; Error instances
+ * scalar mapping (NO spread of the throwable — BOPLA defense; Error instances
  * JSON-serialize empty anyway), then passed through the shipped
  * {@link redactLogContext} so bearer-shaped message values (e.g. a driver
  * error quoting an `Authorization` header) cannot ride into logs — the same

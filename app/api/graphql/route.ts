@@ -20,22 +20,17 @@ ensureEnvironmentValidated();
 const envConfig = getEnvironmentConfig();
 const isProduction = envConfig.nodeEnv === "production";
 
-// ─── REQ-010 step 1 — transport tier (dev3-003 Task 3.2 · D5) ────────────────
+// ─── Transport tier — guarded rejection mapping ─────────────────────────────
 
 /**
- * Kind→wire mapping for transport-guard failures (REQ-010 step 1 → REQ-015
- * matrix + R1 F2/Correction #2 wire-code reconciliation; per-kind table in
- * `outcome/2.2-outcome.md`):
+ * Kind→wire mapping for transport-guard failures:
  *
- *  - `METHOD_NOT_ALLOWED`        → HTTP **405** + `Allow: POST`, code `BAD_REQUEST`
- *    (no live legacy code existed for this kind — REQ-051's sanctioned
- *    GraphQL-surface code applies);
- *  - `UNSUPPORTED_CONTENT_TYPE`  → HTTP **400**, code `BAD_REQUEST` (same rule);
- *  - `PAYLOAD_TOO_LARGE`         → HTTP **413**, code `PAYLOAD_TOO_LARGE`
- *    (existing transport-local code reused VERBATIM);
+ *  - `METHOD_NOT_ALLOWED`        → HTTP **405** + `Allow: POST`, code `BAD_REQUEST`;
+ *  - `UNSUPPORTED_CONTENT_TYPE`  → HTTP **400**, code `BAD_REQUEST`;
+ *  - `PAYLOAD_TOO_LARGE`         → HTTP **413**, code `PAYLOAD_TOO_LARGE`;
  *  - `MALFORMED_JSON`            → HTTP **400**, code `GRAPHQL_PARSE_FAILED`
- *    (LIVE pairing kept — both unparsable bodies and mid-read stream deaths
- *    ride this same kind→code row; NO new wire code introduced).
+ *    (both unparsable bodies and mid-read stream deaths ride this same
+ *    kind→code row).
  *
  * Rejection BODIES keep the GraphQL-over-HTTP transport shape
  * `{errors:[{message, extensions:{code,requestId}}]}` — the documented
@@ -45,7 +40,7 @@ const isProduction = envConfig.nodeEnv === "production";
  */
 interface TransportWireSpec {
   readonly status: 400 | 405 | 413;
-  /** Transport-tier code — never a domain taxonomy row (exemption register). */
+  /** Transport-tier code — not a domain taxonomy code. */
   readonly code: "BAD_REQUEST" | "GRAPHQL_PARSE_FAILED" | "PAYLOAD_TOO_LARGE";
   /** RFC 9110 — a 405 MUST identify the methods the resource supports. */
   readonly allowPost: boolean;
@@ -60,14 +55,12 @@ const TRANSPORT_WIRE_MAP: Record<TransportErrorKind, TransportWireSpec> = {
 };
 
 /**
- * Builds the guarded rejection response for one transport failure (REQ-010
- * steps 1–2 on the failure branch): the machine kind is mapped through
- * {@link TRANSPORT_WIRE_MAP}, correlation is resolved ONCE via the shared
- * `resolveRequestId(request.headers)` (identical pure function the context
- * factory composes — mirrored ids by construction, Decision D4), and the
- * message localizes through the compile-time i18n `errors` namespace of the
- * request locale (REQ-051 — canonical `badRequest` key; no new keys needed,
- * dedicated 405/413 copy may land with Task 4.2's key verification).
+ * Builds the guarded rejection response for one transport failure: the
+ * machine kind is mapped through {@link TRANSPORT_WIRE_MAP}, correlation is
+ * resolved ONCE via the shared `resolveRequestId(request.headers)` (identical
+ * pure function the context factory composes — mirrored ids by construction),
+ * and the message localizes through the compile-time i18n `errors` namespace
+ * of the request locale (the canonical `badRequest` key).
  *
  * ZERO resolvers, ZERO engine, ZERO context construction happen here — the
  * caller returns this response immediately.
@@ -89,7 +82,7 @@ function createApolloServer(): ApolloServer<Context> {
   return new ApolloServer({
     schema: graphQLSchema,
     plugins: [
-      // DEV3-002 Task 3.1 — THE single error-finalization registration site.
+      // THE single error-finalization registration site.
       // `finalizeGraphqlErrors` runs exactly once per execution result at
       // `willSendResponse`, BEFORE serialization: DomainError pass-through
       // (localized message + subclass code + path, ctx.requestId attached),
@@ -105,11 +98,10 @@ function createApolloServer(): ApolloServer<Context> {
     hideSchemaDetailsFromClientErrors: isProduction,
     includeStacktraceInErrorResponses: !isProduction,
     logger: logger,
-    // Introspection gate (D6/REQ-036) — explicit CODE-level constant: this
-    // line IS `NODE_ENV !== "production"` (isProduction derives from the
-    // validated env config's NODE_ENV, line 21; equivalence evidence in
-    // outcome/3.4-outcome.md). Source-pin test-locked by the health-probe
-    // suite — never an ambient default.
+    // Introspection gate — explicit CODE-level constant: this line IS
+    // `NODE_ENV !== "production"` (isProduction derives from the validated
+    // env config's NODE_ENV above). Source-pin test-locked by the
+    // health-probe suite — never an ambient default.
     introspection: !isProduction,
     // Allow array-batched HTTP requests — the frontend Apollo Client uses
     // BatchHttpLink which groups concurrent operations into a single POST
@@ -117,8 +109,8 @@ function createApolloServer(): ApolloServer<Context> {
     // with "Operation batching disabled" and the browser's useQuery calls fail.
     allowBatchedHttpRequests: true,
     //
-    // DEV3-002 Task 3.1 — Apollo ≥5 formats every execution/parse/validation
-    // error through `GraphQLError.toJSON()` BEFORE `willSendResponse`, so
+    // Apollo ≥5 formats every execution/parse/validation error through
+    // `GraphQLError.toJSON()` BEFORE `willSendResponse`, so
     // items there are PLAIN objects with no reference to the thrown value.
     // This hook therefore performs EXACTLY ONE boundary duty: attaching the
     // raw throwable to its formatted item via the non-enumerable envelope hop
@@ -143,12 +135,11 @@ const server = createApolloServer();
  * `authCookieOut` accumulator) for every request. Mutation resolvers (`login`,
  * `refreshToken`) push `Set-Cookie` header values into `ctx.authCookieOut`.
  *
- * Since dev3-003 Task 3.2 the merge of those values onto the outgoing
- * response NO LONGER lives inside `withRateLimit`: it moved to REQ-010 step
- * 7b and runs UNCONDITIONALLY after `finalizeGraphqlErrors` — error paths
- * included (REQ-042 cookie-merge atomicity). This map stays as the
- * request-scoped hand-off channel between the handler's context hook and the
- * step-7b merge.
+ * The merge of those values onto the outgoing response does NOT live inside
+ * `withRateLimit`: it runs in the POST handler UNCONDITIONALLY after
+ * `finalizeGraphqlErrors` — error paths included (auth-cookie merge
+ * atomicity). This map stays as the request-scoped hand-off channel between
+ * the handler's context hook and that merge.
  *
  * `WeakMap` so the entry is GC'd once the request is dropped — no unbounded
  * memory growth across long-lived server processes.
@@ -156,8 +147,8 @@ const server = createApolloServer();
 const requestContextMap = new WeakMap<NextRequest, Context>();
 
 /**
- * REQ-010 step 7b — unconditional auth-cookie merge (REQ-042). Reads the
- * per-request accumulator populated by mutation resolvers and appends EVERY
+ * Unconditional auth-cookie merge. Reads the per-request accumulator
+ * populated by mutation resolvers and appends EVERY
  * entry via `headers.append("Set-Cookie", …)` — NEVER `headers.set` (a
  * multi-cookie matrix carries three independent Set-Cookie headers per
  * `docs/auth/jwt-authentication-service.md`). Runs after the engine has
@@ -209,8 +200,7 @@ export function HEAD() {
  * Rate-limit middleware wrapper. Fail-open: transient limiter errors never
  * block a legitimate request (mirrors the login cold-start resilience
  * pattern). The stub limiter (`@/backend/lib/ratelimit`) always returns
- * `success: true` for DEV1-002; the real Redis-backed limiter lands in
- * DEV2-002.
+ * `success: true`; a real Redis-backed limiter lands in a future change.
  *
  * Ordering (preserved from the live pipeline): the limiter runs AFTER the
  * transport guards (junk traffic never consumes limiter state) and BEFORE
@@ -222,9 +212,9 @@ async function withRateLimit(
 ): Promise<Response> {
   const identifier = getClientIdentifier(request);
 
-  // Security review H3 (deferred): batched-GraphQL-array amplification guard
-  // will land with the real limiter. For DEV1-002 we only enforce single-op
-  // POSTs (transport-tier guards above reject malformed shapes earlier).
+  // Deferred security note: a batched-GraphQL-array amplification guard will
+  // land with the real limiter. Today only single-op POSTs are enforced
+  // (transport-tier guards above reject malformed shapes earlier).
 
   const { success, limit, remaining, reset } = await checkRateLimit(identifier, graphqlRateLimiter);
 
@@ -298,25 +288,25 @@ export async function OPTIONS(request: NextRequest) {
 }
 
 /**
- * POST handler — the canonical GraphQL transport (REQ-016) wired as the
- * seven-step pipeline (REQ-010; D1/D5/D7):
+ * POST handler — the canonical GraphQL transport wired as the seven-step
+ * pipeline:
  *
  *   1. `guardTransport(request)` — method/content-type/size/parseability
  *      guards result-mapped per {@link TRANSPORT_WIRE_MAP}; any `ok:false`
  *      short-circuits BELOW and the engine+context are never reached;
  *   2. correlation resolution happens inside the rejection builder on the
  *      failure branch and inside `createGraphQLContext` on the success branch
- *      — the SAME pure helper either way (single mint source, D4);
+ *      — the SAME pure helper either way (single mint source);
  *   3. idempotency-key capture is realized IN the context factory
- *      (`ctx.idempotencyKey`; extension-in-place per Task 3.3/D10 — capture
- *      lives at exactly ONE site, not duplicated route-side);
+ *      (`ctx.idempotencyKey` — capture lives at exactly ONE site, not
+ *      duplicated route-side);
  *   4. `ctx = await gqlContextFactory(request)` (handler context hook);
  *   5–6. engine invocation unchanged in ordering — validate → scopeAuth /
  *      authScopes → resolver run INSIDE Apollo execution;
  *   7a–b. `finalizeGraphqlErrors` finalizes inside Apollo's `willSendResponse`
  *      BEFORE the handler future resolves; THEN every `ctx.authCookieOut`
- *      entry merges via `headers.append` (step 7b) — unconditionally, error
- *      paths included (REQ-042);
+ *      entry merges via `headers.append` — unconditionally, error paths
+ *      included;
  *   7c. JSON response returned (Apollo convention: domain errors stay HTTP
  *      200 with an `errors[]` payload).
  */
@@ -364,23 +354,22 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
-    // REQ-042 — even a post-engine infrastructure fault must not swallow the
+    // Even a post-engine infrastructure fault must not swallow the
     // logout/login cookies the resolver already accumulated.
     return flushAuthCookies(fallback, engineRequest);
   }
 }
 
 /**
- * GET handler — DEFAULT-DENIED in every environment (D6/D7). The GraphQL
- * endpoint accepts `POST` only; queries-over-GET stay rejected because the
+ * GET handler — DEFAULT-DENIED in every environment. The GraphQL endpoint
+ * accepts `POST` only; queries-over-GET stay rejected because the
  * CSRF/cache-poisoning posture documented for this route leaves no GET
  * surface open. Mutation documents can therefore NEVER ride GET in any
- * configuration (D7 hard invariant).
+ * configuration (hard invariant).
  *
- * D7's non-production interactive-tooling opt-in requires a registered
- * env-config key (env-registration + canonical-doc wording are owned by
- * Task 3.4); until that key exists, denial is the only reachable branch and
- * this export still guarantees the explicit 405 ENVELOPE below instead of
+ * A non-production interactive-tooling opt-in would require a registered
+ * env-config key; until that key exists, denial is the only reachable branch
+ * and this export still guarantees the explicit 405 ENVELOPE below instead of
  * Next.js' default-absent framework behavior.
  */
 export async function GET(request: NextRequest): Promise<Response> {
@@ -390,7 +379,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 /**
  * PUT/DELETE/PATCH handlers — explicitly exported so unsupported methods get
  * the SAME guarded 405 envelope (correlated, localized, `Allow: POST`) rather
- * than Next.js' default-absent behavior (REQ-014/015; plan §4.1).
+ * than Next.js' default-absent behavior.
  */
 export async function PUT(request: NextRequest): Promise<Response> {
   return transportRejectionResponse("METHOD_NOT_ALLOWED", request);

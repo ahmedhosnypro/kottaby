@@ -1,11 +1,11 @@
 /**
- * Boundary-finalizer plugin contract tests — dev3-002 Task 3.1 (paired with
- * `backend/graphql/graphqlErrorsFinalizer.ts`).
+ * Boundary-finalizer plugin contract tests — paired with
+ * `backend/graphql/graphqlErrorsFinalizer.ts`.
  *
  * Scope: these tests drive `finalizeGraphqlResponseScope` (the single
  * application point the Apollo plugin delegates to) through a structural
- * scope fixture — light-harness style per 2.4/2.5 precedent, zero DB/boot
- * requirements. Live-HTTP tiers live in
+ * scope fixture — light-harness style, zero DB/boot requirements.
+ * Live-HTTP tiers live in
  * `frontend/graphql/test/graphql-error-boundary.test.ts`.
  *
  * Tiers:
@@ -18,7 +18,8 @@
  *     INTERNAL_SERVER_ERROR items with `extensions.requestId`, zero leak
  *     substrings, and exactly ONE redacted correlated `[ERROR]` log line.
  *  3. authScopes pairing — UnauthorizedError vs ForbiddenError (DomainError)
- *     pass through NON-interchanged (REQ-020 contract locked at boundary).
+ *     pass through NON-interchanged (the pairing contract is locked at the
+ *     boundary).
  *  4. ValidationError `fields` presence semantics + zero-op identity +
  *     incremental-body skip.
  */
@@ -218,7 +219,7 @@ describe("finalizeGraphqlResponseScope — masked raw-error branch (Tiers 1–2)
     if (body.kind !== "single") throw new Error("unreachable");
     const serialized = JSON.stringify(body);
     expect(serialized.includes(enMessage)).toBe(true);
-    // REQ-030/074 leak scan: no SQL keywords, no stack/file paths, no env names.
+    // Leak scan: no SQL keywords, no stack/file paths, no env names.
     expect(serialized.includes("SQLSTATE")).toBe(false);
     expect(serialized.includes("SELECT")).toBe(false);
     expect(serialized.includes("/srv/app")).toBe(false);
@@ -230,7 +231,7 @@ describe("finalizeGraphqlResponseScope — masked raw-error branch (Tiers 1–2)
     expect(errorLines[0]?.text.includes("LeakyOp")).toBe(true);
   });
 
-  test("oversized client-supplied operationName drops ENTIRELY from log metadata (Task 10-d)", () => {
+  test("oversized client-supplied operationName drops ENTIRELY from log metadata", () => {
     // Log-volume amplifier fix: a hostile body could push a megabyte-scale
     // operationName into every correlated log line. Mirroring the
     // resolveRequestId rule, >128 chars lose wholesale (never truncated).
@@ -251,7 +252,7 @@ describe("finalizeGraphqlResponseScope — masked raw-error branch (Tiers 1–2)
     expect(overLines[0]?.text.includes(atBoundary)).toBe(false);
   });
 
-  test("arabic locale masking resolves through server translations (REQ-002/050)", () => {
+  test("arabic locale masking resolves through server translations", () => {
     const arInternalServerErrorMessage = getServerTranslations("ar").errorsTranslations.internalServerError;
     const scope = scopeWith(
       { errors: [{ message: "raw failure", originalError: new TypeError("cannot read property") }] },
@@ -269,7 +270,7 @@ describe("finalizeGraphqlResponseScope — masked raw-error branch (Tiers 1–2)
 
 // ─── Tier 2 — UNAUTHORIZED vs FORBIDDEN pairing (non-interchangeable) ────────
 
-describe("finalizeGraphqlResponseScope — authScopes failure pairing (Tier 2, REQ-020)", () => {
+describe("finalizeGraphqlResponseScope — authScopes failure pairing (Tier 2)", () => {
   test("no-session failures keep UNAUTHORIZED; low-privilege failures keep FORBIDDEN", () => {
     const unauthorizedError = new UnauthorizedError("Authentication required.");
     const forbiddenError = new ForbiddenError(getServerTranslations("en").errorsTranslations.forbidden);
@@ -296,7 +297,7 @@ describe("finalizeGraphqlResponseScope — authScopes failure pairing (Tier 2, R
   });
 });
 
-// ─── formatError ⇄ finalizer envelope contract (route wiring, Task 3.1) ─────
+// ─── formatError ⇄ finalizer envelope contract (route wiring) ───────────────
 
 describe("finalizeGraphqlResponseScope — formatError envelope-hop contract", () => {
   test("envelope-only carriers (no originalError property) classify via the hidden hop and never serialize it", () => {

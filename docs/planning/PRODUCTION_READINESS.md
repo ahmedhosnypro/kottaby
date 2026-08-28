@@ -1,6 +1,6 @@
 # Draft Academy — Production Readiness Checklist
 
-> **Source of truth:** `docs/specs/`, `db/schema.dbml`, `docs/planning/ROADMAP.md`
+> **Source of truth:** `docs/specs/`, `backend/db/schema/`, `docs/planning/ROADMAP.md`
 > **Related:** `docs/planning/TICKETS.md`, `docs/planning/SPRINT_PLAN.md`
 
 ---
@@ -337,7 +337,7 @@ This document defines the comprehensive production launch criteria for Draft Aca
 | 8.30 | C.3: evaluations.evaluated_id and evaluator_id | Verify both columns and FKs | ☐ |
 | 8.31 | C.4: reports.teacher_id removed | Verify column does not exist | ☐ |
 | 8.32 | C.5: recitation.session_id (unique, 1:1) | Verify column and unique constraint | ☐ |
-| 8.33 | All 13 enums validated | Verify `bun validate:dbml` passes | ☐ |
+| 8.33 | All enums validated | Verify all enums are defined in the Drizzle schema (`backend/db/schema/`) | ☐ |
 
 ---
 
@@ -361,7 +361,7 @@ This document defines the comprehensive production launch criteria for Draft Aca
 - [ ] All Section 6 (Performance) targets met
 - [ ] All Section 7 (Disaster Recovery) items verified
 - [ ] All Section 8 (33 Decisions) verified
-- [ ] `bun validate:dbml` passes
+- [ ] Drizzle schema in `backend/db/schema/` type-checks (`bun tsgo`)
 - [ ] `bun run scripts/validate-mermaid.ts` passes on all planning docs
 - [ ] All Sprint 4 tickets (DEV1-018 through DEV3-026) completed
 - [ ] All 5 sign-offs obtained

@@ -1,5 +1,5 @@
 /**
- * Runtime Guard 4-Tier Test Suite (REQ-071).
+ * Runtime Guard 4-Tier Test Suite.
  * Tier 1: 100% branch/statement coverage.
  * Tier 2: Boundary & edge cases.
  * Tier 3: Chaos/fuzz — randomized payloads, concurrent storms.
@@ -159,7 +159,7 @@ describe("parseTeacherSubjects", () => {
 
   // ---- Tier 4: Security/Abuse ----
   describe("Tier 4 — security & abuse", () => {
-    test("SQL LIKE wildcards in valid JSON array pass parsing (enforcement at consumer layer, REQ-035)", () => {
+    test("SQL LIKE wildcards in valid JSON array pass parsing (wildcard enforcement is the consumer's concern)", () => {
       // These are valid strings inside a JSON array — parseTeacherSubjects succeeds.
       // Security enforcement (escapeLikeWildcards) is the consumer's responsibility.
       expect(parseTeacherSubjects('["%", "_"]', mockT)).toEqual(["%", "_"]);
@@ -256,7 +256,7 @@ describe("isSessionIntent / assertSessionIntent", () => {
       }
     });
 
-    test("case-smuggling attempts MUST fail (REQ-053)", () => {
+    test("case-smuggling attempts MUST fail (no case-folding, no normalization)", () => {
       expect(isSessionIntent("HIFZ")).toBe(false);
       expect(isSessionIntent("Hifz ")).toBe(false);
       expect(isSessionIntent("\ufeffhifz")).toBe(false);

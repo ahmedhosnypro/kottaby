@@ -75,27 +75,18 @@
   - [ ] 1.1.IV **Instruction Verification**: Re-read `backend/db/schema/AGENTS.md`; confirm schema discipline (no custom SQL migration file authored).
   - Outcome: `outcome/1.1-schema-columns-outcome.md`
 
-- [ ] **1.2 Apply Schema via `bun run db push` & Reconcile DBML (REQ-043)**
-  - Files to modify:
-    - `db/schema.dbml` (students table only — same commit set as 1.1)
+- [ ] **1.2 Apply Schema via `bun run db push` (REQ-043)**
   - Steps:
     1. `bun run db push` — capture full push output in the outcome file. **`db reset` / `db cleanGenerate` are permanently disabled; never run them.**
-    2. Append to the `Table students { ... }` block in `db/schema.dbml`:
-       ```
-       balance_trial     integer [not null, default: 0, check: `balance_trial >= 0`,
-           note: 'FR-2.6/INV-B7: one-time free trial lane, segregated from paid lanes (INV-B5). Consumed before paid lanes per INV-B8. No expiry (not subscription-bound).']
-       trial_granted_at  timestamp [note: 'INV-B7 grant-once marker. NULL until first grant. Guarded conditional UPDATE enforces at-most-once at SQL level.']
-       ```
-    3. `bun validate:dbml` → must pass.
-    4. Verify live DB: `SELECT ... FROM information_schema.check_constraints WHERE constraint_name = 'students_balance_trial_check'` present via a rollback-wrapped probe.
+    2. Verify live DB: `SELECT ... FROM information_schema.check_constraints WHERE constraint_name = 'students_balance_trial_check'` present via a rollback-wrapped probe.
   - Applicable instruction files: `docs/DATABASE_MIGRATIONS.md`, `db/AGENTS.md` (if present)
   - _Requirements: REQ-010, REQ-035, REQ-043_
-  - [ ] 1.2.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts db/schema.dbml --lifecycle duplicates` (exit code 0)
+  - [ ] 1.2.QL **Quality Loop**: n/a (push-only task, no file edits) — record in outcome.
   - [ ] 1.2.TE **Test Engineering**: DB-level constraint live-check (happy path deferred to 2.1.TE): insert probe with `balance_trial = 0` succeeds; probe confirmed inside `runInRollback`.
   - [ ] 1.2.SEC **Security & Tenancy Audit**: Confirm push applied to dev database only; no production/data-mutation semantics; constraint name stable for future audit queries.
-  - [ ] 1.2.SR **Semantic Review**: Drizzle schema, DBML, and runtime code landing in the same commit set (anti-drift, REQ-043); DBML notes reference FR-2.6/INV-B5/INV-B7/INV-B8.
+  - [ ] 1.2.SR **Semantic Review**: Drizzle schema and runtime code landing in the same commit set (anti-drift, REQ-043).
   - [ ] 1.2.IV **Instruction Verification**: Validate against `docs/DATABASE_MIGRATIONS.md` push-only rule.
-  - Outcome: `outcome/1.2-db-push-dbml-outcome.md`
+  - Outcome: `outcome/1.2-db-push-outcome.md`
 
 - [ ] **1.3 Create Shared Constant `FREE_TRIAL_SESSION_COUNT` (REQ-014)**
   - Files to create/modify:
@@ -393,7 +384,7 @@
     - **DEV3 forward contract**: eligibility = paid lane > 0 OR `balance_trial > 0` (INV-B4 extension); trial-first decrement order (INV-B8); no expiry (INV-B3 explicitly non-applied); DataLoader/GraphQL exposure rules (REQ-062);
     - **Anti-patterns**: never credit `balance_hifz` with trials; never poll paid lanes for eligibility where trial applies first; never expose a grant mutation; never re-grant via admin UI without auditing;
     - **Rollout summary**: schema delta, push-only discipline, seed parity;
-    - **Related documents**: links to `docs/auth/user-registration.md`, `docs/specs/state-machine-invariants.md`, `docs/workflows/03-session-lifecycle.md`, `db/schema.dbml`, DEV1-002 outcomes.
+    - **Related documents**: links to `docs/auth/user-registration.md`, `docs/specs/state-machine-invariants.md`, `docs/workflows/03-session-lifecycle.md`, DEV1-002 outcomes.
   - Outcome: `outcome/7.1-canonical-doc-outcome.md`
   - _Requirements: REQ-080, REQ-020, REQ-021, REQ-022_
 
@@ -414,7 +405,6 @@
     - `backend/services/AGENTS.md` — one-liner: "Student trial provisioning flows exclusively through `StudentTrialService.grantFreeTrial` (grant-once, guarded UPDATE). See docs/students/free-trial-provisioning.md."
     - `shared/AGENTS.md` — one-liner constant note: "`shared/constants/free-trial.constants.ts` holds `FREE_TRIAL_SESSION_COUNT` — the single source of truth for trial sizing."
     - Root `AGENTS.md` Important References — one line pointing to `docs/students/free-trial-provisioning.md`.
-    - `db/schema.dbml` — already covered in 1.2; verify notes present (no re-edit).
   - Each modified file: run the duplicate sub-loop (exit 0).
   - Outcome: `outcome/7.3-cross-doc-agents-outcome.md`
   - _Requirements: REQ-082_
@@ -426,7 +416,7 @@
     - Requirement traceability closure: REQ-001..083 → task → outcome file (mark contract-only REQs REQ-019/020/021/022/034/062/063 as CONTRACT-RECORDED, not code);
     - Deferred-items final state: D1/D2 only, both non-blocking with target tickets;
     - Test evidence summary: all suites green, new code 100% stmt+branch, role-matrix/rollback/idempotency/constraint scenarios enumerated;
-    - Knowledge artifacts delivered: canonical doc, INV-B7/B8 addendum, decisions addendum, AGENTS one-liners, DBML notes;
+    - Knowledge artifacts delivered: canonical doc, INV-B7/B8 addendum, decisions addendum, AGENTS one-liners;
     - Sign-off checklist: entire `tasks.md` at `[x]`.
   - Final gate runs: `bun tsgo && bun biome:check && bun quality-gate` (staged where applicable) → **exit 0 across the board**.
   - _Requirements: REQ-076, REQ-083, REQ-080, REQ-081, REQ-082_

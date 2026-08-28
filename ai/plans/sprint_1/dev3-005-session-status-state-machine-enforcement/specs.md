@@ -33,7 +33,7 @@
   4. **Escrow decrement/wallet credit/withdrawals** — DEV3-013/014/015. This ticket's relationship to them is purely prohibitive (proving their absence from lifecycle paths).
   5. **The admin arbitration mutation and dispute initiation** — DEV3-022 (Sprint 3). The disputed contract is documented and reserved here; no `disputed` transition becomes reachable.
   6. **Teacher availability toggle surface** (DEV2-011) and **matching/directory** (DEV3-008/009) — the in-session-lock invariant is asserted against DEV3-004's existing lock discipline only.
-  7. **Any GraphQL schema change, any frontend view/route, any Apollo document, any DB schema/DBML change** — enforced as zero-drift gates (REQ-024/REQ-044/REQ-060/REQ-062).
+  7. **Any GraphQL schema change, any frontend view/route, any Apollo document, any DB schema change** — enforced as zero-drift gates (REQ-024/REQ-044/REQ-060/REQ-062).
   8. **Recitation rows** (C.5 — DEV3-007), **notifications** (A.4 — DEV3-010/011), **evaluation-loop-specific booking** (DEV2-006 consumes primitives; no evaluation creation here).
 
 ---
@@ -106,7 +106,7 @@
 
 - **REQ-043 (Lock/Status Atomicity)**: WHEN the in-session lock is asserted THEN the `teacher.is_online` mutation SHALL be proven to occur in the SAME transaction as the status transition (start: lock acquired; complete/cancel: lock released) — a forced mid-transaction failure test SHALL prove neither the status nor the lock commits without the other.
 
-- **REQ-044 (Schema & DBML Zero-Drift)**: WHEN implementation completes THEN `git diff` on `backend/db/schema/**` and `db/schema.dbml` SHALL be empty for this ticket, `bun validate:dbml` SHALL stay green, and any discovered schema gap SHALL be escalated via `deferred-items.md` (`db reset`/`cleanGenerate` remain permanently disabled; any structural change would belong to a separately approved DEV1-001-class schema task).
+- **REQ-044 (Schema Zero-Drift)**: WHEN implementation completes THEN `git diff` on `backend/db/schema/**` SHALL be empty for this ticket, and any discovered schema gap SHALL be escalated via `deferred-items.md` (`db reset`/`cleanGenerate` remain permanently disabled; any structural change would belong to a separately approved DEV1-001-class schema task).
 
 - **REQ-045 (Concurrency Probes Over Existing Engine)**: WHEN chaos tests run THEN they SHALL re-prove under the invariant framing: (a) parallel `startSession` vs `cancelSession` on one session ⇒ exactly one winner, loser typed-conflicts, lock consistent with the winner; (b) duplicate `completeSession` ⇒ one success + one `SESSION_INVALID_TRANSITION`, no state drift; (c) a race between `completeSession` and a guard-evaluating flow (e.g., a simulated DEV3-006-style "assert then write" inside one tx against a session being cancelled concurrently) documenting that the consumer transaction's serialization story is the consumer's documented obligation (the guard itself creates no TOCTOU because it performs no write).
 
@@ -233,7 +233,7 @@
 | REQ-024 | Seeds service-only rule | — | — | — | `bun db seed` re-run green, zero edit proof |
 | REQ-030..035 | DEV3-004 REQ-034 oracle convention; BOPLA/BFLA | Guard reads: `SESSION_NOT_FOUND`-class; zero write DTOs; ID-channel typed guard | — | — | REQ-074 fuzz suite (ID/enum boundaries); REQ-076 probes |
 | REQ-040..043 | DEV3-004 concurrency model; tx discipline | `tx?: DBTransaction` optional-last on every method; no standalone lock writes | — | — | REQ-045 chaos matrix (a–c) via `Promise.allSettled`; REQ-043 forced-failure test |
-| REQ-044 / REQ-046 | `docs/DATABASE_MIGRATIONS.md`; bounded-state rule | Zero schema/DBML diff; frozen module constants | — | — | `git diff` empty + `bun validate:dbml` green; static scan |
+| REQ-044 / REQ-046 | `docs/DATABASE_MIGRATIONS.md`; bounded-state rule | Zero schema diff; frozen module constants | — | — | `git diff` empty; static scan |
 | REQ-050..053 | DEV3-002 taxonomy; errors namespace rules | `NotFoundError("SESSION", …)` + custom-code `ValidationError`; `logger.logDomainError` | `extensions.code` assertions where consumed by integration tests | — | REQ-052 code-mapping tests; REQ-051 key-parity (ar/en) gate |
 | REQ-060..063 | Pothos graph rules; no-UI surface policy | Zero GraphQL/frontend diff | Zero (byte-identical codegen) | Zero | Codegen no-drift evidence in outcome; empty `git diff` on `frontend/**`/`app/**` |
 | REQ-070..077 | Test pyramid & quality-loop rules | `backend/services/sessions/**` + `backend/db/test/logic/sessions/` suites | Existing DEV3-004 GraphQL integration suite stays green | — | 100% coverage on new modules; run-test.ts execution evidence; deterministic reruns ×2 |

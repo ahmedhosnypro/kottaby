@@ -2,7 +2,7 @@
  * `recitationReadings` query — public catalog of Qira'ah (recitation reading)
  * values for the registration form selector.
  *
- * Contract (DEV1-003 REQ-050):
+ * Contract:
  *  - `recitationReadings: [RecitationReading!]!` — non-nullable list of
  *    non-nullable enum values. Always returns the canonical ordered catalog.
  *  - Public access — no authScope permission required. Safe for unauthenticated
@@ -10,8 +10,8 @@
  *  - No DB access — delegates to `RecitationCatalogService.listReadings()`
  *    which reads the shared constant enum (pure, no I/O).
  *
- * C.5 guardrail: this query returns catalog metadata only. It does NOT touch
- * the `recitation` table. Session recitation rows are owned by DEV3-007.
+ * Guardrail: this query returns catalog metadata only. It does NOT touch
+ * the `recitation` table — session recitation rows are owned elsewhere.
  *
  * Per `backend/graphql/query/AGENTS.md`:
  *  - Side-effect import — registers the root field at import time.

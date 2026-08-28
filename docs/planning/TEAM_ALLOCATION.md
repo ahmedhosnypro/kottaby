@@ -1,6 +1,6 @@
 # Draft Academy — Team Allocation & Stream Ownership
 
-> **Source of truth:** `docs/specs/`, `db/schema.dbml`, `DELIVERY_PLAN_PROMPT.md`
+> **Source of truth:** `docs/specs/`, `backend/db/schema/`, `DELIVERY_PLAN_PROMPT.md`
 > **Related:** `docs/planning/ROADMAP.md`, `docs/planning/SPRINT_PLAN.md`, `docs/planning/TICKETS.md`
 
 ---
@@ -89,7 +89,7 @@ Draft Academy is built by a **3-developer team** organized into **vertical trace
 
 | Sprint | Focus | Tickets |
 |---|---|---|
-| Sprint 0 | CI/CD pipeline, DBML/Mermaid validation, shared types & interfaces | DEV3-001 through DEV3-003 |
+| Sprint 0 | CI/CD pipeline, Mermaid validation, shared types & interfaces | DEV3-001 through DEV3-003 |
 | Sprint 1 | Basic session lifecycle (scheduled → started → completed/cancelled), session creation | DEV3-004 through DEV3-007 |
 | Sprint 2 | Matching algorithm, notification engine, dual-confirmation escrow, wallet & transactions | DEV3-008 through DEV3-015 |
 | Sprint 3 | Admin governance, audit logging, cold-start bootstrapping, direct onboarding, dispute resolution | DEV3-016 through DEV3-022 |
@@ -198,8 +198,8 @@ main (protected)
 |---|---|
 | **Minimum reviewers** | 1 reviewer from a different stream |
 | **Cross-stream review required** | If a PR touches a cross-stream interface contract, a reviewer from the affected stream must approve |
-| **CI must be green** | All CI checks (lint, test, DBML validation, Mermaid validation) must pass |
-| **Schema changes** | Any PR modifying `db/schema.dbml` requires review from all 3 developers |
+| **CI must be green** | All CI checks (lint, test, Mermaid validation) must pass |
+| **Schema changes** | Any PR modifying `backend/db/schema/` requires review from all 3 developers |
 | **Contract changes** | Any PR modifying a cross-stream interface contract requires explicit acknowledgment from all affected stream owners |
 
 ### Merge Conflict Prevention

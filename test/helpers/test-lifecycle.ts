@@ -9,11 +9,9 @@ async function pollOnce(port: number): Promise<boolean> {
     const res = await fetch(`http://localhost:${port}/api/graphql`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // BLT-07 (dev3-003 ledger): `_health` was retyped to `HealthCheck!`,
-      // so the former bare `{ _health }` probe document failed validation
-      // (HTTP 400) and `waitForServer` could never succeed. Probe a
-      // subfield instead — the sanctioned one-line remedy recorded on the
-      // ledger row; the 5.x harness-prep stream re-verifies and closes it.
+      // `_health` was retyped to `HealthCheck!`, so the former bare
+      // `{ _health }` probe document fails validation (HTTP 400) and
+      // `waitForServer` would never succeed. Probe a subfield instead.
       body: JSON.stringify({ query: "{ _health { status } }" }),
       signal: AbortSignal.timeout(4000),
     });

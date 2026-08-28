@@ -1,16 +1,16 @@
 /**
- * `myApplicantProfile` query — 4-Tier integration suite (dev2-004 Task 3.3).
+ * `myApplicantProfile` query — 4-Tier integration suite.
  *
  * Runs over the REAL boundary: `setupTestServerLifecycle` boots the Next dev
  * server on the shared TEST_PORT (3066) and every row goes through Apollo
- * Client v4 + the REQ-063 helpers (`extractErrorCode` /
+ * Client v4 + the shared error helpers (`extractErrorCode` /
  * `expectMutationError`) exactly like `frontend/graphql/test/auth/auth.test.ts`
  * and the wire tier of `backend/graphql/test/error-contract-matrix.test.ts`.
  *
  * Documents:
- *  - The shared `myApplicantProfileQueryDocument` (Task 4.1) is the wire
- *    document — REQ-073 certification rides the SAME TypedDocumentNode the
- *    production card consumes.
+ *  - The shared `myApplicantProfileQueryDocument` is the wire document —
+ *    certification rides the SAME TypedDocumentNode the production card
+ *    consumes.
  *  - The Tier-4 BOLA probes keep LOCAL `parse`d documents: they are
  *    deliberately INVALID operations (unknown `userId` argument) that must
  *    die at schema validation; the shared document cannot express them.
@@ -39,21 +39,21 @@
  *    token path. Roles that registerUser structurally rejects (admin,
  *    `RegisterPublicRole` BFLA exclusion) can ONLY be built this way.
  *
- * Tiers (tasks.md 3.3.TE):
+ * Tiers:
  *  - Tier 1  happy path: registered teacher-applicant → full seven-field
  *            shape (id === users.id, status PENDING, attempts 0, cooldowns
  *            null/false, purchase allowed).
  *  - Tier 2  boundary: certified teacher (users.role='teacher' + `teacher`
  *            child row) with NO live applicants row ⇒ payload is the ONE
- *            null answer (REQ-035 no-oracle), never an error.
+ *            null answer, never an error.
  *  - Tier 3  authz matrix: anonymous ⇒ UNAUTHORIZED (401); student / parent
- *            (C.1 role-confusion probe) / admin ⇒ FORBIDDEN (403); every
+ *            (role-confusion probes) / admin ⇒ FORBIDDEN (403); every
  *            denial's `extensions.code` asserted through the shared helper.
  *  - Tier 4  BOLA probe: ANY argument (inline literal or variable-supplied)
  *            against `myApplicantProfile` dies as GRAPHQL_VALIDATION_FAILED
- *            at schema validation — the parameter surface does not exist
- *            (REQ-030/075), and even a TEACHER-authenticated caller cannot
- *            reach the resolver with one.
+ *            at schema validation — the parameter surface does not exist,
+ *            and even a TEACHER-authenticated caller cannot reach the
+ *            resolver with one.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -152,7 +152,7 @@ describe("myApplicantProfile GraphQL Integration", () => {
     });
 
     expect(result.error).toBeUndefined();
-    // Seven-field envelope (error-contract-matrix §7 style). The SHARED
+    // Seven-field envelope. The SHARED
     // TypedDocumentNode already pins the selection set to exactly these seven
     // fields, so objectContaining pins every value; Apollo merges `__typename`
     // into entity objects at runtime (not part of the codegen type), pinned
@@ -175,7 +175,7 @@ describe("myApplicantProfile GraphQL Integration", () => {
   test("Tier 2 — certified teacher without live applicants row answers ONE null", async () => {
     // Direct-DB fixture (`.env.test` is loaded by run-server-tests.ts):
     // a certified teacher is users.role='teacher' + a `teacher` child row,
-    // and DEV2's pass-conversion contract leaves this fixture WITHOUT an
+    // and the pass-conversion contract leaves this fixture WITHOUT an
     // applicants row — exactly getMyApplicantProfile's second null path.
     // A real hash lets the public login mutation mint a genuine session.
     const email = uniqueEmail("certified");
@@ -222,7 +222,7 @@ describe("myApplicantProfile GraphQL Integration", () => {
     expectMutationError(result.error, "UNAUTHORIZED");
   });
 
-  test("Tier 3 — authenticated STUDENT gets FORBIDDEN (role gate, C.0 non-teacher probe)", async () => {
+  test("Tier 3 — authenticated STUDENT gets FORBIDDEN (role gate, non-teacher probe)", async () => {
     const { accessToken } = await registerAndLogin(RegisterPublicRole.Student);
     const result = await testClient.query({
       query: myApplicantProfileQuery,
@@ -231,7 +231,7 @@ describe("myApplicantProfile GraphQL Integration", () => {
     expectMutationError(result.error, "FORBIDDEN");
   });
 
-  test("Tier 3 — authenticated PARENT gets FORBIDDEN (C.1 role-confusion probe)", async () => {
+  test("Tier 3 — authenticated PARENT gets FORBIDDEN (role-confusion probe)", async () => {
     const { accessToken } = await registerAndLogin(RegisterPublicRole.Parent);
     const result = await testClient.query({
       query: myApplicantProfileQuery,
@@ -292,7 +292,7 @@ describe("myApplicantProfile GraphQL Integration", () => {
       context: { headers: { Authorization: `Bearer ${accessToken}` } },
     });
     // Unknown argument on Query.myApplicantProfile → protocol preset passes
-    // through AS-IS (error-contract-matrix §4 pin); the resolver NEVER runs.
+    // through AS-IS; the resolver NEVER runs.
     expectMutationError(result.error, "GRAPHQL_VALIDATION_FAILED");
   });
 
