@@ -21,6 +21,8 @@ When `RegistrationService.registerUser(input, locale, tx?)` runs, the `users` ro
 | `admin` | `admin` | `admin` | (PK only) | ✗ — service-only via `RegistrationService.createAdminUser` |
 
 > **B.6 / B.7 contract (teacher applicant flow):** A user registering as `teacher` receives an `applicants` row with `status='pending'` and **NO `teacher` row**. The `teacher` row is created only after the verification pipeline (DEV2-004+) approves the applicant. Granting teacher privileges before evaluation would compromise platform quality (FR-3.1).
+>
+> **Applicant lifecycle (post-registration):** the `applicants` state machine, cooldown/attempt contracts, `myApplicantProfile` query contract, and consumer obligations for DEV2-005..010 are canonically documented in `docs/teachers/applicant-lifecycle.md` (DEV2-004; REQ-081).
 
 All child tables share the user's primary key (`child.id = users.id`, `ON DELETE CASCADE`).
 

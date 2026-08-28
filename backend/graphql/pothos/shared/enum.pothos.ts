@@ -19,6 +19,7 @@
  * After registering a new enum here, run `bun run generate:gqlSchema` and
  * `bun codegen` to refresh the SDL + frontend codegen.
  */
+import { ApplicantStatus } from "@/backend/enum/teachers/applicant-status.enum";
 import { Gender } from "@/backend/enum/users/gender.enum";
 import { RegisterPublicRole } from "@/backend/enum/users/register-public-role.enum";
 import { UserRole } from "@/backend/enum/users/user-role.enum";
@@ -54,4 +55,17 @@ export const RegisterPublicRolePothosEnum = gqlSchemaBuilder.enumType(RegisterPu
  */
 export const RecitationReadingPothosEnum = gqlSchemaBuilder.enumType(RecitationReading, {
   name: "RecitationReading",
+});
+
+/**
+ * GraphQL `ApplicantStatus` enum (pending|in_evaluation|failed|passed).
+ *
+ * DEV2-004 REQ-061/REQ-012: registered ONCE from the canonical TS enum
+ * (`backend/enum/teachers/applicant-status.enum.ts`) — the sole runtime
+ * authority over the pgEnum-less `applicants.status` varchar column, whose
+ * stored values are guard-validated with `isApplicantStatus` at the service
+ * boundary before any value carries the GraphQL type.
+ */
+export const ApplicantStatusPothosEnum = gqlSchemaBuilder.enumType(ApplicantStatus, {
+  name: "ApplicantStatus",
 });

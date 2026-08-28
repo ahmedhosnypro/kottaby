@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 import { LocaleSwitcher } from "@/frontend/components/LocaleSwitcher";
 import { useAuth } from "@/frontend/hooks/useAuth";
 import { useThemeMode } from "@/frontend/hooks/useThemeMode";
+import { roleDashboardPath } from "@/frontend/lib/auth/roleDashboardRoute";
 import { Dashboard, useAppTranslation } from "@/shared/locale";
 
 /**
@@ -61,8 +62,12 @@ export function DashboardAppBar({ onMenuClick, showMenuButton }: Readonly<Dashbo
   const avatarAlt = user ? t.userAvatarAlt(user.fullName) : t.title;
 
   // Track the current path so the brand wordmark's `aria-current` reflects
-  // the active route (accessibility best practice for nav landmarks).
-  const isOnDashboard = pathname === "/dashboard";
+  // the active route (accessibility best practice for nav landmarks). The
+  // wordmark links to the caller's ROLE-SPECIFIC dashboard — never bare
+  // "/dashboard", which the preview gateway loops into a redirect storm
+  // (see `frontend/lib/auth/roleDashboardRoute.ts`).
+  const dashboardHref = roleDashboardPath(user?.role);
+  const isOnDashboard = pathname === dashboardHref;
 
   return (
     <AppBar
@@ -88,10 +93,10 @@ export function DashboardAppBar({ onMenuClick, showMenuButton }: Readonly<Dashbo
           </IconButton>
         ) : null}
 
-        {/* Brand wordmark — link to /dashboard */}
+        {/* Brand wordmark — link to the caller's role dashboard */}
         <Typography
           component={Link}
-          href="/dashboard"
+          href={dashboardHref}
           aria-current={isOnDashboard ? "page" : undefined}
           sx={theme => ({
             textDecoration: "none",

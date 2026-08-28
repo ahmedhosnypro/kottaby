@@ -126,11 +126,11 @@ interface SidebarListItemProps {
 function SidebarListItem({ item, t, pathname, onNavigate }: Readonly<SidebarListItemProps>): ReactNode {
   const label = resolveNavItemLabel(item, t);
   const Icon = item.Icon;
-  // Active when the current pathname starts with the item's route.
-  // `/dashboard` matches `/dashboard` and `/dashboard/anything`; for other
-  // routes (e.g. `/sessions`), an exact match is required so a sub-route like
-  // `/sessions/123` still highlights the parent.
-  const isActive = item.route === "/dashboard" ? pathname === "/dashboard" : pathname === item.route;
+  // Active when the current pathname equals the item's route. Nav items are
+  // exact paths (the dashboard item points straight at its role-specific
+  // route, e.g. `/teacher/dashboard`), so an exact match is correct — a
+  // sub-route like `/sessions/123` never half-highlights its parent.
+  const isActive = pathname === item.route;
 
   return (
     <ListItemButton

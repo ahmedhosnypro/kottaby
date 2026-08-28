@@ -19,4 +19,7 @@ export const errorsAr: ErrorsLabels = {
   accountSuspended: "هذا الحساب موقوف.",
   tokenExpired: "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.",
   forbiddenRole: "ليست لديك صلاحية للوصول إلى هذه الصفحة.",
+  applicantNotFound: "لم يتم العثور على طلب التقديم كمعلم قرآن.",
+  applicantCooldownActive: "يمكنك إعادة التقديم للتحقق كمعلم قرآن بعد {cooldownUntil}.",
+  applicantStatusCorrupt: "تعذر قراءة حالة طلبك. يرجى التواصل مع فريق الدعم.",
 };

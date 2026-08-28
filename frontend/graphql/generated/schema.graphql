@@ -1,3 +1,20 @@
+type ApplicantProfile {
+  canPurchaseVerification: Boolean!
+  cooldownActive: Boolean!
+  cooldownUntil: String
+  id: Int!
+  lastAttemptAt: String
+  status: ApplicantStatus!
+  verificationAttempts: Int!
+}
+
+enum ApplicantStatus {
+  Failed
+  InEvaluation
+  Passed
+  Pending
+}
+
 enum Gender {
   Female
   Male
@@ -56,6 +73,7 @@ type Query {
   Returns the authenticated user (or null for anonymous). Anonymous callers receive null — the AuthProvider uses this to detect expired access tokens and silently restore the session via `refreshToken`.
   """
   me: User
+  myApplicantProfile: ApplicantProfile
 
   """
   Returns the canonical list of recitation readings (Qira'at) for the registration form selector. Public — no authentication required. The values are stable API identifiers; display labels are resolved client-side via the i18n recitation namespace.

@@ -5,7 +5,7 @@ import { type ReactNode, useEffect } from "react";
 import { LocaleSwitcher } from "@/frontend/components/LocaleSwitcher";
 import { SiteFooter } from "@/frontend/components/SiteFooter";
 import { useAuth } from "@/frontend/hooks/useAuth";
-import { isSafeRedirect } from "@/frontend/lib/safeRedirect";
+import { resolvePostAuthTarget } from "@/frontend/lib/auth/roleDashboardRoute";
 import { Auth, useAppTranslation } from "@/shared/locale";
 
 /**
@@ -33,11 +33,7 @@ import { Auth, useAppTranslation } from "@/shared/locale";
  *
  * DEV2-CORE — Login page auto-redirect (redirect-loop fix):
  *  - If `isAuthenticated` is true (from `useAuth()`), redirect to the
- *    `?redirect=` param (if safe) or `/dashboard`. This prevents the
- *    redirect loop: an authenticated user visiting `/login` (e.g. via the
- *    browser back button) gets bounced back to their dashboard instead of
- *    seeing the login form again — which the dashboard layout would then
- *    bounce back to /login, etc.
+ *    `?redirect=` param (if safe) or the caller's ROLE-SPECIFIC dashboard.
  *  - The redirect runs in a `useEffect` (after hydration) to avoid SSR/CSR
  *    mismatch. `useSearchParams` reads the `?redirect=` param.
  *
@@ -54,7 +50,7 @@ import { Auth, useAppTranslation } from "@/shared/locale";
  */
 export default function AuthLayout({ children }: { readonly children: ReactNode }) {
   const t = useAppTranslation(Auth);
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -62,14 +58,20 @@ export default function AuthLayout({ children }: { readonly children: ReactNode 
   // /register). Skipped during `isLoading` so we don't redirect a user
   // whose session is still being restored (e.g. via `refreshToken`).
   // Mirrors the `DashboardLayout` auth-redirect pattern.
+  //
+  // The fallback target is the caller's ROLE-SPECIFIC dashboard — never
+  // bare "/dashboard". Through the z.ai preview gateway that path is
+  // 301'd to "/dashboard/" while Next.js 308s it back — a browser
+  // redirect loop (see `frontend/lib/auth/roleDashboardRoute.ts`).
+  // This effect also owns the no-param post-login bounce: LoginForm
+  // deliberately skips navigation when no `?redirect=` param is present
+  // and defers to this role-aware replace (fresh `user` from context).
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) return;
-    // Authenticated — bounce to the redirect target or /dashboard.
     const redirectParam = searchParams.get("redirect");
-    const target = isSafeRedirect(redirectParam) ? redirectParam : "/dashboard";
-    router.replace(target);
-  }, [isAuthenticated, isLoading, router, searchParams]);
+    router.replace(resolvePostAuthTarget(redirectParam, user?.role));
+  }, [isAuthenticated, isLoading, router, searchParams, user]);
 
   return (
     <main className="auth-shell">

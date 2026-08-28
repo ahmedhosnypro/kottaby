@@ -30,4 +30,16 @@ export interface ErrorsLabels {
   readonly tokenExpired: string;
   /** "You do not have permission to access this page." — role-mismatch deny (DEV2-002 REQ-011). */
   readonly forbiddenRole: string;
+  /** "Teacher application not found." — self-applicants lookup miss → NotFoundError("APPLICANT") (DEV2-004 REQ-050). */
+  readonly applicantNotFound: string;
+  /**
+   * Cooldown reject for `ValidationError("APPLICANT_COOLDOWN_ACTIVE", …)`
+   * (DEV2-004 REQ-015). Interpolates ONLY the re-application expiry moment
+   * via the single ICU placeholder `{cooldownUntil}` plus generic copy — no
+   * other user data may enter this message (REQ-035). The placeholder NAME is
+   * pinned identical across both locales by the parity tests.
+   */
+  readonly applicantCooldownActive: string;
+  /** Fail-closed deny when an applicants row status cannot be interpreted as a known ApplicantStatus. */
+  readonly applicantStatusCorrupt: string;
 }

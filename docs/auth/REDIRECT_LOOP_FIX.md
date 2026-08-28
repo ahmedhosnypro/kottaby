@@ -149,3 +149,73 @@ Auth cookies use `sameSite: "strict"`, which blocks cookies on cross-site naviga
 | `session_id` | true | strict | production-only | 7 days | `/` |
 | `refresh_token` | true | strict | production-only | 7 days | `/` |
 | `access_token` | ❌ Never set as cookie | — | — | — | — |
+
+---
+
+## Addendum — Preview-Gateway Trailing-Slash Loop (bare `/dashboard`)
+
+### Symptom
+
+Logging in through the z.ai preview gateway
+(`preview-chat-*.space-z.ai`) lands the browser on
+`ERR_TOO_MANY_REDIRECTS` ("redirected you too many times"). Direct
+`localhost:3000` access is unaffected — the same login succeeds and lands
+on the role dashboard.
+
+### Root Cause
+
+The gateway canonicalizes **exactly the bare path `/dashboard`** to a
+trailing slash (verified: `301 /dashboard → /dashboard/`; every other app
+path — `/login`, `/teacher/dashboard`, even nonexistent paths — passes
+through untouched). Next.js (default `trailingSlash: false`) answers
+`308 /dashboard/ → /dashboard`. A browser sent to bare `/dashboard`
+therefore ping-pongs between the two forever:
+
+```text
+browser → GET /dashboard    → gateway 301 → /dashboard/
+browser → GET /dashboard/   → Next 308    → /dashboard
+browser → GET /dashboard    → gateway 301 → /dashboard/   … ∞
+```
+
+The app compounded this by using bare `/dashboard` as the universal
+browser-facing redirect target: the login-form fallback, the `(auth)`
+authenticated bounce, the sidebar dashboard item (all roles), the app-bar
+wordmark, the profile "back" button, the server guards' role-mismatch
+fallback, and the dispatcher's own anonymous
+`/login?redirect=/dashboard` param (which fed the login form's push back
+into the trap).
+
+### Fix — "never navigate the browser to bare `/dashboard`"
+
+New helper `frontend/lib/auth/roleDashboardRoute.ts`:
+
+- `roleDashboardPath(role)` — role → role-specific dashboard route
+  (mirrors the server dispatcher's `ROLE_DASHBOARD_ROUTE`; accepts both
+  backend lowercase values and codegen capitalized values via
+  lower-case normalization; unknown/null falls back to the student
+  dashboard, same least-privilege precedent as `getNavItemsForRole`).
+- `resolvePostAuthTarget(redirectParam, role)` — explicit safe
+  `?redirect=` param wins **unless it is bare `/dashboard`** (legacy
+  bookmarks / old errorLink URLs), else the role dashboard.
+
+Call-site changes (all previously targeted bare `/dashboard`):
+
+| Call site | Change |
+|-----------|--------|
+| `app/(auth)/login/LoginForm.tsx` | pushes only an explicit safe non-`/dashboard` param; no-param case defers to the layout's role-aware bounce |
+| `app/(auth)/layout.tsx` | authenticated bounce → `resolvePostAuthTarget(param, user?.role)` |
+| `frontend/views/dashboard/navItems.ts` | each role's dashboard item points at its own role route |
+| `frontend/views/dashboard/DashboardSidebar.tsx` | exact-match active highlighting (prefix special-case obsolete) |
+| `frontend/views/dashboard/DashboardAppBar.tsx` | wordmark href → role dashboard |
+| `frontend/views/dashboard/profile/ProfileView.tsx` | "back to dashboard" → role dashboard |
+| `frontend/lib/auth/requireRoleForPage.ts` | role-mismatch fallback → `roleDashboardPath(ctx.role)` |
+| `frontend/lib/auth/withPageAuth.ts` | same |
+| `app/(dashboard)/dashboard/page.tsx` | anonymous branch → bare `/login` (stops producing the poisoned param) |
+
+The `/dashboard` dispatcher route itself stays online — it remains a
+valid server-side deep-link entry point on direct deployments; it is just
+never used as a browser navigation target from inside the app.
+
+Contract tests: `frontend/lib/auth/roleDashboardRoute.test.ts` (mapping,
+lowercase/capitalized parity, bare-`/dashboard` rejection, open-redirect
+guard precedence).

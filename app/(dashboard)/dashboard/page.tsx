@@ -16,9 +16,14 @@ import { getLocaleFromCookie } from "@/shared/locale/server-cookies";
  *  - `parent`  → `/parent/dashboard`
  *  - `admin`   → `/admin/dashboard`
  *
- * Anonymous callers redirect to `/login?redirect=/dashboard`. The login
- * form's `?redirect=` param navigates back here on success, and this page
- * then routes to the role-specific dashboard.
+ * Anonymous callers redirect to bare `/login` (no `?redirect=` param): the
+ * login flow routes by the authenticated user's role on success
+ * (`resolvePostAuthTarget`). Sending the browser back to bare `/dashboard`
+ * — whether via the param or a client link — is forbidden: the z.ai preview
+ * gateway 301s `/dashboard` to `/dashboard/` while Next.js 308s it back,
+ * an infinite browser redirect loop (see
+ * `frontend/lib/auth/roleDashboardRoute.ts`). This route remains reachable
+ * as a server-side deep-link entry point on direct deployments.
  *
  * The `(dashboard)` route group layout (`DashboardLayout`) wraps this page
  * with the AppBar + Sidebar shell — but the redirect fires before render,
@@ -45,10 +50,10 @@ export default async function DashboardPage() {
   const { role } = await getServerUserContext();
 
   if (!role) {
-    // Anonymous — redirect to /login with the return path. The login form
-    // navigates back here on success, and this page then routes to the
-    // role-specific dashboard.
-    redirect("/login?redirect=%2Fdashboard");
+    // Anonymous — plain /login. The post-login bounce routes by role
+    // (`resolvePostAuthTarget`); bouncing back to THIS bare path would
+    // re-enter the preview-gateway trailing-slash loop.
+    redirect("/login");
   }
 
   const target = ROLE_DASHBOARD_ROUTE[role];

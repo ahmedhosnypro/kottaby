@@ -200,11 +200,24 @@ jobs:
       - name: Run database repository tests
         run: bun run test:db
 
-  # Backend service tests with mocked adapters
+  # Backend service tests (DB-backed lifecycle suites, e.g. DEV2-004
+  # tasks.md 2.2.TE which mandates the real repository over mocked adapters).
   tests-services:
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kottaby
+          POSTGRES_PASSWORD: ci-local-only-fixture
+          POSTGRES_DB: kottaby_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U kottaby -d kottaby_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: Check out repository
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -246,6 +259,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Run database migrations
+        run: bun run db migrate
 
       - name: Run backend service tests
         run: bun run test:services

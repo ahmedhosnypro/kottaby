@@ -4,8 +4,8 @@
  * Verifies the caller is authenticated (via `getServerUserContext`, which
  * reads the httpOnly `access_token` cookie — the redirect-loop fix), and
  * optionally checks the caller's role against a whitelist. Redirects to
- * `/login?redirect=<currentPath>` for anonymous callers, or `/dashboard`
- * for role-mismatched callers.
+ * `/login?redirect=<currentPath>` for anonymous callers, or the caller's
+ * ROLE-SPECIFIC dashboard for role-mismatched callers.
  *
  * Usage in a Server Component page:
  * ```ts
@@ -28,13 +28,15 @@ import { redirect } from "next/navigation";
 import type { UserRole } from "@/backend/enum/users/user-role.enum";
 import { getServerUserContext } from "@/backend/lib/auth/server-auth";
 import type { RegistrationReturnType } from "@/backend/types";
+import { roleDashboardPath } from "@/frontend/lib/auth/roleDashboardRoute";
 
 /** Options for `withPageAuth`. */
 export interface WithPageAuthOptions {
   /**
    * Optional role whitelist — if supplied, the caller's `ctx.role` must be
-   * in the list (OR semantics). A role mismatch redirects to `/dashboard`
-   * (the canonical "wrong role" fallback per `app/AGENTS.md`).
+   * in the list (OR semantics). A role mismatch redirects to the caller's
+   * role-specific dashboard (see `roleDashboardRoute.ts` — bare
+   * `/dashboard` is never used as a browser redirect target).
    */
   readonly roles?: readonly UserRole[];
   /**
@@ -59,8 +61,8 @@ export interface WithPageAuthResult {
  *
  * @returns `{ user, role, userId }` for authenticated callers (or
  *     role-matched if `roles` is supplied). Redirects to
- *     `/login?redirect=<path>` for anonymous callers, or `/dashboard` for
- *     role-mismatched callers.
+ *     `/login?redirect=<path>` for anonymous callers, or the caller's
+ *     role-specific dashboard for role-mismatched callers.
  */
 export async function withPageAuth(options?: WithPageAuthOptions): Promise<WithPageAuthResult> {
   const ctx = await getServerUserContext();
@@ -77,9 +79,11 @@ export async function withPageAuth(options?: WithPageAuthOptions): Promise<WithP
 
   // Role check — OR semantics over the supplied role set.
   if (options?.roles && ctx.role && !options.roles.includes(ctx.role)) {
-    // Wrong role — bounce to their dashboard (canonical fallback per
-    // `app/AGENTS.md`).
-    redirect("/dashboard");
+    // Wrong role — bounce to THEIR role dashboard directly. Bare
+    // "/dashboard" works on a direct deployment but is 301'd to
+    // "/dashboard/" by the preview gateway (Next 308s it back) — a browser
+    // redirect loop (see `roleDashboardRoute.ts`).
+    redirect(roleDashboardPath(ctx.role));
   }
 
   // After the guards above, ctx.user / ctx.role / ctx.userId are all

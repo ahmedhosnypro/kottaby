@@ -17,3 +17,4 @@
 import "./auth.query";
 import "./health.query";
 import "./recitation.query";
+import "./teachers";

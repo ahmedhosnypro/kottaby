@@ -1,3 +1,4 @@
+import { applicantEn } from "@/shared/locale/en/applicant";
 import { authEn } from "@/shared/locale/en/auth";
 import { commonEn } from "@/shared/locale/en/common";
 import { dashboardEn } from "@/shared/locale/en/dashboard";
@@ -13,4 +14,5 @@ export const enMessages: Translations = {
   recitationTranslations: recitationEn,
   dashboardTranslations: dashboardEn,
   landingTranslations: landingEn,
+  applicantTranslations: applicantEn,
 };

@@ -18,6 +18,18 @@ interface DashboardStat {
   readonly Icon: typeof SchoolIcon;
 }
 
+interface DashboardViewProps {
+  /**
+   * Role-specific content slot mounted between the welcome header and the
+   * stat grid (DEV2-004 Task 4.3: the teacher dashboard passes
+   * `<ApplicantStatusCard />` so the lifecycle status card sits above the
+   * fold, under the page header). The SERVER composition decides what — if
+   * anything — goes here per role; this view adds no client-side gating of
+   * its own and other roles pass nothing (slot stays empty).
+   */
+  readonly statusSlot?: ReactNode;
+}
+
 /**
  * DashboardView — landing view shown at `/dashboard`.
  *
@@ -34,7 +46,7 @@ interface DashboardStat {
  * MUI v9 patterns: `sx` callback only, `*Outlined` icons, theme palette
  * colors. The grid uses `display: grid` with responsive `gridTemplateColumns`.
  */
-export function DashboardView(): ReactNode {
+export function DashboardView({ statusSlot }: Readonly<DashboardViewProps>): ReactNode {
   const t = useAppTranslation(Dashboard);
   const { user } = useAuth();
 
@@ -57,6 +69,8 @@ export function DashboardView(): ReactNode {
           {t.title}
         </Typography>
       </Stack>
+
+      {statusSlot ? <Box sx={{ mb: 4 }}>{statusSlot}</Box> : null}
 
       <Box
         sx={{

@@ -19,4 +19,7 @@ export const errorsEn: ErrorsLabels = {
   accountSuspended: "This account is suspended.",
   tokenExpired: "Your session has expired. Please sign in again.",
   forbiddenRole: "You do not have permission to access this page.",
+  applicantNotFound: "Teacher application not found.",
+  applicantCooldownActive: "You can re-apply for teacher verification after {cooldownUntil}.",
+  applicantStatusCorrupt: "Your application status could not be read. Please contact support.",
 };

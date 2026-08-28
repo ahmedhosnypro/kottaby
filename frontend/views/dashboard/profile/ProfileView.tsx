@@ -36,6 +36,7 @@ import {
 import { type ReactNode, useState, useSyncExternalStore } from "react";
 import { Gender, UserRole } from "@/frontend/graphql/generated/gql/graphql";
 import { useAuth } from "@/frontend/hooks/useAuth";
+import { roleDashboardPath } from "@/frontend/lib/auth/roleDashboardRoute";
 import { getRecitationDescription, getRecitationLabel } from "@/frontend/lib/recitation-labels";
 import { Auth, Dashboard, Recitation, useAppTranslation } from "@/shared/locale";
 import type { DashboardLabels } from "@/shared/locale/types/dashboard";
@@ -304,7 +305,9 @@ export function ProfileView(): ReactNode {
 
       {/* === Actions === */}
       <Stack direction="row" spacing={2} sx={{ justifyContent: "center", flexWrap: "wrap", gap: 1 }}>
-        <Button variant="outlined" href="/dashboard" startIcon={<LanguageIcon />}>
+        {/* Role-specific dashboard — never bare "/dashboard" (preview-gateway
+            redirect loop, see `frontend/lib/auth/roleDashboardRoute.ts`). */}
+        <Button variant="outlined" href={roleDashboardPath(user.role)} startIcon={<LanguageIcon />}>
           {t.backToDashboard}
         </Button>
         <Button variant="contained" startIcon={<EditIcon />} disabled>
