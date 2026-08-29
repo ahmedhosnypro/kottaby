@@ -31,4 +31,5 @@ export const errorsAr: ErrorsLabels = {
     userPatchEmpty: "لم يتم تقديم أي حقول قابلة للتحديث.",
     handshakeExhausted: "تعذّر توليد رمز التحقق الفريد. يرجى المحاولة مرة أخرى.",
   },
+  trialAlreadyGranted: "تم منح رصيد الجلسة التجريبية لهذا الطالب مسبقًا.",
 };

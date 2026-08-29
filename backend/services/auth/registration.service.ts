@@ -42,6 +42,7 @@ import { withTransaction } from "@/backend/lib/db/with-transaction";
 import { ConflictError, translateDbError, ValidationError } from "@/backend/lib/errors";
 import { logger } from "@/backend/lib/logger";
 import { RecitationCatalogService } from "@/backend/services/shared/recitation-catalog.service";
+import { StudentTrialService } from "@/backend/services/students/student-trial.service";
 import type {
   AdminRegistrationSubmitInput,
   ApiFieldErrorType,
@@ -158,7 +159,7 @@ export namespace RegistrationService {
     try {
       return await withTransaction(outerTx, async tx => {
         const created = await createUserRow(input, passwordHash, tx);
-        await createRoleChild(created.id, input.role, tx);
+        await createRoleChild(created.id, input.role, locale, tx);
         // Zero recitation rows are created during registration.
         return toReturnType(created, preferredRecitation);
       });
@@ -317,7 +318,10 @@ export namespace RegistrationService {
    * Inserts the role-specific child row inside the registration transaction.
    *
    * - student → `students` row with zeroed balances + server-generated
-   *   `handshake_code` (bounded retry on unique violation).
+   *   `handshake_code` (bounded retry on unique violation), followed by the
+   *   one-time free-trial grant invoked through the student trial provisioning
+   *   service so the grant shares the same transaction and rolls back on any
+   *   downstream failure.
    * - teacher → `applicants` row with `status='pending'` (NO `teacher` row).
    * - parent  → `parents` row (PK only).
    * - admin   → handled by `createAdminUser` directly (not reached here).
@@ -325,11 +329,13 @@ export namespace RegistrationService {
   async function createRoleChild(
     userId: number,
     role: "student" | "teacher" | "parent",
+    locale: string,
     tx: DBTransaction
   ): Promise<void> {
     switch (role) {
       case "student": {
         await createStudentWithHandshakeRetry(userId, tx);
+        await StudentTrialService.grantFreeTrial(userId, locale, tx);
         return;
       }
       case "teacher": {
