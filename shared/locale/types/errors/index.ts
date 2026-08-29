@@ -42,4 +42,26 @@ export interface ErrorsLabels {
   readonly applicantCooldownActive: string;
   /** Fail-closed deny when an applicants row status cannot be interpreted as a known ApplicantStatus. */
   readonly applicantStatusCorrupt: string;
+  /**
+   * Admin-user-management domain failures surfaced to operators through the
+   * `errors` namespace. Each leaf is a self-contained sentence (no key echo)
+   * consumed by admin services via property access on the localized bundle:
+   * `errorsTranslations.adminUsers.<key>`. Admin-authored identifiers (email,
+   * user id, role values) MUST NOT appear in these strings — only generic,
+   * user-facing copy.
+   */
+  readonly adminUsers: {
+    /** Lookup miss for a user id that does not resolve to a `users` row. */
+    readonly userNotFound: string;
+    /** Conflict when soft-deleting an account that is already soft-deleted. */
+    readonly userAlreadyDeleted: string;
+    /** Conflict when reactivating an account that is not currently soft-deleted. */
+    readonly userNotDeleted: string;
+    /** Self-protection deny: an admin attempted to soft-delete their own account. */
+    readonly userSelfDeactivationForbidden: string;
+    /** Creation deny: an admin attempted to provision an `admin` role through this surface. */
+    readonly adminRoleCreationForbidden: string;
+    /** Validation deny: a profile patch carried no whitelisted field. */
+    readonly userPatchEmpty: string;
+  };
 }

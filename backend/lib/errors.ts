@@ -155,10 +155,29 @@ function mergeFieldsIntoExtensions(
   return { ...options, extensions: { ...options?.extensions, fields } };
 }
 
-/** Conflict (duplicate email, handshake collision exhausted, etc.). Code: `CONFLICT`. */
+/**
+ * Conflict (duplicate email, handshake collision exhausted, self-deactivation
+ * guard, role-creation-defense deny, etc.). Defaults to code `CONFLICT`;
+ * overloads accept a custom `code` for typed conflict variants (e.g.
+ * `USER_SELF_DEACTIVATION_FORBIDDEN`, `ADMIN_ROLE_CREATION_FORBIDDEN`) so
+ * the GraphQL transport can branch on the specific failure while remaining
+ * a `ConflictError` subclass for `instanceof` checks.
+ *
+ * @example new ConflictError("An account with this email already exists.")
+ * @example new ConflictError("USER_SELF_DEACTIVATION_FORBIDDEN", "You cannot delete your own account.")
+ * @example new ConflictError("USER_ALREADY_DELETED", "This user has already been deleted.", { cause: ... })
+ */
 export class ConflictError extends DomainError {
-  constructor(message: string, options?: GraphQLErrorOptions) {
-    super("CONFLICT", message, options);
+  constructor(message: string, options?: GraphQLErrorOptions);
+  constructor(code: string, message: string, options?: GraphQLErrorOptions);
+  constructor(codeOrMessage: string, messageOrOptions?: string | GraphQLErrorOptions, options?: GraphQLErrorOptions) {
+    if (typeof messageOrOptions === "string") {
+      // Custom-code form: (code, message, options?)
+      super(codeOrMessage, messageOrOptions, options);
+    } else {
+      // Default-code form: (message, options?)
+      super("CONFLICT", codeOrMessage, messageOrOptions);
+    }
   }
 }
 

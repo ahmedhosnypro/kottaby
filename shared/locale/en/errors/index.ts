@@ -22,4 +22,12 @@ export const errorsEn: ErrorsLabels = {
   applicantNotFound: "Teacher application not found.",
   applicantCooldownActive: "You can re-apply for teacher verification after {cooldownUntil}.",
   applicantStatusCorrupt: "Your application status could not be read. Please contact support.",
+  adminUsers: {
+    userNotFound: "User not found.",
+    userAlreadyDeleted: "This user has already been deleted.",
+    userNotDeleted: "This user is not deleted.",
+    userSelfDeactivationForbidden: "You cannot delete your own account.",
+    adminRoleCreationForbidden: "Admin accounts cannot be created from this surface.",
+    userPatchEmpty: "No updatable fields were supplied.",
+  },
 };

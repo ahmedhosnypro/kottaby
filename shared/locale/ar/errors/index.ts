@@ -22,4 +22,12 @@ export const errorsAr: ErrorsLabels = {
   applicantNotFound: "لم يتم العثور على طلب التقديم كمعلم قرآن.",
   applicantCooldownActive: "يمكنك إعادة التقديم للتحقق كمعلم قرآن بعد {cooldownUntil}.",
   applicantStatusCorrupt: "تعذر قراءة حالة طلبك. يرجى التواصل مع فريق الدعم.",
+  adminUsers: {
+    userNotFound: "لم يتم العثور على المستخدم.",
+    userAlreadyDeleted: "تم حذف هذا المستخدم بالفعل.",
+    userNotDeleted: "هذا المستخدم ليس محذوفاً.",
+    userSelfDeactivationForbidden: "لا يمكنك حذف حسابك الخاص.",
+    adminRoleCreationForbidden: "لا يمكن إنشاء حسابات المسؤولين من هذه الصفحة.",
+    userPatchEmpty: "لم يتم تقديم أي حقول قابلة للتحديث.",
+  },
 };

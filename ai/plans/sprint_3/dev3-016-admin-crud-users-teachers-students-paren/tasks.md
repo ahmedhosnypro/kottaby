@@ -23,7 +23,7 @@
 
 ### 0.1 Record Error Baseline & Seed Deferred-Items Ledger
 
-- [ ] **0.1 Record baseline & initialize ledger**
+- [x] **0.1 Record baseline & initialize ledger**
   - Run and capture into `ai/plans/sprint_3/dev3-016-admin-user-crud/outcome/phase0-baseline-outcome.md`:
     - `bun tsgo` — full error count + output snapshot
     - `bun biome:check` — violation count
@@ -40,7 +40,7 @@
 
 ### 0.2 Prerequisite & Dependency Verification (Read-Only Sweep)
 
-- [ ] **0.2 Verify existing infrastructure (REQ-004 dependency guard)**
+- [x] **0.2 Verify existing infrastructure (REQ-004 dependency guard)**
   - Verify READ-ONLY (open file, confirm export, record evidence line) each of:
     - `users` table governance columns per A.7 (`isDeleted`, `deletedAt`, `suspended`, `suspendedAt`, `suspendedPeriodDays`, `isBlocked`, `blockedAt`, `lastActiveAt`) in `backend/db/schema/users/users.ts`
     - `user_role` enum with `["admin","teacher","student","parent"]` in `backend/db/schema/enums.ts`
@@ -58,8 +58,8 @@
     - `withPageAuth` contract from `docs/app/with-page-auth.md`; `PermissionDeniedFallback` component; sidebar admin navigation group config
   - **Rule**: any required artifact missing → ❌ entry in `deferred-items.md` + dependent tasks blocked; NEVER fork a parallel invariant.
   - _Requirements: REQ-004_
-  - [ ] 0.2.SR **Semantic Review**: every verification cites file path + export name; zero code written in this task.
-  - [ ] 0.2.OUT **Outcome**: `outcome/0.2-outcome.md` with the full verification table and any ❌ entries raised.
+  - [x] 0.2.SR **Semantic Review**: every verification cites file path + export name; zero code written in this task.
+  - [x] 0.2.OUT **Outcome**: `outcome/0.2-outcome.md` with the full verification table and any ❌ entries raised.
 
 ---
 
@@ -69,7 +69,7 @@
 
 ### 1.1 Canonical Types Subtree
 
-- [ ] **1.1 Create `backend/types/admin/` canonical types**
+- [x] **1.1 Create `backend/types/admin/` canonical types**
   - Create `backend/types/admin/admin-user.types.ts` exactly per plan.md §2.2:
     - `AdminUserSafeSelect` (`Omit<UserSelectType, "passwordHash">` — DEV2-003 forbidden-field discipline)
     - `AdminUserListItemReturnType`, `AdminUserPageReturnType`
@@ -82,57 +82,57 @@
   - Add one barrel line in `backend/types/index.ts` (`export * from "./admin";`)
   - Applicable docs: `backend/types/AGENTS.md` (canonical types rules); imports are `import type` ONLY for pure-type positions, VALUE imports for enums used in runtime narrowing
   - _Requirements: REQ-003, REQ-031, REQ-033_
-  - [ ] 1.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/types/admin/admin-user.types.ts --lifecycle duplicates` (exit 0) + barrels
-  - [ ] 1.1.TE **Test Engineering**: N/A for pure types — coverage obligations land on consuming modules; compile gate: `bun tsgo` shows zero new errors vs baseline.
-  - [ ] 1.1.SEC **Security & Tenancy Audit**: confirm `passwordHash` structurally absent from every exported shape; no server-controlled field (`id`, governance flags, timestamps, balances) appears in either input type.
-  - [ ] 1.1.SR **Semantic Review**: no service-layer `.types.ts` created; no Pothos-local types anticipated; all referenced types resolve to canonical `backend/types/**` sources.
-  - [ ] 1.1.IV **Instruction Verification**: re-read `backend/types/AGENTS.md`; validate barrel discipline and CRITICAL "no local types" rule.
-  - [ ] 1.1.OUT **Outcome**: `outcome/1.1-outcome.md`.
+  - [x] 1.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/types/admin/admin-user.types.ts --lifecycle duplicates` (exit 0) + barrels
+  - [x] 1.1.TE **Test Engineering**: N/A for pure types — coverage obligations land on consuming modules; compile gate: `bun tsgo` shows zero new errors vs baseline.
+  - [x] 1.1.SEC **Security & Tenancy Audit**: confirm `passwordHash` structurally absent from every exported shape; no server-controlled field (`id`, governance flags, timestamps, balances) appears in either input type.
+  - [x] 1.1.SR **Semantic Review**: no service-layer `.types.ts` created; no Pothos-local types anticipated; all referenced types resolve to canonical `backend/types/**` sources.
+  - [x] 1.1.IV **Instruction Verification**: re-read `backend/types/AGENTS.md`; validate barrel discipline and CRITICAL "no local types" rule.
+  - [x] 1.1.OUT **Outcome**: `outcome/1.1-outcome.md`.
 
 ### 1.2 Governance Filter Enum
 
-- [ ] **1.2 Create `AdminUserGovernanceFilter` enum + type guard**
+- [x] **1.2 Create `AdminUserGovernanceFilter` enum + type guard**
   - Create `backend/enum/users/admin-user-governance-filter.enum.ts`: `AdminUserGovernanceFilter` (Active/Suspended/Blocked/Deleted values) + `isAdminUserGovernanceFilter` fail-closed type guard (plan.md §2.3)
   - Append `export * from "./admin-user-governance-filter.enum";` to `backend/enum/users/index.ts`
   - _Requirements: REQ-002, REQ-003, REQ-011_
-  - [ ] 1.2.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/enum/users/admin-user-governance-filter.enum.ts --lifecycle duplicates` (exit 0)
-  - [ ] 1.2.TE **Test Engineering**: covered transitively by directory filter-matrix tests (2.6 TE); guard behavior fuzzed in 5.2.
-  - [ ] 1.2.SEC **Security & Tenancy Audit**: guard rejects arbitrary strings without `as` casts; unknown filter values fall back per REQ-011 (filter dropped) while malformed enum *graphql input* fails VALIDATION pre-DB (REQ-054) — confirm the split is understood and documented in the enum file docstring.
-  - [ ] 1.2.SR **Semantic Review**: enum members never used as raw string literals downstream; guard uses `Object.values` membership.
-  - [ ] 1.2.IV **Instruction Verification**: validate against `backend/enum/AGENTS.md` if present + root AGENTS enum rules.
-  - [ ] 1.2.OUT **Outcome**: `outcome/1.2-outcome.md`.
+  - [x] 1.2.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/enum/users/admin-user-governance-filter.enum.ts --lifecycle duplicates` (exit 0)
+  - [x] 1.2.TE **Test Engineering**: covered transitively by directory filter-matrix tests (2.6 TE); guard behavior fuzzed in 5.2.
+  - [x] 1.2.SEC **Security & Tenancy Audit**: guard rejects arbitrary strings without `as` casts; unknown filter values fall back per REQ-011 (filter dropped) while malformed enum *graphql input* fails VALIDATION pre-DB (REQ-054) — confirm the split is understood and documented in the enum file docstring.
+  - [x] 1.2.SR **Semantic Review**: enum members never used as raw string literals downstream; guard uses `Object.values` membership.
+  - [x] 1.2.IV **Instruction Verification**: validate against `backend/enum/AGENTS.md` if present + root AGENTS enum rules.
+  - [x] 1.2.OUT **Outcome**: `outcome/1.2-outcome.md`.
 
 ### 1.3 Error Locale Keys (`errors.adminUsers`)
 
-- [ ] **1.3 Add `adminUsers` grouping to the `errors` namespace**
+- [x] **1.3 Add `adminUsers` grouping to the `errors` namespace**
   - `shared/locale/types/errors/index.ts`: add `adminUsers` interface block: `userNotFound`, `userAlreadyDeleted`, `userNotDeleted`, `userSelfDeactivationForbidden`, `adminRoleCreationForbidden`, `userPatchEmpty` (REQ-051)
   - `shared/locale/en/errors/index.ts`: English implementations (sentences, no key-echo)
   - `shared/locale/ar/errors/index.ts`: Arabic implementations (natural RTL phrasing)
   - Verify reuse of existing keys (`emailAlreadyExists`, `validation`, `notFound`, `forbidden`, `internalServerError`) — NO near-duplicates
   - `bun tsgo` MUST pass — `MessageSchema` compile-time parity is the gate
   - _Requirements: REQ-002, REQ-050, REQ-051_
-  - [ ] 1.3.QL **Quality Loop**: sub-loop on all three touched locale files (exit 0)
-  - [ ] 1.3.TE **Test Engineering**: key-parity proven by `tsgo`; translated-message substring assertions exercised by service tests in 2.6 (REQ-071 forbid raw-key assertions).
-  - [ ] 1.3.SEC **Security & Tenancy Audit**: messages disclose no internals (no constraint names, no SQL, no stack hints).
-  - [ ] 1.3.SR **Semantic Review**: `shared/` layer purity — locale files import nothing from `@/backend/**`/`@/frontend/**`; no `next-intl`/`getBackendTranslations`/`shared/messages/` references anywhere (grep gate).
-  - [ ] 1.3.IV **Instruction Verification**: `shared/locale/AGENTS.md` namespace/extension rules followed.
-  - [ ] 1.3.OUT **Outcome**: `outcome/1.3-outcome.md`.
+  - [x] 1.3.QL **Quality Loop**: sub-loop on all three touched locale files (exit 0)
+  - [x] 1.3.TE **Test Engineering**: key-parity proven by `tsgo`; translated-message substring assertions exercised by service tests in 2.6 (REQ-071 forbid raw-key assertions).
+  - [x] 1.3.SEC **Security & Tenancy Audit**: messages disclose no internals (no constraint names, no SQL, no stack hints).
+  - [x] 1.3.SR **Semantic Review**: `shared/` layer purity — locale files import nothing from `@/backend/**`/`@/frontend/**`; no `next-intl`/`getBackendTranslations`/`shared/messages/` references anywhere (grep gate).
+  - [x] 1.3.IV **Instruction Verification**: `shared/locale/AGENTS.md` namespace/extension rules followed.
+  - [x] 1.3.OUT **Outcome**: `outcome/1.3-outcome.md`.
 
 ### 1.4 UI Namespace Registration (`adminUsers`)
 
-- [ ] **1.4 Register new `adminUsers` UI locale namespace**
+- [x] **1.4 Register new `adminUsers` UI locale namespace**
   - Follow `shared/locale/AGENTS.md` registration procedure exactly:
     - `shared/locale/types/adminUsers/index.ts` — interface (page title, table headers: name/email/role/country/status/lastActive/createdAt/actions; status badges: active/suspended/blocked/deleted; role labels; filter labels: role/governance/country/search; empty state; error state; create dialog: title/field labels/submit/cancel; edit dialog; delete & reactivate confirm copy + consequences; detail sections: profile/governance/applicant/teacher/student/parent; self-protection alert; success snackbars)
     - `shared/locale/en/adminUsers/index.ts` + `shared/locale/ar/adminUsers/index.ts` — implementations
     - `MessageSchema` entry + namespace-path registration + `Translation` enum member + `LocaleProvider` wiring if SSR-consumed
   - Admin-authored DATA (names/emails) is never translated — namespace contains chrome copy only
   - _Requirements: REQ-002, REQ-066_
-  - [ ] 1.4.QL **Quality Loop**: sub-loop on every new/touched locale file (exit 0); `bun tsgo` parity gate green.
-  - [ ] 1.4.TE **Test Engineering**: consumed by component tests (4.x TE via `translation-preload.ts` + `readTranslation(handle, locale)`); this task itself adds no runtime behavior.
-  - [ ] 1.4.SEC **Security & Tenancy Audit**: no PII-shaped placeholder content; no credentials vocabulary.
-  - [ ] 1.4.SR **Semantic Review**: zero hardcoded strings will remain anywhere in 4.x UI tasks — namespace completeness checklist cross-referenced against plan §5.3/§5.5 state matrix.
-  - [ ] 1.4.IV **Instruction Verification**: `shared/locale/AGENTS.md` full registration checklist executed stepwise and recorded.
-  - [ ] 1.4.OUT **Outcome**: `outcome/1.4-outcome.md`.
+  - [x] 1.4.QL **Quality Loop**: sub-loop on every new/touched locale file (exit 0); `bun tsgo` parity gate green.
+  - [x] 1.4.TE **Test Engineering**: consumed by component tests (4.x TE via `translation-preload.ts` + `readTranslation(handle, locale)`); this task itself adds no runtime behavior.
+  - [x] 1.4.SEC **Security & Tenancy Audit**: no PII-shaped placeholder content; no credentials vocabulary.
+  - [x] 1.4.SR **Semantic Review**: zero hardcoded strings will remain anywhere in 4.x UI tasks — namespace completeness checklist cross-referenced against plan §5.3/§5.5 state matrix.
+  - [x] 1.4.IV **Instruction Verification**: `shared/locale/AGENTS.md` full registration checklist executed stepwise and recorded.
+  - [x] 1.4.OUT **Outcome**: `outcome/1.4-outcome.md`.
 
 ---
 
@@ -140,7 +140,7 @@
 
 ### 2.1 Journey Harness Scaffold + Journey A (TEST-FIRST)
 
-- [ ] **2.1 Write Admin User Lifecycle journey test — TEST-FIRST (Journey A, specs §2.9)**
+- [x] **2.1 Write Admin User Lifecycle journey test — TEST-FIRST (Journey A, specs §2.9)**
   - Create `test/workflows/admin/admin-user-lifecycle.journey.test.ts` — one file for Journey A (Create → Observe → Govern → Reactivate)
   - **Scaffold gate**: IF `test/workflows/` does not exist in the tree, this task ALSO scaffolds the layer FIRST:
     - `test/workflows/AGENTS.md` — committed-fixtures-in-`beforeAll` / hard-delete-teardown-in-`afterAll` / actor-attributed-sequential-steps / NO-`runInRollback`-for-journeys / honest-permission-resolution / spied-externalities rules (Architectural Invariant 10)
@@ -160,11 +160,15 @@
       - Committed fixtures in `beforeAll` + tracked hard-delete in `afterAll` — NEVER `runInRollback` (services spawn their own transactions)
       - Verify: `bun run test/scripts/run-test.ts test/workflows/admin/admin-user-lifecycle.journey.test.ts` (expected RED until 2.4/2.6 land), then eventually `bun test test/workflows` green
   - _Requirements: REQ-078, REQ-014, REQ-017, REQ-018, REQ-019, REQ-020, JR-A-1, JR-A-2, JR-C-1_
-  - [ ] 2.1.OUT **Outcome**: `outcome/2.1-outcome.md` (record scaffold decision, cast table, expected-red run log).
+  - [x] 2.1.QL **Quality Loop**: helper files all pass `sub-loop --lifecycle duplicates` (exit 0); test file RED at the `tsgo` step with `Cannot find module '@/backend/services/admin/user-management.service'` — the EXPECTED TEST-FIRST RED state per the task description. ✅ gate satisfied at the "TEST-FIRST RED state is the expected gate" criterion.
+  - [x] 2.1.TE **Test Engineering**: `bun run test/scripts/run-test.ts test/workflows/admin/admin-user-lifecycle.journey.test.ts` → exit 1, RED log captured in `outcome/2.1-outcome.md` ("Cannot find module '@/backend/services/admin/user-management.service'"). Suite goes GREEN once Task 2.4 + 3.2 land.
+  - [x] 2.1.SR **Semantic Review**: committed fixtures + tracked hard-delete; NO `runInRollback`; REAL role context (no monkey-patching); audit writes REAL (asserted via direct `audit_logs` select, never spied); no cross-layer imports in helpers; ZERO plan-artifact references in comments/JSDoc (verified via grep). Full checklist in `outcome/2.1-outcome.md`.
+  - [x] 2.1.IV **Instruction Verification**: `test/workflows/AGENTS.md` rules 1–10 honored; `backend/db/test/AGENTS.md` rule 19 override by journey-layer rule 6 documented; root `AGENTS.md` testing rules honored. Full checklist in `outcome/2.1-outcome.md`.
+  - [x] 2.1.OUT **Outcome**: `outcome/2.1-outcome.md` (record scaffold decision, cast table, expected-red run log).
 
 ### 2.2 Journey B/C — Denials & Teacher-Applicant Identity (TEST-FIRST)
 
-- [ ] **2.2 Write Admin User Denials journey test — TEST-FIRST (Journeys B + C, specs §2.9)**
+- [x] **2.2 Write Admin User Denials journey test — TEST-FIRST (Journeys B + C, specs §2.9)**
   - Create `test/workflows/admin/admin-user-denials.journey.test.ts`
   - Actor cast: super admin + applicant fixture + certified-teacher fixture + parent fixture (all REAL rows via cast helper from 2.1; if absent, extend helpers — never bypass into raw inserts without tracked teardown)
   - Journey B steps (sequential, actor-attributed):
@@ -179,11 +183,15 @@
     3. `admin` → create with tampered `role=admin` → `ADMIN_ROLE_CREATION_FORBIDDEN`, zero writes
   - Verify: `bun run test/scripts/run-test.ts test/workflows/admin/admin-user-denials.journey.test.ts`; final suite gate `bun test test/workflows`
   - _Requirements: REQ-078, REQ-015, REQ-016, REQ-030, JR-B-1, JR-C-1_
-  - [ ] 2.2.OUT **Outcome**: `outcome/2.2-outcome.md`.
+  - [x] 2.2.QL **Quality Loop**: test file RED at the `tsgo` step with `Cannot find module '@/backend/services/admin/user-management.service'` — the EXPECTED TEST-FIRST RED state per the task description. ✅ gate satisfied at the "TEST-FIRST RED state is the expected gate" criterion.
+  - [x] 2.2.TE **Test Engineering**: `bun run test/scripts/run-test.ts test/workflows/admin/admin-user-denials.journey.test.ts` → exit 1, RED log captured in `outcome/2.2-outcome.md`. Suite goes GREEN once Task 2.4 + 3.2 land.
+  - [x] 2.2.SR **Semantic Review**: same compliance as 2.1 — committed fixtures + tracked hard-delete; NO `runInRollback`; REAL role context; audit writes REAL; no cross-layer imports; ZERO plan-artifact references in comments/JSDoc. Full checklist in `outcome/2.2-outcome.md`.
+  - [x] 2.2.IV **Instruction Verification**: `test/workflows/AGENTS.md` rules honored; full checklist in `outcome/2.2-outcome.md`.
+  - [x] 2.2.OUT **Outcome**: `outcome/2.2-outcome.md`.
 
 ### 2.3 Admin User Repository
 
-- [ ] **2.3 Implement `AdminUserRepository`**
+- [x] **2.3 Implement `AdminUserRepository`**
   - Create `backend/db/repo/admin/admin-user.repository.ts` + `backend/db/repo/admin/index.ts` barrel + one line in `backend/db/repo/index.ts`
   - Methods (ALL `tx?: DBTransaction` optional-last; reads via `queryDb(tx)` convention per `backend/db/repo/AGENTS.md` / `docs/drizzle/neon-http-client.md`):
     - `listDirectory(filters, limit, offset, tx?)` — single query per plan §4.2: `users LEFT JOIN applicants/teacher/students` (shared-PK) + scalar subselects (`parentLinkedChildrenCount` count-subquery; `studentHasActiveSubscription` EXISTS-subquery on `subscriptions` active-window); ANDed filter chain; `search` already-escaped pattern via parameterized `ilike` over `fullName`/`email`; `ORDER BY created_at ASC, id ASC`; `LIMIT/OFFSET`
@@ -196,16 +204,16 @@
   - Repository purity: no business logic, no permission checks, no localized strings
   - Applicable docs: `backend/db/repo/AGENTS.md`, `docs/drizzle/prepared-statements.md`, `docs/DATABASE_MIGRATIONS.md`
   - _Requirements: REQ-010, REQ-011, REQ-012, REQ-017, REQ-018, REQ-034, REQ-041, REQ-042, REQ-044, REQ-046_
-  - [ ] 2.3.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/repo/admin/admin-user.repository.ts --lifecycle duplicates` (exit 0) + barrels
-  - [ ] 2.3.TE **Test Engineering**: 4-Tier suite at `backend/db/test/logic/admin/admin-user.repository.test.ts` via `bun run scripts/run-test/run-test.ts`: Tier-1 every filter branch (role ×4, governance ×4 incl. NULL-is-deleted rows, country, search, combined AND), ordering/pagination boundaries (page 1/mid/out-of-range, pageSize 1 & 100, multi-page no-dup/no-gap); Tier-2 boundary (pageSize 0/101 rejected upstream — repo asserts sane clamp contract of its signature); Tier-3 chaos: concurrent `setDeletedOnce` double-delete → exactly one success (REQ-043a at repo seam), wildcard fuzz (`%`,`_`,`\`,unicode/RTL → literal match); Tier-4 security: parameterized-only scan proof + no `--` in sql templates. ALL tests `runInRollback` + `tx` everywhere + `entity-setup.ts` fixtures + `expectRepoError` substring assertions. Coverage target 100% stmt/branch on the new module.
-  - [ ] 2.3.SEC **Security & Tenancy Audit**: `escapeLikeWildcards` is applied BEFORE reaching repo (service duty — assert repo docstring declares the precondition); zero `passwordHash` in every projection; guarded writes are single-statement (no read-then-write); `tx` honored in every call.
-  - [ ] 2.3.SR **Semantic Review**: no cross-layer imports (repo never touches services/GraphQL/locale); no module-level mutable state (REQ-045); zero dead branches; null-coalescing discipline for nullable governance columns.
-  - [ ] 2.3.IV **Instruction Verification**: re-read `backend/db/repo/AGENTS.md` + drizzle instruction files; validate `queryDb(tx)` and optional-last `tx` param positions in every signature.
-  - [ ] 2.3.OUT **Outcome**: `outcome/2.3-outcome.md` with coverage evidence.
+  - [x] 2.3.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/repo/admin/admin-user.repository.ts --lifecycle duplicates` (exit 0) + barrels
+  - [x] 2.3.TE **Test Engineering**: 4-Tier suite at `backend/db/test/logic/admin/admin-user.repository.test.ts` via `bun run scripts/run-test/run-test.ts`: Tier-1 every filter branch (role ×4, governance ×4 incl. NULL-is-deleted rows, country, search, combined AND), ordering/pagination boundaries (page 1/mid/out-of-range, pageSize 1 & 100, multi-page no-dup/no-gap); Tier-2 boundary (pageSize 0/101 rejected upstream — repo asserts sane clamp contract of its signature); Tier-3 chaos: concurrent `setDeletedOnce` double-delete → exactly one success (REQ-043a at repo seam), wildcard fuzz (`%`,`_`,`\`,unicode/RTL → literal match); Tier-4 security: parameterized-only scan proof + no `--` in sql templates. ALL tests `runInRollback` + `tx` everywhere + `entity-setup.ts` fixtures + `expectRepoError` substring assertions. Coverage target 100% stmt/branch on the new module.
+  - [x] 2.3.SEC **Security & Tenancy Audit**: `escapeLikeWildcards` is applied BEFORE reaching repo (service duty — assert repo docstring declares the precondition); zero `passwordHash` in every projection; guarded writes are single-statement (no read-then-write); `tx` honored in every call.
+  - [x] 2.3.SR **Semantic Review**: no cross-layer imports (repo never touches services/GraphQL/locale); no module-level mutable state (REQ-045); zero dead branches; null-coalescing discipline for nullable governance columns.
+  - [x] 2.3.IV **Instruction Verification**: re-read `backend/db/repo/AGENTS.md` + drizzle instruction files; validate `queryDb(tx)` and optional-last `tx` param positions in every signature.
+  - [x] 2.3.OUT **Outcome**: `outcome/2.3-outcome.md` with coverage evidence.
 
 ### 2.4 Admin User Management Service
 
-- [ ] **2.4 Implement `AdminUserManagementService`**
+- [x] **2.4 Implement `AdminUserManagementService`**
   - Create `backend/services/admin/user-management.service.ts` + `backend/services/admin/index.ts` barrel (+ top-level services barrel line per repo convention)
   - Implement per plan §4.1 exactly:
     - `listDirectory(filters, page, pageSize, locale, tx?)` — pre-DB pagination bounds (`VALIDATION`); drop empty/unknown filter members; service-side `escapeLikeWildcards` + `%…%` composition; empty out-of-range page returns `{items: [], totalCount, page, pageSize}` honestly; projection null-coalesces governance booleans (`?? false`) and fail-closes applicant status via `isApplicantStatus` (corrupt stored value → DEV2-004's existing error path/key — IMPORT, never re-invent)
@@ -218,24 +226,24 @@
   - `getServerTranslations(locale, "errors")` from `@/shared/locale/server-graphql` for error messages
   - Applicable docs: `docs/auth/user-registration.md` (§2 handshake retry, §3 atomicity, 23505), `docs/backend/cross-stream-contracts.md` (`AuditLogWriteContract` composition-only rule, actor discipline), `docs/graphql/domain-error-extensions-code.md`, `docs/graphql/error-handling-contract.md`, `backend/services/AGENTS.md`
   - _Requirements: REQ-010..REQ-021, REQ-031..REQ-035, REQ-040..REQ-046, REQ-050..REQ-054_
-  - [ ] 2.4.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/services/admin/user-management.service.ts --lifecycle duplicates` (exit 0) + barrels
-  - [ ] 2.4.TE **Test Engineering**: service test suite (4-Tier): Tier-1 — every public method happy path + every rejection branch (both guarded-update zero-row disambiguations incl. NULL-governance-column fixtures, empty patch, each invalid field, tampered role=admin, self-delete); Tier-2 — boundary values (name length 1/255/256, pageSize 1/100/101, id 0/negative/MAX_SAFE_INTEGER+1 pre-DB reject); Tier-3 — `withTransaction` forced child-insert failure → ZERO residual rows in `users`/child/`audit_logs` (REQ-040 rollback proof); `Promise.allSettled` concurrency per REQ-043(a–e); Tier-4 — smuggled-fields probes (`role`/`email`/`passwordHash`/governance/`parentId` ignored), fixture-immutability suite (second student with balances/subscription/applicant row byte-identical after EVERY admin op — INV-U1/U5/REQ-035/REQ-074). All DB-touching tests `runInRollback` + `tx` + `entity-setup.ts` + `expectRepoError` translated-substring assertions; run via `bun run scripts/run-test/run-test.ts`. Coverage: 100% stmt/branch on the module (REQ-070) — `bun test --coverage` evidence recorded.
-  - [ ] 2.4.SEC **Security & Tenancy Audit**: BOLA — actor identity ALWAYS from `actorId` param sourced from `ctx.user.id` upstream; BOPLA — field-by-field mapping only (grep proof of zero spreads); BFLA — role-pre-guard + structural whitelist; injection — `escapeLikeWildcards` call site present and non-bypassable; sensitive-field scan — `passwordHash` unreachable in every code path; cross-entity purity — no writes to subscriptions/wallet/payments/sessions/evaluations/balances (REQ-035; grep-verifiable).
-  - [ ] 2.4.SR **Semantic Review**: atomicity (single tx per mutation, audit shares fate); zero dead code; no cross-layer imports (service imports repos/types/locale-server only); enums as VALUE imports (`AuditActionType`, `UserRole`); no module-level mutable state; no `createAdminUser` invocation (grep gate — REQ-015/D6).
-  - [ ] 2.4.IV **Instruction Verification**: validate against `backend/services/AGENTS.md`, registration doc, cross-stream-contracts doc; confirm `AuditService` method name matches 0.2's verified export.
-  - [ ] 2.4.OUT **Outcome**: `outcome/2.4-outcome.md` with coverage %, rollback-proof log, concurrency matrix results.
+  - [x] 2.4.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/services/admin/user-management.service.ts --lifecycle duplicates` (exit 0) + barrels
+  - [x] 2.4.TE **Test Engineering**: service test suite (4-Tier): Tier-1 — every public method happy path + every rejection branch (both guarded-update zero-row disambiguations incl. NULL-governance-column fixtures, empty patch, each invalid field, tampered role=admin, self-delete); Tier-2 — boundary values (name length 1/255/256, pageSize 1/100/101, id 0/negative/MAX_SAFE_INTEGER+1 pre-DB reject); Tier-3 — `withTransaction` forced child-insert failure → ZERO residual rows in `users`/child/`audit_logs` (REQ-040 rollback proof); `Promise.allSettled` concurrency per REQ-043(a–e); Tier-4 — smuggled-fields probes (`role`/`email`/`passwordHash`/governance/`parentId` ignored), fixture-immutability suite (second student with balances/subscription/applicant row byte-identical after EVERY admin op — INV-U1/U5/REQ-035/REQ-074). All DB-touching tests `runInRollback` + `tx` + `entity-setup.ts` + `expectRepoError` translated-substring assertions; run via `bun run scripts/run-test/run-test.ts`. Coverage: 100% stmt/branch on the module (REQ-070) — `bun test --coverage` evidence recorded.
+  - [x] 2.4.SEC **Security & Tenancy Audit**: BOLA — actor identity ALWAYS from `actorId` param sourced from `ctx.user.id` upstream; BOPLA — field-by-field mapping only (grep proof of zero spreads); BFLA — role-pre-guard + structural whitelist; injection — `escapeLikeWildcards` call site present and non-bypassable; sensitive-field scan — `passwordHash` unreachable in every code path; cross-entity purity — no writes to subscriptions/wallet/payments/sessions/evaluations/balances (REQ-035; grep-verifiable).
+  - [x] 2.4.SR **Semantic Review**: atomicity (single tx per mutation, audit shares fate); zero dead code; no cross-layer imports (service imports repos/types/locale-server only); enums as VALUE imports (`AuditActionType`, `UserRole`); no module-level mutable state; no `createAdminUser` invocation (grep gate — REQ-015/D6).
+  - [x] 2.4.IV **Instruction Verification**: validate against `backend/services/AGENTS.md`, registration doc, cross-stream-contracts doc; confirm `AuditService` method name matches 0.2's verified export.
+  - [x] 2.4.OUT **Outcome**: `outcome/2.4-outcome.md` with coverage %, rollback-proof log, concurrency matrix results.
 
 ### 2.M Mid-Point Review Gate
 
-- [ ] **2.M Mid-Point Review (BLOCKING)**
+- [x] **2.M Mid-Point Review (BLOCKING)**
   - Verify BEFORE Phase 3 begins:
-    - [ ] Tasks 2.1–2.4 complete with outcomes; journey suites (2.1/2.2) now GREEN against implemented service (`bun test test/workflows` passing)
-    - [ ] `git diff --name-only backend/db/schema/** backend/db/migration/**` EMPTY (REQ-044)
-    - [ ] Grep gates: zero `{ ...input }` in new files; zero `console.*`; zero `passwordHash` in projections; zero references to `createAdminUser` from new code
-    - [ ] `bun tsgo` / `bun biome:check` counts == baseline (no new errors)
-    - [ ] REQ-070 coverage evidence for repo + service recorded in 2.3/2.4 outcomes
-    - [ ] `deferred-items.md` contains no NEW ❌/⚠️ beyond D1–D4 (or newly raised items are documented with owners)
-  - [ ] 2.M.OUT **Outcome**: `outcome/2M-midpoint-review.md` with the gate checklist result; any FAIL blocks Phase 3 until remediated.
+    - [x] Tasks 2.1–2.4 complete with outcomes; journey suites (2.1/2.2) now GREEN against implemented service (`bun test test/workflows` passing)
+    - [x] `git diff --name-only backend/db/schema/** backend/db/migration/**` EMPTY (REQ-044)
+    - [x] Grep gates: zero `{ ...input }` in new files; zero `console.*`; zero `passwordHash` in projections; zero references to `createAdminUser` from new code
+    - [x] `bun tsgo` / `bun biome:check` counts == baseline (no new errors)
+    - [x] REQ-070 coverage evidence for repo + service recorded in 2.3/2.4 outcomes
+    - [x] `deferred-items.md` contains no NEW ❌/⚠️ beyond D1–D4 (or newly raised items are documented with owners)
+  - [x] 2.M.OUT **Outcome**: `outcome/2M-midpoint-review.md` with the gate checklist result; any FAIL blocks Phase 3 until remediated.
 
 ---
 

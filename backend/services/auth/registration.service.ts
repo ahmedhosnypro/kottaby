@@ -28,7 +28,6 @@
  * hardcoded strings, never `console.*` (uses `logger.logDomainError`).
  */
 import { randomUUID } from "node:crypto";
-import { db } from "@/backend/db";
 import {
   AdminRepository,
   ApplicantRepository,
@@ -39,6 +38,7 @@ import {
 import { Gender } from "@/backend/enum/users/gender.enum";
 import { UserRole } from "@/backend/enum/users/user-role.enum";
 import { hashPassword } from "@/backend/lib/auth/password";
+import { withTransaction } from "@/backend/lib/db/with-transaction";
 import { ConflictError, translateDbError, ValidationError } from "@/backend/lib/errors";
 import { logger } from "@/backend/lib/logger";
 import { RecitationCatalogService } from "@/backend/services/shared/recitation-catalog.service";
@@ -115,23 +115,6 @@ function isUniqueViolation(error: unknown): boolean {
     current = (current as { cause?: unknown }).cause;
   }
   return false;
-}
-
-/**
- * Runs `fn` inside a transaction. If `outerTx` is provided (test path), opens
- * a SAVEPOINT on the outer transaction — failures roll back only the
- * savepoint, leaving the outer transaction usable for further queries. If
- * `outerTx` is undefined (production path), opens a new top-level
- * `db.transaction`.
- */
-async function withTransaction<T>(
-  outerTx: DBTransaction | undefined,
-  fn: (tx: DBTransaction) => Promise<T>
-): Promise<T> {
-  if (outerTx) {
-    return outerTx.transaction(fn);
-  }
-  return db.transaction(fn);
 }
 
 export namespace RegistrationService {

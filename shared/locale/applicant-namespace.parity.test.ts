@@ -124,6 +124,15 @@ describe("cooldown placeholder pin — {cooldownUntil} only, identical name in B
       [applicantAr, applicantEn],
     ] as const) {
       for (const key of Object.keys(localeMapAr)) {
+        // Grouped sub-blocks (object-valued slots) are skipped here — their
+        // nested leaves never carry ICU placeholders in this pair, so they
+        // cannot drift on placeholder NAMES; leaf-key parity itself is
+        // enforced by the compile-time `ErrorsLabels`/`ApplicantLabels`
+        // typing (tsgo belt #1) and the top-level key-set assertion above.
+        const candidate = Reflect.get(localeMapAr, key);
+        if (typeof candidate !== "string") {
+          continue;
+        }
         const value = nonEmptyLabelOf(localeMapAr, key, "ar");
         const arNames = icuPlaceholdersOf(value);
         const enNames = icuPlaceholdersOf(nonEmptyLabelOf(localeMapEn, key, "en"));
