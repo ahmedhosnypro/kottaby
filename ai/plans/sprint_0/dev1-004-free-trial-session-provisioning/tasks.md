@@ -23,7 +23,7 @@
 
 # Phase 0 — Pre-Implementation Baseline
 
-- [ ] **0.1 Record Error Baseline & Initialize Deferred-Items Ledger**
+- [x] **0.1 Record Error Baseline & Initialize Deferred-Items Ledger**
   - Run baseline suite and capture counts into `ai/plans/dev1-004-free-trial-session-provisioning/outcome/0.1-baseline-outcome.md`:
     - `bun tsgo` → record error count
     - `bun biome:check` → record diagnostic count
@@ -34,7 +34,7 @@
   - Record `git rev-parse HEAD` and `git diff --name-only` baseline snapshot in the outcome file (used by REQ-076 deviation accounting).
   - _Requirements: REQ-001, REQ-076, REQ-083_
 
-- [ ] **0.2 Prerequisite & Blocker Verification (DEV1-002 Dependency Gate)**
+- [x] **0.2 Prerequisite & Blocker Verification (DEV1-002 Dependency Gate)**
   - Verify DEV1-002/DEV1-003 artifacts exist and are current:
     - `backend/services/auth/registration.service.ts` — `registerUser` + `createRoleChild` + `withTransaction(outerTx)` SAVEPOINT pattern
     - `backend/db/repo/students/student.repository.ts` — `createForRegistration` + handshake retry loop
@@ -52,7 +52,7 @@
 
 # Phase 1 — Types, Enums & Database Schema
 
-- [ ] **1.1 Add Trial Columns & CHECK Constraint to `students` Table (REQ-010, REQ-035)**
+- [x] **1.1 Add Trial Columns & CHECK Constraint to `students` Table (REQ-010, REQ-035)**
   - Files to modify:
     - `backend/db/schema/students/students.ts`
   - Changes:
@@ -68,27 +68,27 @@
   - Notes: new column is `NOT NULL` (stricter inference than existing balance lanes): `StudentSelectType.balanceTrial: number`, `StudentInsertType.balanceTrial?: number`. No inline `--` comments inside any `sql`` template`. No new indexes (single-row PK lookups only).
   - Applicable instruction files: `backend/db/schema/AGENTS.md`, `docs/DATABASE_MIGRATIONS.md`
   - _Requirements: REQ-010, REQ-035, REQ-003_
-  - [ ] 1.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/schema/students/students.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 1.1.TE **Test Engineering**: Type-flow smoke test — `bun tsgo` confirms `StudentSelectType`/`StudentInsertType` now carry `balanceTrial`/`trialGrantedAt` with zero consumer breakage; `bun test` on existing students repo suite remains green.
-  - [ ] 1.1.SEC **Security & Tenancy Audit**: Confirm CHECK constraint is declared at table level (defense-in-depth, REQ-035); confirm no client-reachable input path can name these columns (they are server-derived only — gate re-verified in 3.1.SEC); no tenant filter applicable (single-tenant schema).
-  - [ ] 1.1.SR **Semantic Review**: Column names match plan exactly; default `0` present; marker nullable with no default; no drift between column JS names and snake_case SQL names; zero dead code.
-  - [ ] 1.1.IV **Instruction Verification**: Re-read `backend/db/schema/AGENTS.md`; confirm schema discipline (no custom SQL migration file authored).
+  - [x] 1.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/schema/students/students.ts --lifecycle duplicates` (exit code 0)
+  - [x] 1.1.TE **Test Engineering**: Type-flow smoke test — `bun tsgo` confirms `StudentSelectType`/`StudentInsertType` now carry `balanceTrial`/`trialGrantedAt` with zero consumer breakage; `bun test` on existing students repo suite remains green.
+  - [x] 1.1.SEC **Security & Tenancy Audit**: Confirm CHECK constraint is declared at table level (defense-in-depth, REQ-035); confirm no client-reachable input path can name these columns (they are server-derived only — gate re-verified in 3.1.SEC); no tenant filter applicable (single-tenant schema).
+  - [x] 1.1.SR **Semantic Review**: Column names match plan exactly; default `0` present; marker nullable with no default; no drift between column JS names and snake_case SQL names; zero dead code.
+  - [x] 1.1.IV **Instruction Verification**: Re-read `backend/db/schema/AGENTS.md`; confirm schema discipline (no custom SQL migration file authored).
   - Outcome: `outcome/1.1-schema-columns-outcome.md`
 
-- [ ] **1.2 Apply Schema via `bun run db push` (REQ-043)**
+- [x] **1.2 Apply Schema via `bun run db push` (REQ-043)**
   - Steps:
     1. `bun run db push` — capture full push output in the outcome file. **`db reset` / `db cleanGenerate` are permanently disabled; never run them.**
     2. Verify live DB: `SELECT ... FROM information_schema.check_constraints WHERE constraint_name = 'students_balance_trial_check'` present via a rollback-wrapped probe.
   - Applicable instruction files: `docs/DATABASE_MIGRATIONS.md`, `db/AGENTS.md` (if present)
   - _Requirements: REQ-010, REQ-035, REQ-043_
-  - [ ] 1.2.QL **Quality Loop**: n/a (push-only task, no file edits) — record in outcome.
-  - [ ] 1.2.TE **Test Engineering**: DB-level constraint live-check (happy path deferred to 2.1.TE): insert probe with `balance_trial = 0` succeeds; probe confirmed inside `runInRollback`.
-  - [ ] 1.2.SEC **Security & Tenancy Audit**: Confirm push applied to dev database only; no production/data-mutation semantics; constraint name stable for future audit queries.
-  - [ ] 1.2.SR **Semantic Review**: Drizzle schema and runtime code landing in the same commit set (anti-drift, REQ-043).
-  - [ ] 1.2.IV **Instruction Verification**: Validate against `docs/DATABASE_MIGRATIONS.md` push-only rule.
+  - [x] 1.2.QL **Quality Loop**: n/a (push-only task, no file edits) — record in outcome.
+  - [x] 1.2.TE **Test Engineering**: DB-level constraint live-check (happy path deferred to 2.1.TE): insert probe with `balance_trial = 0` succeeds; probe confirmed inside `runInRollback`.
+  - [x] 1.2.SEC **Security & Tenancy Audit**: Confirm push applied to dev database only; no production/data-mutation semantics; constraint name stable for future audit queries.
+  - [x] 1.2.SR **Semantic Review**: Drizzle schema and runtime code landing in the same commit set (anti-drift, REQ-043).
+  - [x] 1.2.IV **Instruction Verification**: Validate against `docs/DATABASE_MIGRATIONS.md` push-only rule.
   - Outcome: `outcome/1.2-db-push-outcome.md`
 
-- [ ] **1.3 Create Shared Constant `FREE_TRIAL_SESSION_COUNT` (REQ-014)**
+- [x] **1.3 Create Shared Constant `FREE_TRIAL_SESSION_COUNT` (REQ-014)**
   - Files to create/modify:
     - `shared/constants/free-trial.constants.ts` (NEW)
     - `shared/constants/index.ts` (append barrel line)
@@ -101,14 +101,14 @@
     Barrel: append `export * from "./free-trial.constants";` (relative per barrel rules).
   - Applicable instruction files: `shared/AGENTS.md`
   - _Requirements: REQ-014, REQ-060 (shared-layer isolation)_
-  - [ ] 1.3.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts shared/constants/free-trial.constants.ts --lifecycle duplicates` and run once for `shared/constants/index.ts` (exit code 0 each)
-  - [ ] 1.3.TE **Test Engineering**: Compile check (`bun tsgo`) confirms importability from both backend and shared test contexts; value `=== 1` asserted later in 2.2.TE role-matrix suite.
-  - [ ] 1.3.SEC **Security & Tenancy Audit**: Constant is compile-time only — no env var, no admin-secret surface, not client-overridable (BOPLA: ignores any smuggled `trialCount`).
-  - [ ] 1.3.SR **Semantic Review**: No imports in the constants file (shared-layer isolation); docstring references FR-2.6/REQ-014; no magic literal duplicated elsewhere (grep `balance_trial + 1`-style literals → zero).
-  - [ ] 1.3.IV **Instruction Verification**: Validate against `shared/AGENTS.md` isolation + barrel ordering rules.
+  - [x] 1.3.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts shared/constants/free-trial.constants.ts --lifecycle duplicates` and run once for `shared/constants/index.ts` (exit code 0 each)
+  - [x] 1.3.TE **Test Engineering**: Compile check (`bun tsgo`) confirms importability from both backend and shared test contexts; value `=== 1` asserted later in 2.2.TE role-matrix suite.
+  - [x] 1.3.SEC **Security & Tenancy Audit**: Constant is compile-time only — no env var, no admin-secret surface, not client-overridable (BOPLA: ignores any smuggled `trialCount`).
+  - [x] 1.3.SR **Semantic Review**: No imports in the constants file (shared-layer isolation); docstring references FR-2.6/REQ-014; no magic literal duplicated elsewhere (grep `balance_trial + 1`-style literals → zero).
+  - [x] 1.3.IV **Instruction Verification**: Validate against `shared/AGENTS.md` isolation + barrel ordering rules.
   - Outcome: `outcome/1.3-shared-constant-outcome.md`
 
-- [ ] **1.4 Add Localized `trialAlreadyGranted` Error Key (REQ-051)**
+- [x] **1.4 Add Localized `trialAlreadyGranted` Error Key (REQ-051)**
   - Files to modify:
     - `shared/locale/types/errors/index.ts` — add to the errors `MessageSchema` interface:
       ```ts
@@ -121,18 +121,18 @@
   - Notes: the `errors` namespace already exists — **no namespace registration needed**; if the `studentTrial` grouping object is absent in any file, create it only in that file. Confirm locale contract parity across all registered locale contract files per `shared/locale/AGENTS.md`; verify the compile-time key-type test (if present in the locale test harness) stays green.
   - Applicable instruction files: `shared/locale/AGENTS.md`
   - _Requirements: REQ-051, REQ-002, REQ-050_
-  - [ ] 1.4.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts shared/locale/types/errors/index.ts --lifecycle duplicates` (repeat for the `en` and `ar` files — exit code 0 each)
-  - [ ] 1.4.TE **Test Engineering**: Property-access resolution test: `await getServerTranslations("en", "errors")` → `.studentTrial.trialAlreadyGranted` equals expected string; same for `"ar"`; `t("...")` function-call form MUST NOT be used.
-  - [ ] 1.4.SEC **Security & Tenancy Audit**: Error copy is generic — leaks no account state, ownership, or soft-delete internals (private-data-disclosure review).
-  - [ ] 1.4.SR **Semantic Review**: Property access only; English/Arabic contract parity (same key set in both); no hardcoded error string anywhere in backend (grep `trialAlreadyGranted` → only locale files + property access site).
-  - [ ] 1.4.IV **Instruction Verification**: Validate against `shared/locale/AGENTS.md` (type-first, all locales same commit).
+  - [x] 1.4.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts shared/locale/types/errors/index.ts --lifecycle duplicates` (repeat for the `en` and `ar` files — exit code 0 each)
+  - [x] 1.4.TE **Test Engineering**: Property-access resolution test: `await getServerTranslations("en", "errors")` → `.studentTrial.trialAlreadyGranted` equals expected string; same for `"ar"`; `t("...")` function-call form MUST NOT be used.
+  - [x] 1.4.SEC **Security & Tenancy Audit**: Error copy is generic — leaks no account state, ownership, or soft-delete internals (private-data-disclosure review).
+  - [x] 1.4.SR **Semantic Review**: Property access only; English/Arabic contract parity (same key set in both); no hardcoded error string anywhere in backend (grep `trialAlreadyGranted` → only locale files + property access site).
+  - [x] 1.4.IV **Instruction Verification**: Validate against `shared/locale/AGENTS.md` (type-first, all locales same commit).
   - Outcome: `outcome/1.4-i18n-error-key-outcome.md`
 
 ---
 
 # Phase 2 — Repositories & Backend Services
 
-- [ ] **2.1 Implement `StudentRepository.grantFreeTrialOnce` (REQ-012, REQ-041, REQ-042)**
+- [x] **2.1 Implement `StudentRepository.grantFreeTrialOnce` (REQ-012, REQ-041, REQ-042)**
   - Files to modify:
     - `backend/db/repo/students/student.repository.ts` — append new exported method (no new repository file; no changes to existing methods)
     - Test file: `backend/db/repo/students/__tests__/student-grant-free-trial-once.test.ts` (NEW)
@@ -158,20 +158,20 @@
   - Hard rules: single conditional UPDATE (no SELECT-then-UPDATE; TOCTOU window = 0); `tx` optional-last per `backend/db/repo/AGENTS.md`; bound parameters only inside `sql``` — no inline `--` comments; repo throws no domain errors and contains no i18n/permission logic; NOT a Prepared-Statements-2.0 candidate (write, not read).
   - Applicable instruction files: `backend/db/repo/AGENTS.md`, `docs/drizzle/prepared-statements.md`
   - _Requirements: REQ-012, REQ-041, REQ-042, REQ-035_
-  - [ ] 2.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/repo/students/student.repository.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 2.1.TE **Test Engineering** (4-Tier, all inside `runInRollback`, own entities via `entity-setup.ts`, `tx` propagated, `expectRepoError` for failures — **never** `.rejects.toThrow()` inside `runInRollback`):
+  - [x] 2.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/repo/students/student.repository.ts --lifecycle duplicates` (exit code 0)
+  - [x] 2.1.TE **Test Engineering** (4-Tier, all inside `runInRollback`, own entities via `entity-setup.ts`, `tx` propagated, `expectRepoError` for failures — **never** `.rejects.toThrow()` inside `runInRollback`):
     - Tier 1 (branch/stmt): grant on fresh student → returns `true`, `balanceTrial = trialCount`, `trialGrantedAt IS NOT NULL`;
     - Tier 1 (false branch): second call → returns `false`, balance unchanged (no silent no-op confusion — service converts to ConflictError);
     - Tier 2 (boundary): `trialCount = 0` behavior documented/guarded (constant guarantees 1; assert expression arithmetic path);
     - Tier 3 (chaos): nonexistent `studentId` → returns `false`, no row created, no side effects;
     - Tier 4 (security/constraint): direct raw insert with `balance_trial = -1` → `students_balance_trial_check` rejects (REQ-075 via `expectRepoError`);
     - Run: `bun run test/scripts/run-test.ts backend/db/repo/students/__tests__/student-grant-free-trial-once.test.ts`; then `bun test --coverage backend/db/repo/students/` → new method at 100% statement+branch (REQ-070).
-  - [ ] 2.1.SEC **Security & Tenancy Audit**: BOLA — `studentId` is the only identity input (callers server-derived; verified again at 2.3.SEC); BOPLA — set-clause touches exactly two columns, no input spread; tenant — single-tenant by PK; no LIKE/search input (no `escapeLikeWildcards` applicable).
-  - [ ] 2.1.SR **Semantic Review**: repo purity (returns `boolean`, no errors thrown), `tx ?? db` pattern matches neighboring methods, no dead code, no strings, atomic single-statement semantics confirmed by reading final SQL.
-  - [ ] 2.1.IV **Instruction Verification**: Re-validate against `backend/db/repo/AGENTS.md` and `backend/db/test/AGENTS.md`.
+  - [x] 2.1.SEC **Security & Tenancy Audit**: BOLA — `studentId` is the only identity input (callers server-derived; verified again at 2.3.SEC); BOPLA — set-clause touches exactly two columns, no input spread; tenant — single-tenant by PK; no LIKE/search input (no `escapeLikeWildcards` applicable).
+  - [x] 2.1.SR **Semantic Review**: repo purity (returns `boolean`, no errors thrown), `tx ?? db` pattern matches neighboring methods, no dead code, no strings, atomic single-statement semantics confirmed by reading final SQL.
+  - [x] 2.1.IV **Instruction Verification**: Re-validate against `backend/db/repo/AGENTS.md` and `backend/db/test/AGENTS.md`.
   - Outcome: `outcome/2.1-repo-grant-outcome.md`
 
-- [ ] **2.2 Implement `StudentTrialService.grantFreeTrial` Domain Service (REQ-013, REQ-017, REQ-050..052)**
+- [x] **2.2 Implement `StudentTrialService.grantFreeTrial` Domain Service (REQ-013, REQ-017, REQ-050..052)**
   - Files to create:
     - `backend/services/students/student-trial.service.ts` (NEW)
     - `backend/services/students/__tests__/student-trial.service.test.ts` (NEW)
@@ -209,20 +209,20 @@
   - Hard rules: service owns error taxonomy + i18n + logging; no permission gates here (authorization enforced at caller boundary); no `try/catch` swallowing on the happy path (REQ-053); `ConflictError.extensions.code = CONFLICT` per `docs/graphql/domain-error-extensions-code.md`; service-local `.types.ts` PROHIBITED.
   - Applicable instruction files: `backend/services/AGENTS.md`, `docs/graphql/domain-error-extensions-code.md`, `backend/lib/logger` usage docs, `shared/locale/AGENTS.md`
   - _Requirements: REQ-013, REQ-014, REQ-017, REQ-019, REQ-050, REQ-051, REQ-052, REQ-053_
-  - [ ] 2.2.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/services/students/student-trial.service.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 2.2.TE **Test Engineering** (4-Tier, `runInRollback` + `tx` propagation for DB-backed asserts; mock-adapter tier for translation/logger):
+  - [x] 2.2.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/services/students/student-trial.service.ts --lifecycle duplicates` (exit code 0)
+  - [x] 2.2.TE **Test Engineering** (4-Tier, `runInRollback` + `tx` propagation for DB-backed asserts; mock-adapter tier for translation/logger):
     - Tier 1: fresh student (entity-setup) → `grantFreeTrial` resolves; row shows `balanceTrial = FREE_TRIAL_SESSION_COUNT` and non-null `trialGrantedAt`;
     - Tier 1 (re-grant): second invocation → `expectRepoError` catches `ConflictError`; message CONTAINS the *translated en string substring* from 1.4 (never the raw key); `balancedTrial` remains exactly `1` (REQ-074);
     - Tier 2: locale `"ar"` path resolves the Arabic message substring; undefined-locale → default-locale fallback per server-graphql harness behavior;
     - Tier 3: repo failure injected (mock adapter) → error propagates without wrapping, partial state absent;
     - Tier 4: `logger.logDomainError` spy confirms structured context (`code`, `entity: "students"`, `entityId`) exactly once per rejection; confirm no `console.*` in file (grep).
     - Run: `bun run test/scripts/run-test.ts backend/services/students/__tests__/student-trial.service.test.ts`; `bun test --coverage backend/services/students/` → 100% stmt+branch on new file (REQ-070).
-  - [ ] 2.2.SEC **Security & Tenancy Audit**: BFLA — no exported mutation surface (service-internal only, REQ-030); BOLA — identity ONLY from param; BOPLA — count comes EXCLUSIVELY from `FREE_TRIAL_SESSION_COUNT`; verify the conflict message is generic (no private state leak).
-  - [ ] 2.2.SR **Semantic Review**: single entry point (grep confirms this is the only file containing `grantFreeTrialOnce` callers beyond tests); zero plain `new Error(...)`; property-access i18n; `tx` forwarded verbatim; happy path logs nothing (REQ-053).
-  - [ ] 2.2.IV **Instruction Verification**: Validate against `backend/services/AGENTS.md` (namespacing, no service-local types, DomainError-only).
+  - [x] 2.2.SEC **Security & Tenancy Audit**: BFLA — no exported mutation surface (service-internal only, REQ-030); BOLA — identity ONLY from param; BOPLA — count comes EXCLUSIVELY from `FREE_TRIAL_SESSION_COUNT`; verify the conflict message is generic (no private state leak).
+  - [x] 2.2.SR **Semantic Review**: single entry point (grep confirms this is the only file containing `grantFreeTrialOnce` callers beyond tests); zero plain `new Error(...)`; property-access i18n; `tx` forwarded verbatim; happy path logs nothing (REQ-053).
+  - [x] 2.2.IV **Instruction Verification**: Validate against `backend/services/AGENTS.md` (namespacing, no service-local types, DomainError-only).
   - Outcome: `outcome/2.2-trial-service-outcome.md`
 
-- [ ] **2.3 Wire Grant into `RegistrationService.registerUser` — Student Branch Only (REQ-011, REQ-015, REQ-018, REQ-040, REQ-033)**
+- [x] **2.3 Wire Grant into `RegistrationService.registerUser` — Student Branch Only (REQ-011, REQ-015, REQ-018, REQ-040, REQ-033)**
   - Files to modify:
     - `backend/services/auth/registration.service.ts`
     - Test file: `backend/services/auth/__tests__/registration-trial-provisioning.test.ts` (NEW)
@@ -234,8 +234,8 @@
   - Hard rules: grant inherits the existing `withTransaction(outerTx)` SAVEPOINT pattern (do NOT restructure the registration transaction); `UserRole` referenced via **value import** (REQ-002); `RegistrationSubmitInput` whitelist byte-identical (no new fields); **`userId` = shared PK of the freshly inserted `users` row — never client input** (REQ-032).
   - Applicable instruction files: `backend/services/AGENTS.md`, `docs/specs/state-machine-invariants.md` (INV-B1/B4/B5, B.6/B.7), `docs/IDEMPOTENCY.md`
   - _Requirements: REQ-011, REQ-015, REQ-016, REQ-018, REQ-023, REQ-031, REQ-032, REQ-033, REQ-040, REQ-041, REQ-044_
-  - [ ] 2.3.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/services/auth/registration.service.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 2.3.TE **Test Engineering** (4-Tier; all DB cases in `runInRollback`; own entities only; `expectRepoError` helper for throws):
+  - [x] 2.3.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/services/auth/registration.service.ts --lifecycle duplicates` (exit code 0)
+  - [x] 2.3.TE **Test Engineering** (4-Tier; all DB cases in `runInRollback`; own entities only; `expectRepoError` helper for throws):
     - Tier 1 (role matrix, REQ-072):
       - `registerUser(student)` → student row: `balanceTrial = 1`, `trialGrantedAt IS NOT NULL`; `balanceHifz/balanceTajweed/balanceReviews = 0` exactly (REQ-016);
       - `registerUser(teacher)` → `applicants.status = "pending"`, no student row, grant untouched;
@@ -246,26 +246,26 @@
     - Tier 3 (chaos, REQ-073): force child-insert failure AFTER the grant line executes (inject via mock-adapter on the post-grant step) → assert zero residual `users` row, zero residual `students` row, no grant persists (SAVEPOINT/rollback atomicity fully verified under `outerTx`).
     - Tier 4: duplicate `registerUser` race simulation (two sequential calls same email) → exactly one grant total across the system.
     - Run: `bun run test/scripts/run-test.ts backend/services/auth/__tests__/registration-trial-provisioning.test.ts`; plus full existing registration suite: `bun run test/scripts/run-test.ts backend/services/auth/__tests__` → zero regressions; coverage on `registration.service.ts` new lines = 100% (REQ-070).
-  - [ ] 2.3.SEC **Security & Tenancy Audit**: BOLA — derived `users.id` only; BOPLA — grep registration file for `{ ...input` → zero occurrences; whitelist diff vs HEAD → empty; BFLA — no role can invoke grant except student registration path; teacher-side state (`applicants.status`) asserted untouched (REQ-033); rate-limiter posture untouched (REQ-034).
-  - [ ] 2.3.SR **Semantic Review**: single call-site; tx propagated to BOTH `createForRegistration` and `grantFreeTrial` within identical transaction scope; no silent try/catch added (REQ-053); review diff is minimal/additive; no dead branches.
-  - [ ] 2.3.IV **Instruction Verification**: Validate against `backend/services/AGENTS.md`, `docs/IDEMPOTENCY.md` (structural idempotency argument recorded in outcome), spec §2.4.
+  - [x] 2.3.SEC **Security & Tenancy Audit**: BOLA — derived `users.id` only; BOPLA — grep registration file for `{ ...input` → zero occurrences; whitelist diff vs HEAD → empty; BFLA — no role can invoke grant except student registration path; teacher-side state (`applicants.status`) asserted untouched (REQ-033); rate-limiter posture untouched (REQ-034).
+  - [x] 2.3.SR **Semantic Review**: single call-site; tx propagated to BOTH `createForRegistration` and `grantFreeTrial` within identical transaction scope; no silent try/catch added (REQ-053); review diff is minimal/additive; no dead branches.
+  - [x] 2.3.IV **Instruction Verification**: Validate against `backend/services/AGENTS.md`, `docs/IDEMPOTENCY.md` (structural idempotency argument recorded in outcome), spec §2.4.
   - Outcome: `outcome/2.3-registration-hook-outcome.md`
 
-- [ ] **2.4 Seed Parity — `seed-students.ts` Bootstrap via Service (REQ-024, D7)**
+- [x] **2.4 Seed Parity — `seed-students.ts` Bootstrap via Service (REQ-024, D7)**
   - Files to modify:
     - `backend/db/seeds/students/seed-students.ts`
   - Change: implement the **find-then-grant-if-null seed-or-get pattern** per `backend/db/seeds/AGENTS.md`: for each demo student, resolve existing row via the student service; if `trialGrantedAt IS NULL`, invoke `StudentTrialService.grantFreeTrial(studentId, locale)` (production entry point — never a raw field bypass); second `bun run db seed` run must be a no-op (never surfaces REQ-013 `ConflictError`).
   - Hard rules: never bypass `students_balance_trial_check`; never hardcode the grant count (use the constant via service); seeds must use the production service bootstrap, not raw inserts of trial columns.
   - Applicable instruction files: `backend/db/seeds/AGENTS.md`, `backend/services/AGENTS.md`
   - _Requirements: REQ-024, REQ-017_
-  - [ ] 2.4.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/seeds/students/seed-students.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 2.4.TE **Test Engineering**: Run `bun run db seed` twice in sequence (dev DB or rollback harness) → second run exits 0, no `TRIAL_ALREADY_GRANTED` log entries beyond seed-time diagnostics, seeded students show `balance_trial = 1` with marker set; Tier 3: re-run under partially-seeded DB state.
-  - [ ] 2.4.SEC **Security & Tenancy Audit**: Seed script remains dev-only entry (not reachable from GraphQL); no credentials/tokens logged.
-  - [ ] 2.4.SR **Semantic Review**: no raw `balanceTrial` column writes in seed file; uses exact production entry point; idempotent branching on `trialGrantedAt`.
-  - [ ] 2.4.IV **Instruction Verification**: Validate against `backend/db/seeds/AGENTS.md` service-bootstrap mandate.
+  - [x] 2.4.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/seeds/students/seed-students.ts --lifecycle duplicates` (exit code 0)
+  - [x] 2.4.TE **Test Engineering**: Run `bun run db seed` twice in sequence (dev DB or rollback harness) → second run exits 0, no `TRIAL_ALREADY_GRANTED` log entries beyond seed-time diagnostics, seeded students show `balance_trial = 1` with marker set; Tier 3: re-run under partially-seeded DB state.
+  - [x] 2.4.SEC **Security & Tenancy Audit**: Seed script remains dev-only entry (not reachable from GraphQL); no credentials/tokens logged.
+  - [x] 2.4.SR **Semantic Review**: no raw `balanceTrial` column writes in seed file; uses exact production entry point; idempotent branching on `trialGrantedAt`.
+  - [x] 2.4.IV **Instruction Verification**: Validate against `backend/db/seeds/AGENTS.md` service-bootstrap mandate.
   - Outcome: `outcome/2.4-seed-parity-outcome.md`
 
-- [ ] **2.M Phase 2 Mid-Point Review Gate (MANDATORY before Phase 3)**
+- [x] **2.M Phase 2 Mid-Point Review Gate (MANDATORY before Phase 3)**
   - Checklist gate (all must pass before proceeding):
     - `bun tsgo` → error count == baseline (±0)
     - `bun biome:check` → diagnostics == baseline (±0)
@@ -282,7 +282,7 @@
 
 > **Scope note**: No new resolvers ship in this ticket (REQ-060). This phase is a **contract-verification gate**, not an authoring phase. It exists to prove the GraphQL surface is byte-stable.
 
-- [ ] **3.1 GraphQL Schema Stability Verification (REQ-060, REQ-023, REQ-030)**
+- [x] **3.1 GraphQL Schema Stability Verification (REQ-060, REQ-023, REQ-030)**
   - Files: none modified. Verification artifacts only.
   - Steps:
     1. Snapshot the current generated schema; run `bun run generate:gqlSchema && bun codegen`.
@@ -292,11 +292,11 @@
     5. Record the forward-exposure contract note (REQ-062) verbatim in the outcome: any future exposure MUST use canonical `Student` object with `id` + `t.loadable()`/DataLoader batching per `docs/graphql/dataloader-batching.md` and canonical `@/backend/types` imports.
   - Applicable instruction files: `backend/graphql/AGENTS.md`, `docs/graphql/dataloader-batching.md`, `docs/graphql/domain-error-extensions-code.md`
   - _Requirements: REQ-023, REQ-030, REQ-060, REQ-061, REQ-062_
-  - [ ] 3.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/graphql/schema.ts --lifecycle duplicates` (exit code 0; regenerated artifacts must remain sub-loop clean)
-  - [ ] 3.1.TE **Test Engineering**: Existing resolver integration suite pass-through: `bun run test/scripts/run-test.ts backend/graphql/__tests__` → green; registerUser integration test asserts payload shape identical to baseline (field-set equality check).
-  - [ ] 3.1.SEC **Security & Tenancy Audit**: **BFLA sweep** — enumerate schema Query/Mutation root members; prove no grant/top-up/manipulate operation for `balance_trial` exists for any role (anonymous/student/parent/teacher/supervisor/super_admin); confirm low-priv token has no function path to mint trial credits; finalize the permission-matrix table from plan §3 with ✅/❌ per role.
-  - [ ] 3.1.SR **Semantic Review**: codegen diff contains no unintended renames/orderings attributable to this ticket; no local types introduced in resolver files (canonical-type-only rule holds trivially).
-  - [ ] 3.1.IV **Instruction Verification**: Validate against `backend/graphql/AGENTS.md` (no-local-types, explicit exposes, DataLoader rules not yet applicable).
+  - [x] 3.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/graphql/schema.ts --lifecycle duplicates` (exit code 0; regenerated artifacts must remain sub-loop clean)
+  - [x] 3.1.TE **Test Engineering**: Existing resolver integration suite pass-through: `bun run test/scripts/run-test.ts backend/graphql/__tests__` → green; registerUser integration test asserts payload shape identical to baseline (field-set equality check).
+  - [x] 3.1.SEC **Security & Tenancy Audit**: **BFLA sweep** — enumerate schema Query/Mutation root members; prove no grant/top-up/manipulate operation for `balance_trial` exists for any role (anonymous/student/parent/teacher/supervisor/super_admin); confirm low-priv token has no function path to mint trial credits; finalize the permission-matrix table from plan §3 with ✅/❌ per role.
+  - [x] 3.1.SR **Semantic Review**: codegen diff contains no unintended renames/orderings attributable to this ticket; no local types introduced in resolver files (canonical-type-only rule holds trivially).
+  - [x] 3.1.IV **Instruction Verification**: Validate against `backend/graphql/AGENTS.md` (no-local-types, explicit exposes, DataLoader rules not yet applicable).
   - Outcome: `outcome/3.1-graphql-stability-outcome.md`
 
 ---
@@ -305,7 +305,7 @@
 
 > **Scope note**: This ticket ships **zero frontend changes** (REQ-023, REQ-063). No UI component/page/view tasks exist; consequently the dual Agent-Browser self-loops (.BF functional + .BS screenshot analysis) have **no target surface** and are expressly out of scope by spec §2.6. This phase records the absence as a verified gate and locks the forward contract so downstream UI tickets inherit correct rules. If the executor finds ANY incidental frontend edit, the full UI pipeline (QL → TE → BF → BS → SR → IV) with both Agent-Browser loops becomes mandatory for that file — otherwise this phase remains verification-only.
 
-- [ ] **4.1 Frontend No-Op Verification & Forward-Contract Lock (REQ-023, REQ-063, REQ-002)**
+- [x] **4.1 Frontend No-Op Verification & Forward-Contract Lock (REQ-023, REQ-063, REQ-002)**
   - Files: none modified. Verification artifacts only.
   - Steps:
     1. `git diff --name-only <baseline> -- frontend/ app/` → MUST be empty.
@@ -314,17 +314,17 @@
     4. Record forward UI contract note (for the future trial-balance dashboard ticket): MUI v9 `sx`-only styling, no direct style props, `*Outlined` icons, `useAppTranslation(Translation.<Namespace>)` property access (never `t('key')`), RTL bidirectional correctness, `FREE_TRIAL_SESSION_COUNT` imported from `@/shared/constants` (never re-declared), and Agent-Browser dual self-loops mandatory when the badge/banner UI ships.
   - Applicable instruction files: `frontend/AGENTS.md`, `frontend/views/AGENTS.md`, `frontend/components/ui/AGENTS.md`, `frontend.instructions.md`, `mobile-desktop.instructions.md` (reference only — to be enforced by the future UI ticket)
   - _Requirements: REQ-002, REQ-023, REQ-060, REQ-063_
-  - [ ] 4.1.QL **Quality Loop**: re-run `bun biome:check` scoped root-wide to prove zero frontend diagnostics delta vs baseline (exit code 0)
-  - [ ] 4.1.TE **Unit/Component Tests**: regression pass — existing frontend test suites (`bun test frontend/`) green with zero new snapshots; assert no `balanceTrial` references leaked into generated client types consumers.
-  - [ ] 4.1.SR **Semantic Review**: diff-empty assertion re-verified post-Phase-5; outcome file records that BF/BS browser loops are not applicable per approved spec §1 (non-goal #4) and §2.6 (REQ-063 "N/A for this ticket").
-  - [ ] 4.1.IV **Instruction Verification**: Record that `frontend/AGENTS.md` and instruction files were read; no rules violated (no files touched).
+  - [x] 4.1.QL **Quality Loop**: re-run `bun biome:check` scoped root-wide to prove zero frontend diagnostics delta vs baseline (exit code 0)
+  - [x] 4.1.TE **Unit/Component Tests**: regression pass — existing frontend test suites (`bun test frontend/`) green with zero new snapshots; assert no `balanceTrial` references leaked into generated client types consumers.
+  - [x] 4.1.SR **Semantic Review**: diff-empty assertion re-verified post-Phase-5; outcome file records that BF/BS browser loops are not applicable per approved spec §1 (non-goal #4) and §2.6 (REQ-063 "N/A for this ticket").
+  - [x] 4.1.IV **Instruction Verification**: Record that `frontend/AGENTS.md` and instruction files were read; no rules violated (no files touched).
   - Outcome: `outcome/4.1-frontend-noop-outcome.md`
 
 ---
 
 # Phase 5 — Integration & Differential Testing
 
-- [ ] **5.1 Full-Stack Integration & Differential Test Sweep (REQ-070..076)**
+- [x] **5.1 Full-Stack Integration & Differential Test Sweep (REQ-070..076)**
   - Steps:
     1. Full test suite: `bun test` (root) → green; record duration & counts.
     2. Coverage assertion: `bun test --coverage backend/services/students/ backend/db/repo/students/ backend/services/auth/` → new/modified code at **100% statement + branch**; export coverage summary into outcome.
@@ -343,31 +343,31 @@
 
 > Launch as parallel sub-reviews; each wave writes its own outcome file. No wave may declare pass while any ❌/⚠️ item is unresolved (except pre-seeded D1/D2).
 
-- [ ] **6.1 Review Wave: review-types**
+- [x] **6.1 Review Wave: review-types**
   - Scope: `backend/types/students/student.types.ts` (confirm zero edits — inference flows), `shared/locale/types/errors/index.ts`, `shared/constants/*`, schema inference bankruptcy check (`bun tsgo`).
   - Verify: no new `.types.ts` files were created; no local types in services/repos; canonical-type imports only; `StudentSelectType.balanceTrial: number` (not nullable) confirmed by inspection/inference probe.
   - Outcome: `outcome/6.1-review-types-outcome.md`
   - _Requirements: REQ-003, REQ-002_
 
-- [ ] **6.2 Review Wave: review-backend**
+- [x] **6.2 Review Wave: review-backend**
   - Scope: repo method (2.1), domain service (2.2), registration hook (2.3), seeds (2.4) — code + tests.
   - Checklist: single guarded UPDATE (no read-modify-write); `tx` propagation at every call site; DomainError-only throws; `logger.logDomainError` usage; no `console.*`; property-access i18n; no `try/catch` swallowing (REQ-053); role gating present; seed bootstrap pattern; atomic-registration rollback test evidence.
   - Outcome: `outcome/6.2-review-backend-outcome.md`
   - _Requirements: REQ-011..019, REQ-040..042, REQ-050..053_
 
-- [ ] **6.3 Review Wave: review-frontend**
+- [x] **6.3 Review Wave: review-frontend**
   - Scope: verify Phase 4 no-op claim independently: `git diff --name-only -- frontend/ app/` empty; generated client documents unchanged; no MUI/icon/i18n violations introduced anywhere in repo diff.
   - If any frontend file IS present in the diff: escalate — the receiving file MUST retroactively pass the full UI pipeline (QL, TE, **BF Agent-Browser functional loop: dev server + Playwright navigation/form/button/toast assertions**, **BS Agent-Browser visual loop: 1440×900 / 768×1024 / 375×812 × en-LTR / ar-RTL screenshots with MUI palette + RTL mirroring triage**, SR, IV) before this wave may pass.
   - Outcome: `outcome/6.3-review-frontend-outcome.md`
   - _Requirements: REQ-023, REQ-060, REQ-063_
 
-- [ ] **6.4 Review Wave: pentester**
+- [x] **6.4 Review Wave: pentester**
   - Scope: BOPLA/BOLA/BFLA threat review on the grant path.
   - Checks: smuggled-field fuzz (attempt `balanceTrial`/`trialCount`/`trial_granted_at` in `registerUser` input at integration level → rejected/ignored by whitelist); identity-derivation proof (no client-supplied studentId anywhere — grep + code path review); BFLA schema sweep (no balance-mutation ops, all roles); TOCTOU concurrency proof write-up (two concurrent `grantFreeTrialOnce` calls on same row → serialized by row lock; exactly ONE credit); negative-balance CHECK enforcement (REQ-035); privilege-escalation check (teacher/applicant states untouched, REQ-033); governance preservation (INV-U5: trial lane persists across suspend/block/soft-delete — documented review note).
   - Outcome: `outcome/6.4-pentester-outcome.md`
   - _Requirements: REQ-030..035, REQ-042, REQ-033_
 
-- [ ] **6.5 Deferred-Items Ledger Gate**
+- [x] **6.5 Deferred-Items Ledger Gate**
   - Run: `grep -c "❌\|⚠️" ai/plans/dev1-004-free-trial-session-provisioning/deferred-items.md` → MUST equal **0**, with the explicit exception that D1 (→ DEV3-010) and D2 (→ DEV3-004/DEV3-013) are pre-seeded, targeted, documented as non-blocking per the deferred-items template enforcement rules.
   - If any NEW items surfaced during phases 1–5: either resolve them pre-close or formally append with target ticket + justification and record in outcome.
   - Outcome: `outcome/6.5-deferred-gate-outcome.md`
@@ -377,7 +377,7 @@
 
 # Phase 7 — Knowledge Propagation & Documentation
 
-- [ ] **7.1 Canonical Doc: `docs/students/free-trial-provisioning.md` (REQ-080)**
+- [x] **7.1 Canonical Doc: `docs/students/free-trial-provisioning.md` (REQ-080)**
   - Create `docs/students/free-trial-provisioning.md` covering, per spec §REQ-080:
     - **Why**: FR-2.6 acquisition mechanic + INV-B5/InV-B2 invariant protection (dedicated-lane ruling rationale) + conversion analytics;
     - **Grant-once pattern**: guarded single conditional `UPDATE … WHERE trial_granted_at IS NULL … RETURNING id` + `trial_granted_at` marker; TOCTOU-window-zero argument; why no advisory lock / no `SELECT FOR UPDATE`;
@@ -388,7 +388,7 @@
   - Outcome: `outcome/7.1-canonical-doc-outcome.md`
   - _Requirements: REQ-080, REQ-020, REQ-021, REQ-022_
 
-- [ ] **7.2 Invariant & Decisions Addenda (REQ-081)**
+- [x] **7.2 Invariant & Decisions Addenda (REQ-081)**
   - Modify:
     - `docs/specs/state-machine-invariants.md` §4.2 — append:
       - **INV-B7**: A trial credit is granted at most once per student record; enforced by the `trial_granted_at` marker and the guarded conditional UPDATE (grant-once at SQL level).
@@ -399,7 +399,7 @@
   - Outcome: `outcome/7.2-invariants-decisions-outcome.md`
   - _Requirements: REQ-081_
 
-- [ ] **7.3 Cross-Doc & Layer AGENTS Updates (REQ-082)**
+- [x] **7.3 Cross-Doc & Layer AGENTS Updates (REQ-082)**
   - Modify (rule-only one-liners referencing the canonical doc, never duplicated logic):
     - `docs/auth/user-registration.md` — add trial-hook paragraph in the registration flow section (grant happens inside registration tx for `role = student` via `StudentTrialService.grantFreeTrial`; link canonical doc).
     - `backend/services/AGENTS.md` — one-liner: "Student trial provisioning flows exclusively through `StudentTrialService.grantFreeTrial` (grant-once, guarded UPDATE). See docs/students/free-trial-provisioning.md."
@@ -409,7 +409,7 @@
   - Outcome: `outcome/7.3-cross-doc-agents-outcome.md`
   - _Requirements: REQ-082_
 
-- [ ] **7.4 Outcome Synthesis & Final Quality Gate (REQ-076, REQ-083)**
+- [x] **7.4 Outcome Synthesis & Final Quality Gate (REQ-076, REQ-083)**
   - Produce `ai/plans/dev1-004-free-trial-session-provisioning/outcome/FINAL-synthesis-outcome.md`:
     - Consolidated baseline-vs-final table: `tsgo` errors, `biome` diagnostics, lint counts (new errors introduced: **0 expected** — any nonzero delta requires explicit justification + remediation task);
     - `git diff --name-only` authoritative file inventory vs Phase 0.1 snapshot;
