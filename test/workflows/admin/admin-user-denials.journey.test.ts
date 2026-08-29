@@ -118,7 +118,19 @@ async function expectJourneyError(fn: () => Promise<unknown>): Promise<DomainErr
   if (caught instanceof DomainError) {
     return caught;
   }
-  const message = caught instanceof Error ? caught.message : String(caught);
+  // Narrow `caught` to a string-safe primitive before stringifying —
+  // `String(caught)` on an `unknown` triggers the TS `no-base-to-string`
+  // rule (objects may serialize as `[object Object]`). Primitive guards
+  // cover the realistic non-Error throw shapes; objects fall back to a
+  // JSON shape dump so the failure message stays actionable.
+  let message: string;
+  if (caught instanceof Error) {
+    message = caught.message;
+  } else if (typeof caught === "string" || typeof caught === "number" || typeof caught === "boolean") {
+    message = String(caught);
+  } else {
+    message = JSON.stringify(caught);
+  }
   throw new Error(`expectJourneyError: caught non-DomainError: ${message}`);
 }
 
@@ -188,17 +200,27 @@ async function assertCastApplicantUntouched(): Promise<void> {
   expect(rows[0]).toEqual(cast.applicant.childSnapshot.row);
 }
 
+// File-scoped cast provisioning — Journey B + Journey C share the same
+// actor cast. Per `bun:test`'s lifecycle, `beforeAll`/`afterAll` declared
+// INSIDE a `describe` block run for that block's tests only — so a cast
+// provisioned in Journey B's `beforeAll` would be cleaned up by Journey
+// B's `afterAll` BEFORE Journey C's tests run, leaving `cast.*` pointing
+// at soft-deleted rows (every C2/C3 lookup fails the "actor row missing"
+// branch in `assertActorAdmin` instead of the intended "actor is not
+// admin" / "ADMIN_ROLE_CREATION_FORBIDDEN" branches). The fix: hoist
+// provisioning + cleanup to the file scope so the cast lives across both
+// describe blocks and is cleaned up exactly once at the very end.
+beforeAll(async () => {
+  const bundle = await createJourneyFixtures(PREFIX);
+  cast = bundle.cast;
+  registry = bundle.registry;
+});
+
+afterAll(async () => {
+  await journeyCleanup(registry);
+});
+
 describe("Journey B — Teacher-Applicant Identity & Whitelist Update", () => {
-  beforeAll(async () => {
-    const bundle = await createJourneyFixtures(PREFIX);
-    cast = bundle.cast;
-    registry = bundle.registry;
-  });
-
-  afterAll(async () => {
-    await journeyCleanup(registry);
-  });
-
   // ─── Step B1: admin creates a teacher-role identity ────────────────
   test("Journey B — step 1: admin creates role=teacher → users + applicants(pending/0/NULL) + audit(create); ZERO teacher rows (certification lock)", async () => {
     const input = makeNewApplicantInput();

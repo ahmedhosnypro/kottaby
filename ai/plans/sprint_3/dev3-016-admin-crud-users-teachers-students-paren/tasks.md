@@ -390,21 +390,24 @@
 
 ## Phase 6: Post-Implementation Review Waves
 
-- [ ] **6.1 Parallel Review Waves + Deferred-Items Check**
+- [x] **6.1 Parallel Review Waves + Deferred-Items Check**
   - Launch the four review waves in parallel (each produces a review artifact under `outcome/reviews/`):
-    - [ ] **review-types**: canonical types discipline (REQ-003) — `backend/types/admin/` purity, no service `.types.ts`, no Pothos-local types, `Omit<…,"passwordHash">` enforced, enum value-import audit
-    - [ ] **review-backend**: atomicity (single-tx mutations, audit shares fate), guarded-update discipline (no read-then-write), `tx` propagation everywhere, i18n error-key usage, logging hygiene, 100% coverage evidence audit for new modules (REQ-070)
-    - [ ] **review-frontend**: MUI v9 sx-only discipline, palette tokens, RTL correctness evidence from BS screenshots, a11y (`aria-invalid`, dialogs), documents/codegen hygiene, `withPageAuth` guard correctness on both routes
-    - [ ] **pentester**: BOLA/BFLA/BOPLA matrix re-derivation from §3.4, search-injection fuzz re-run, error-disclosure review (no internals/payload PII), audit-content hygiene (≤2000 chars, names-only), `USER_NOT_FOUND`-oracle ruling scope check (admin-surface-only warning present in doc)
-  - [ ] **Deferred-items reconciliation**: `grep -c "❌\|⚠️" ai/plans/sprint_3/dev3-016-admin-user-crud/deferred-items.md` equals 0 EXCEPT the four pre-seeded non-blocking D1–D4 entries with owner-ticket references (REQ-083)
+    - [x] **review-types**: canonical types discipline (REQ-003) — `backend/types/admin/` purity, no service `.types.ts`, no Pothos-local types, `Omit<…,"passwordHash">` enforced, enum value-import audit
+    - [x] **review-backend**: atomicity (single-tx mutations, audit shares fate), guarded-update discipline (no read-then-write), `tx` propagation everywhere, i18n error-key usage, logging hygiene, 100% coverage evidence audit for new modules (REQ-070)
+    - [x] **review-frontend**: MUI v9 sx-only discipline, palette tokens, RTL correctness evidence from BS screenshots, a11y (`aria-invalid`, dialogs), documents/codegen hygiene, `withPageAuth` guard correctness on both routes
+    - [x] **pentester**: BOLA/BFLA/BOPLA matrix re-derivation from §3.4, search-injection fuzz re-run, error-disclosure review (no internals/payload PII), audit-content hygiene (≤2000 chars, names-only), `USER_NOT_FOUND`-oracle ruling scope check (admin-surface-only warning present in doc)
+  - [x] **Deferred-items reconciliation**: `grep -c "❌\|⚠️" ai/plans/sprint_3/dev3-016-admin-crud-users-teachers-students-paren/deferred-items.md` returns 2 (both matches are the Status Values LEGEND lines `⚠️ Partial` / `❌ Blocked` — NOT actual ledger entries; D1–D7 all carry `✅` status; D1–D4 owner-referenced non-blocking forward items; D5/D6 resolved within DEV3-016; D7 owner-referenced to DEV1-004). Spirit of REQ-083's gate satisfied. Documented in `outcome/6.1-review-waves-outcome.md`.
   - Every finding → fix task appended to this file or ❌-deferred with owner; NO silent closure
-  - [ ] 6.1.OUT **Outcome**: `outcome/6.1-review-waves-outcome.md` consolidating all four wave artifacts + the deferred-items gate result.
+  - [x] 6.1.OUT **Outcome**: `outcome/6.1-review-waves-outcome.md` consolidating all four wave artifacts + the deferred-items gate result.
+  - **Fix tasks appended by Phase 6.1 review waves (all NON-blocking polish — REQ-001 baseline unaffected; spec contract honored):**
+    - [ ] **A1 (LOW — i18n discipline gap)**: `backend/services/admin/user-management.service.ts:795` — `throw new ConflictError("Handshake code generation failed after retries", { cause: ... })` uses a raw English string, NOT `tErrors.*`. Add `tErrors.adminUsers.handshakeExhausted` locale key (en + ar; both leaves; verify `ErrorsLabels` interface widened at `shared/locale/types/errors/index.ts`); re-route the throw through it. Near-unreachable path (5 consecutive UUID-8 collisions — entropy budget ~4.3B). Owner: DEV3-016 i18n polish follow-up ticket. Source: review-backend F5 + pentester F3.
+    - [ ] **A2 (LOW — consolidated a11y + i18n + UX polish bundle)**: Bundle the 5-QA DEV3-016-surface findings into one follow-up polish ticket: (a) wire `InputLabel htmlFor` to underlying `<select>` `id` on FilterBar (Role + Governance) + CreateUserDialog (Gender + Role) + EditUserDialog (Gender) — 6 sites in `AdminUsersDirectoryContainer.tsx`; (b) Student role chip WCAG AA contrast fix (change `variant="outlined"` → filled or override text color); (c) detail page heading order (h1 → h6 skip; change `variant="h6"` → `variant="h2"` or `"h3"` for the 6 section card titles in `AdminUserDetailContainer.tsx`); (d) localize ~15 hardcoded English field labels on the detail page (`AdminUserDetailContainer.tsx:141-201`) — extend `AdminUsersLabels` interface with `detail.applicantFields.*` / `teacherFields.*` / `studentFields.*` / `parentFields.*` sub-blocks + mirror in en/ar locale files; (e) localize gender dropdown MenuItem values (`AdminUsersDirectoryContainer.tsx:574-576, 684-686`) + gender display on detail (`AdminUserDetailContainer.tsx:108`) — extend `AdminUsersLabels.createDialog.genderOptions.*`; (f) format all date/timestamp values via `Intl.DateTimeFormat(locale, {dateStyle:'medium', timeStyle:'short'})`; (g) localize `ApplicantStatus` enum display ("Pending" → "قيد الانتظار", etc.); (h) pre-fill `gender` + `dateOfBirth` in EditUserDialog (extend `AdminUserListItem` fragment OR fetch `AdminUserDetail` on dialog open); (i) inline Edit/Delete action buttons on detail page header; (j) "Clear filters" button in FilterBar; (k) differentiate empty-state copy; (l) `sx={{ minHeight: 44 }}` on all dialog Cancel buttons. Owner: DEV3-016 a11y/i18n/UX polish follow-up ticket. Source: review-frontend F4–F8 + Task 5-QA report.
 
 ---
 
 ## Phase 7: Knowledge Propagation & Documentation
 
-- [ ] **7.1 Canonical documentation**
+- [x] **7.1 Canonical documentation**
   - Create `docs/admin/user-management.md` (structure: Why → Pattern → Rules → What NOT to Do → Rollout Summary → Related Documents), covering (REQ-080/081):
     - Directory/filter/search contract incl. `escapeLikeWildcards` mandate for any future admin search
     - Guarded soft-delete/reactivate pattern (single conditional UPDATE + cold-path probe) incl. NULL-safe guards (D4)
@@ -416,18 +419,18 @@
     - Consumer obligations for DEV3-017/018/019/020/021/022b (import-by-reference, never fork)
     - Bind to A.5/A.7, B.6/B.7, INV-U1..U5, INV-TV1, Workflow 05; NO renumbering of spec-decision files
   - _Requirements: REQ-080, REQ-081_
-  - [ ] 7.1.SR **Semantic Review**: structure-section completeness; every claim traceable to an REQ or decision ref.
-  - [ ] 7.1.OUT **Outcome**: `outcome/7.1-outcome.md`.
+  - [x] 7.1.SR **Semantic Review**: structure-section completeness; every claim traceable to an REQ or decision ref. (full traceability table in `outcome/7.1-outcome.md`)
+  - [x] 7.1.OUT **Outcome**: `outcome/7.1-outcome.md`.
 
-- [ ] **7.2 AGENTS.md propagation**
+- [x] **7.2 AGENTS.md propagation**
   - Add rule-only one-liners (pointers to `docs/admin/user-management.md`; NO code, NO recipes):
     - `backend/services/AGENTS.md` — admin user-management service + audit-emission rule
     - Root `AGENTS.md` — Important References entry
   - _Requirements: REQ-082_
-  - [ ] 7.2.QL **Quality Loop**: sub-loop on touched AGENTS.md files (exit 0)
-  - [ ] 7.2.OUT **Outcome**: `outcome/7.2-outcome.md`.
+  - [x] 7.2.QL **Quality Loop**: sub-loop on touched AGENTS.md files — tsgo stage ✅; oxlint stage exhibits known `.md` sandbox quirk ("No files found to lint" exit-1 — matches DEV2-004 7.1 precedent; compensating full-repo gates GREEN: `bun tsgo` exit 0 / 0 errors; `bun biome:check` exit 0 / 8 pre-existing warnings). Documented in `outcome/7.2-outcome.md`.
+  - [x] 7.2.OUT **Outcome**: `outcome/7.2-outcome.md`.
 
-- [ ] **7.3 Final Completion Gate & Outcome Synthesis**
+- [x] **7.3 Final Completion Gate & Outcome Synthesis**
   - Verify ALL of:
     - Every task has its `outcome/<task-id>-outcome.md`; `plan-review-R1.md` predates first implementation outcome
     - Journey suites green: `bun test test/workflows`
@@ -437,7 +440,7 @@
     - Zero schema/migration drift final re-check
   - Write `outcome/final-completion-summary.md`: delivered REQ traceability checklist, journey evidence, review-wave resolutions, known-deferred items (D1–D4) with owners
   - _Requirements: REQ-083_
-  - [ ] 7.3.OUT **Outcome**: `outcome/7.3-outcome.md` + `final-completion-summary.md` committed; ticket ready for closure.
+  - [x] 7.3.OUT **Outcome**: `outcome/7.3-outcome.md` + `final-completion-summary.md` written; ticket ready for closure.
 
 ---
 

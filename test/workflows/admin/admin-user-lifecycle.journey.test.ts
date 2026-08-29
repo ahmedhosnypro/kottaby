@@ -61,6 +61,11 @@ import {
 
 const LOCALE = "en";
 const tErrors = getServerTranslations(LOCALE).errorsTranslations;
+// Auth-locale governance message — AuthService.login emits the auth
+// namespace's `accountBlocked` copy (which covers both suspended and
+// blocked governance states), not the errors-namespace variant. The
+// journey's step-5 junction assertion reads the auth copy.
+const tAuth = getServerTranslations(LOCALE).authTranslations;
 
 /**
  * Per-run prefix — guarantees unique emails/names so parallel or repeated
@@ -107,9 +112,19 @@ async function expectJourneyError(fn: () => Promise<unknown>): Promise<DomainErr
   if (caught instanceof DomainError) {
     return caught;
   }
-  // Wrap non-DomainError throws so callers always get a DomainError-shaped
-  // object to inspect `.code` / `.message` on.
-  const message = caught instanceof Error ? caught.message : String(caught);
+  // Narrow `caught` to a string-safe primitive before stringifying —
+  // `String(caught)` on an `unknown` triggers the TS `no-base-to-string`
+  // rule (objects may serialize as `[object Object]`). Primitive guards
+  // cover the realistic non-Error throw shapes; objects fall back to a
+  // JSON shape dump so the failure message stays actionable.
+  let message: string;
+  if (caught instanceof Error) {
+    message = caught.message;
+  } else if (typeof caught === "string" || typeof caught === "number" || typeof caught === "boolean") {
+    message = String(caught);
+  } else {
+    message = JSON.stringify(caught);
+  }
   throw new Error(`expectJourneyError: caught non-DomainError: ${message}`);
 }
 
@@ -328,9 +343,12 @@ describe("Journey A — Admin User Lifecycle (Create → Observe → Govern → 
     // (the exact error family) are not re-tested here; the journey
     // asserts the governance-gate denial outcome.
     expect(error).toBeInstanceOf(ForbiddenError);
-    // Translated substring from the auth locale namespace (accountBlocked
-    // is the canonical message for governance denials at login).
-    expect(error.message).toContain(tErrors.accountBlocked);
+    // Translated substring from the AUTH locale namespace (accountBlocked
+    // is the canonical message for governance denials at login — the auth
+    // service emits `authTranslations.accountBlocked`, which covers both
+    // suspended and blocked states; the errors-namespace `accountBlocked`
+    // variant is a separate, narrower copy and is NOT what login throws).
+    expect(error.message).toContain(tAuth.accountBlocked);
 
     await assertFixturesUntouched();
   });

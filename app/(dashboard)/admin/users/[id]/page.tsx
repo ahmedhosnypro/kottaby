@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { UserRole } from "@/backend/enum/users/user-role.enum";
 import { withPageAuth } from "@/frontend/lib/auth/withPageAuth";
 import { AdminUserDetailContainer } from "@/frontend/views/admin/users/AdminUserDetailContainer";
-import { getLocaleFromCookie } from "@/shared/locale/server-cookies";
 import { getTranslations } from "@/shared/locale/server";
+import { getLocaleFromCookie } from "@/shared/locale/server-cookies";
 
 /**
  * `/admin/users/[id]` — the admin user detail page.

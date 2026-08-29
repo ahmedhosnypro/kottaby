@@ -52,15 +52,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useState, type FormEvent, type ReactNode } from "react";
-import {
-  adminCreateUserMutationDocument,
-  adminSetUserDeletedMutationDocument,
-  adminUpdateUserMutationDocument,
-  adminUsersQueryDocument,
-} from "@/frontend/graphql/sharedDocuments/admin";
-import { extractErrorCode, extractFieldErrors } from "@/frontend/lib/graphql-error-utils";
-import type { AdminUsersLabels } from "@/shared/locale/types/adminUsers";
+import { type ReactNode, type SubmitEventHandler, useState } from "react";
 import type {
   AdminCreateUserMutation,
   AdminSetUserDeletedMutation,
@@ -70,6 +62,14 @@ import type {
   AdminUsersQueryVariables,
   UserRole,
 } from "@/frontend/graphql/generated/gql/graphql";
+import {
+  adminCreateUserMutationDocument,
+  adminSetUserDeletedMutationDocument,
+  adminUpdateUserMutationDocument,
+  adminUsersQueryDocument,
+} from "@/frontend/graphql/sharedDocuments/admin";
+import { extractErrorCode, extractFieldErrors } from "@/frontend/lib/graphql-error-utils";
+import type { AdminUsersLabels } from "@/shared/locale/types/adminUsers";
 
 type AdminUserListItem = AdminUsersQuery["adminUsers"]["items"][number];
 type Role = "Admin" | "Teacher" | "Student" | "Parent";
@@ -80,6 +80,24 @@ interface AdminUsersDirectoryContainerProps {
 }
 
 const DEFAULT_PAGE_SIZE = 25;
+
+/**
+ * Stable skeleton-row keys for the loading state. Hard-coded identifiers
+ * (rather than array indices) keep React's reconciliation stable and
+ * satisfy the `react/no-array-index-key` lint rule. Each key is a
+ * constant — no React state lives on a skeleton row, so identity is
+ * unambiguous.
+ */
+const SKELETON_ROWS = [
+  "skeleton-row-1",
+  "skeleton-row-2",
+  "skeleton-row-3",
+  "skeleton-row-4",
+  "skeleton-row-5",
+  "skeleton-row-6",
+  "skeleton-row-7",
+  "skeleton-row-8",
+] as const;
 
 export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryContainerProps): ReactNode {
   const [page, setPage] = useState(0);
@@ -137,12 +155,7 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
         <Typography variant="h4" component="h1">
           {labels.title}
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setCreateOpen(true)}
-          sx={{ minHeight: 44 }}
-        >
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)} sx={{ minHeight: 44 }}>
           {labels.createDialog.title}
         </Button>
       </Box>
@@ -262,13 +275,20 @@ interface FilterBarProps {
 
 function FilterBar(props: FilterBarProps): ReactNode {
   const { labels } = props;
+  // Stable element ids — wire `InputLabel htmlFor` ↔ `Select id` so
+  // screen readers announce the label when focus lands on the control
+  // (axe-core `aria-input-field-name` rule). Ids are prefixed with the
+  // component name to avoid collisions across FilterBar instances.
+  const ROLE_FILTER_ID = "admin-users-filter-role";
+  const GOVERNANCE_FILTER_ID = "admin-users-filter-governance";
   return (
     <Card variant="outlined">
       <CardContent>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ flexWrap: "wrap" }}>
           <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel>{labels.filters.role}</InputLabel>
+            <InputLabel htmlFor={ROLE_FILTER_ID}>{labels.filters.role}</InputLabel>
             <Select
+              id={ROLE_FILTER_ID}
               value={props.roleFilter}
               label={labels.filters.role}
               onChange={e => props.setRoleFilter((e.target.value || "") as Role | "")}
@@ -281,8 +301,9 @@ function FilterBar(props: FilterBarProps): ReactNode {
             </Select>
           </FormControl>
           <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel>{labels.filters.governance}</InputLabel>
+            <InputLabel htmlFor={GOVERNANCE_FILTER_ID}>{labels.filters.governance}</InputLabel>
             <Select
+              id={GOVERNANCE_FILTER_ID}
               value={props.governanceFilter}
               label={labels.filters.governance}
               onChange={e => props.setGovernanceFilter((e.target.value || "") as Governance | "")}
@@ -307,7 +328,9 @@ function FilterBar(props: FilterBarProps): ReactNode {
             value={props.searchInput}
             onChange={e => props.setSearchInput(e.target.value)}
             sx={{ minWidth: 220, flex: 1 }}
-            slotProps={{ input: { startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: "text.secondary" }} /> } }}
+            slotProps={{
+              input: { startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: "text.secondary" }} /> },
+            }}
           />
         </Stack>
       </CardContent>
@@ -340,8 +363,8 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
         </TableHead>
         <TableBody>
           {loading && items.length === 0
-            ? Array.from({ length: 8 }).map((_, i) => (
-                <TableRow key={i}>
+            ? SKELETON_ROWS.map(rowKey => (
+                <TableRow key={rowKey}>
                   <TableCell colSpan={6}>
                     <Skeleton variant="text" />
                   </TableCell>
@@ -397,7 +420,9 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
                   <Typography variant="subtitle2">{u.fullName}</Typography>
                   <StatusChip user={u} labels={labels} />
                 </Box>
-                <Typography variant="body2" color="text.secondary">{u.email}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {u.email}
+                </Typography>
                 <Box sx={{ display: "flex", gap: 1 }}>
                   <RoleChip role={u.role as unknown as Role} labels={labels} />
                   {u.country && <Chip size="small" label={u.country} variant="outlined" />}
@@ -425,9 +450,28 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
 }
 
 function RoleChip({ role, labels }: { role: Role; labels: AdminUsersLabels }): ReactNode {
-  const color = role === "Admin" ? "error" : role === "Teacher" ? "secondary" : role === "Student" ? "primary" : "default";
-  const label = role === "Admin" ? labels.roleLabels.admin : role === "Teacher" ? labels.roleLabels.teacher : role === "Student" ? labels.roleLabels.student : labels.roleLabels.parent;
-  return <Chip size="small" color={color as "error" | "secondary" | "primary" | "default"} label={label} variant="outlined" />;
+  // Filled (not outlined) variant — outlined `color="primary"` on a
+  // white cell fails WCAG AA contrast (the outlined variant renders
+  // only the chip border + text in the theme color, leaving the
+  // background white). The filled variant paints the chip background
+  // in the theme color with white text, restoring contrast. Per the
+  // QA report (Task 5-QA P0 finding).
+  let color: "error" | "secondary" | "primary" | "default";
+  let label: string;
+  if (role === "Admin") {
+    color = "error";
+    label = labels.roleLabels.admin;
+  } else if (role === "Teacher") {
+    color = "secondary";
+    label = labels.roleLabels.teacher;
+  } else if (role === "Student") {
+    color = "primary";
+    label = labels.roleLabels.student;
+  } else {
+    color = "default";
+    label = labels.roleLabels.parent;
+  }
+  return <Chip size="small" color={color} label={label} variant="filled" />;
 }
 
 function StatusChip({ user, labels }: { user: AdminUserListItem; labels: AdminUsersLabels }): ReactNode {
@@ -476,7 +520,7 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = async e => {
     e.preventDefault();
     setFieldErrors({});
     try {
@@ -601,7 +645,7 @@ function EditUserDialog({ labels, user, loading, onClose, onSubmit }: EditDialog
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = async e => {
     e.preventDefault();
     setFieldErrors({});
     try {
@@ -705,14 +749,8 @@ function DeleteConfirmDialog({ labels, user, loading, onClose, onConfirm }: Dele
       <DialogTitle>{isReactivate ? labels.reactivateConfirm.title : labels.deleteConfirm.title}</DialogTitle>
       <DialogContent>
         <Stack spacing={2}>
-          {selfDeactivationAlert && (
-            <Alert severity="warning">
-              {labels.selfDeactivationAlert.message}
-            </Alert>
-          )}
-          <Typography>
-            {isReactivate ? labels.reactivateConfirm.message : labels.deleteConfirm.message}
-          </Typography>
+          {selfDeactivationAlert && <Alert severity="warning">{labels.selfDeactivationAlert.message}</Alert>}
+          <Typography>{isReactivate ? labels.reactivateConfirm.message : labels.deleteConfirm.message}</Typography>
           <Typography variant="body2" color="text.secondary">
             {isReactivate ? labels.reactivateConfirm.confirm : labels.deleteConfirm.consequences}
           </Typography>

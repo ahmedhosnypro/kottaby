@@ -84,6 +84,7 @@ export function DashboardAppBar({ onMenuClick, showMenuButton }: Readonly<Dashbo
         {/* Mobile hamburger — opens the temporary Drawer */}
         {showMenuButton ? (
           <IconButton
+            size="large"
             edge="start"
             onClick={onMenuClick}
             aria-label={t.menuToggleAriaLabel}
@@ -117,6 +118,7 @@ export function DashboardAppBar({ onMenuClick, showMenuButton }: Readonly<Dashbo
           {/* Theme toggle */}
           <Tooltip title={t.toggleTheme}>
             <IconButton
+              size="large"
               onClick={toggleTheme}
               aria-label={t.toggleTheme}
               sx={theme => ({ color: theme.palette.text.primary })}
@@ -164,6 +166,7 @@ export function DashboardAppBar({ onMenuClick, showMenuButton }: Readonly<Dashbo
               </Box>
               <Tooltip title={t.signOut}>
                 <IconButton
+                  size="large"
                   onClick={handleLogout}
                   aria-label={t.signOut}
                   sx={theme => ({ color: theme.palette.text.secondary })}

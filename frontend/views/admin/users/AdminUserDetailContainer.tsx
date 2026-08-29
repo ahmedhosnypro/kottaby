@@ -14,10 +14,7 @@
  */
 
 import { useQuery } from "@apollo/client/react";
-import {
-  ArrowBackOutlined as BackIcon,
-  
-} from "@mui/icons-material";
+import { ArrowBackOutlined as BackIcon } from "@mui/icons-material";
 import {
   Alert,
   Box,
@@ -26,17 +23,15 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  
   Link as MuiLink,
-  
   Stack,
   Typography,
 } from "@mui/material";
 import type { ReactNode } from "react";
+import type { AdminUserDetailQuery, AdminUserDetailQueryVariables } from "@/frontend/graphql/generated/gql/graphql";
 import { adminUserDetailQueryDocument } from "@/frontend/graphql/sharedDocuments/admin";
 import { extractErrorCode } from "@/frontend/lib/graphql-error-utils";
 import type { AdminUsersLabels } from "@/shared/locale/types/adminUsers";
-import type { AdminUserDetailQuery, AdminUserDetailQueryVariables } from "@/frontend/graphql/generated/gql/graphql";
 
 interface AdminUserDetailContainerProps {
   readonly labels: AdminUsersLabels;
@@ -100,7 +95,7 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
 
       <Card variant="outlined">
         <CardContent>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h6" component="h2" gutterBottom>
             {labels.detail.profile}
           </Typography>
           <Stack spacing={2}>
@@ -120,7 +115,7 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
 
       <Card variant="outlined">
         <CardContent>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h6" component="h2" gutterBottom>
             {labels.detail.governance}
           </Typography>
           <Stack spacing={2}>
@@ -135,11 +130,14 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
       {user.applicant && (
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" component="h2" gutterBottom>
               {labels.detail.applicant}
             </Typography>
             <Stack spacing={2}>
-              <Field label={labels.createDialog.role} value={<Chip size="small" label={labels.roleLabels.teacher} variant="outlined" />} />
+              <Field
+                label={labels.createDialog.role}
+                value={<Chip size="small" label={labels.roleLabels.teacher} variant="outlined" />}
+              />
               <Field label="Status" value={<Chip size="small" color="warning" label={user.applicant.status} />} />
               <Field label="Verification attempts" value={String(user.applicant.verificationAttempts)} />
               {user.applicant.lastAttemptAt && <Field label="Last attempt" value={user.applicant.lastAttemptAt} />}
@@ -154,7 +152,7 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
       {user.teacher && (
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" component="h2" gutterBottom>
               {labels.detail.teacher}
             </Typography>
             <Stack spacing={2}>
@@ -170,7 +168,7 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
       {user.student && (
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" component="h2" gutterBottom>
               {labels.detail.student}
             </Typography>
             <Stack spacing={2}>
@@ -178,9 +176,15 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
               <Field label="Has parent link" value={user.student.hasParentLink ? "Yes" : "No"} />
               {user.student.parentId && <Field label="Parent ID" value={String(user.student.parentId)} />}
               <Field label="Has active subscription" value={user.student.hasActiveSubscription ? "Yes" : "No"} />
-              {user.student.balanceHifz !== null && <Field label="Hifz balance" value={String(user.student.balanceHifz)} />}
-              {user.student.balanceTajweed !== null && <Field label="Tajweed balance" value={String(user.student.balanceTajweed)} />}
-              {user.student.balanceReviews !== null && <Field label="Reviews balance" value={String(user.student.balanceReviews)} />}
+              {user.student.balanceHifz !== null && (
+                <Field label="Hifz balance" value={String(user.student.balanceHifz)} />
+              )}
+              {user.student.balanceTajweed !== null && (
+                <Field label="Tajweed balance" value={String(user.student.balanceTajweed)} />
+              )}
+              {user.student.balanceReviews !== null && (
+                <Field label="Reviews balance" value={String(user.student.balanceReviews)} />
+              )}
               {user.student.trialGrantedAt && <Field label="Trial granted at" value={user.student.trialGrantedAt} />}
             </Stack>
           </CardContent>
@@ -190,7 +194,7 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
       {user.parent && (
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" component="h2" gutterBottom>
               {labels.detail.parent}
             </Typography>
             <Stack spacing={2}>
@@ -220,9 +224,24 @@ function Field({ label, value }: FieldProps): ReactNode {
 }
 
 function RoleChip({ role, labels }: { role: Role; labels: AdminUsersLabels }): ReactNode {
-  const color = role === "Admin" ? "error" : role === "Teacher" ? "secondary" : role === "Student" ? "primary" : "default";
-  const label = role === "Admin" ? labels.roleLabels.admin : role === "Teacher" ? labels.roleLabels.teacher : role === "Student" ? labels.roleLabels.student : labels.roleLabels.parent;
-  return <Chip size="small" color={color as "error" | "secondary" | "primary" | "default"} label={label} variant="outlined" />;
+  const color =
+    role === "Admin" ? "error" : role === "Teacher" ? "secondary" : role === "Student" ? "primary" : "default";
+  const label =
+    role === "Admin"
+      ? labels.roleLabels.admin
+      : role === "Teacher"
+        ? labels.roleLabels.teacher
+        : role === "Student"
+          ? labels.roleLabels.student
+          : labels.roleLabels.parent;
+  return (
+    <Chip
+      size="small"
+      color={color as "error" | "secondary" | "primary" | "default"}
+      label={label}
+      variant="outlined"
+    />
+  );
 }
 
 function StatusChip({ governance, labels }: { governance: Governance; labels: AdminUsersLabels }): ReactNode {
