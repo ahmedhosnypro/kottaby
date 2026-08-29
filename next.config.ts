@@ -11,6 +11,28 @@ const nextConfig: NextConfig = {
     // TypeScript's --showConfig" error in Storybook.
     useTypeScriptCli: false,
   },
+  // Treat PGlite + pg + drizzle + jose + bcryptjs as Node-only externals.
+  // These packages ship .wasm / native bindings / `import.meta.url`-relative
+  // asset paths that webpack's bundler cannot reproduce at runtime.
+  // `serverExternalPackages` keeps them outside the server bundle
+  // (`require('pg')` resolves to the real Node module at runtime) — this is
+  // the canonical Next.js 16 way to opt out of bundling for server-side
+  // dependencies that depend on Node built-ins (fs, worker_threads, crypto,
+  // WASM file loading via import.meta.url).
+  // Without this, the sandbox `DB_PROVIDER=pglite` path fails inside the
+  // webpack-bundled `/api/graphql` route because PGlite's WASM loader
+  // (`fs.readFile(new URL('./pglite.wasm', import.meta.url))`) hits the
+  // webpack fs polyfill which doesn't accept URL inputs.
+  serverExternalPackages: [
+    "@electric-sql/pglite",
+    "pg",
+    "pg-protocol",
+    "pg-pool",
+    "drizzle-orm",
+    "bcryptjs",
+    "jose",
+    "newrelic",
+  ],
 };
 
 export default nextConfig;

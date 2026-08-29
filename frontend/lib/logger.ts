@@ -17,7 +17,11 @@
  *   logger.warn({ caller: "apollo.utils", force: true }, "[AuthRedirect]", message, payload);
  *   logger.debug({ caller: "useApolloConnectivity" }, "[Connectivity] Check completed");
  */
-import { env } from "node:process";
+// Read `process.env.NODE_ENV` without a `node:process` import — webpack
+// (the non-Turbopack Next.js dev path) cannot resolve `node:` URIs and
+// Turbopack polyfills `process.env` already. Using the global `process`
+// (polyfilled by Next.js for the browser) keeps both bundlers happy.
+const env: NodeJS.ProcessEnv = typeof process !== "undefined" && process.env ? process.env : ({} as NodeJS.ProcessEnv);
 
 /** Metadata attached to every log call — identifies the originating module. */
 export interface LogMeta {

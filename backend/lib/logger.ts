@@ -9,7 +9,13 @@
  * @see backend/AGENTS.md — "Use `logger.logDomainError(msg, ctx)` when handling
  *      business rejections, 4xx equivalents, `NotFoundError`, or `ValidationError`."
  */
-import { env } from "node:process";
+// Read `process.env` via the global `process` (polyfilled by Next.js for
+// the browser bundle). Avoids `import { env } from "node:process"` —
+// webpack's non-Turbopack path can't resolve `node:` URIs and the GraphQL
+// route compiles backend modules into the server bundle, where this
+// import triggered an ERR_INVALID_ARG_TYPE on `fs.readFile(new URL(...))`
+// when the bundler silently swapped to a polyfilled shim.
+const env: NodeJS.ProcessEnv = typeof process !== "undefined" && process.env ? process.env : ({} as NodeJS.ProcessEnv);
 
 const isTestMode = env.TEST_SERVER === "1" || env.NODE_ENV === "test";
 
