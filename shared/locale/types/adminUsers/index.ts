@@ -332,6 +332,38 @@ export interface AdminUsersLabels {
     readonly reactivated: string;
   };
 
+  /**
+   * Per-user "recent activity" timeline card on the admin detail page —
+   * scoped `audit_logs` read-back (actions recorded ABOUT this user,
+   * newest-first, acting admin + timestamp + changed-field names).
+   */
+  readonly activity: {
+    /** Card title for the recent-activity timeline. */
+    readonly title: string;
+    /** Empty-state copy when the user has no recorded audit entries. */
+    readonly empty: string;
+    /** Accessibility label for the per-entry action chip. */
+    readonly entryActionLabel: string;
+    /** Caption prefix before the changed-field names list. */
+    readonly changedFields: string;
+    /** sr-only suffix identifying the acting admin on each entry. */
+    readonly byActor: string;
+    /** Action chip label — account created. */
+    readonly actionCreate: string;
+    /** Action chip label — profile updated. */
+    readonly actionUpdate: string;
+    /** Action chip label — account soft-deleted. */
+    readonly actionDelete: string;
+    /** Action chip label — account reactivated. */
+    readonly actionReactivate: string;
+    /** Action chip label — governance override (reserved for DEV3-017/020). */
+    readonly actionOverride: string;
+    /** Action chip label — balance adjustment (reserved for future lanes). */
+    readonly actionAdjust: string;
+    /** Action chip label — suspension (reserved for DEV3-017). */
+    readonly actionSuspend: string;
+  };
+
   /** Pagination control labels and counters. */
   readonly pagination: {
     /** "Page" word in the page-of-total counter. */

@@ -6,6 +6,8 @@
  *  - `AdminUserListItem` ← `AdminUserListItemReturnType`
  *  - `AdminUserPage` ← `AdminUserPageReturnType`
  *  - `AdminUserDetail` ← `AdminUserDetailReturnType`
+ *  - `AdminUserStats` ← `AdminUserStatsReturnType`
+ *  - `AdminUserActivityEntry` ← `AdminUserActivityEntryReturnType`
  *  - `AdminTeacherSnapshot` ← `AdminTeacherSnapshotReturnType`
  *  - `AdminStudentSnapshot` ← `AdminStudentSnapshotReturnType`
  *  - `AdminParentSnapshot` ← `AdminParentSnapshotReturnType`
@@ -31,6 +33,7 @@ import { gqlSchemaBuilder } from "@/backend/graphql/pothos/builder";
 import {
   AdminUserGovernanceFilterPothosEnum,
   ApplicantStatusPothosEnum,
+  AuditActionTypePothosEnum,
   GenderPothosEnum,
   RegisterPublicRolePothosEnum,
   UserRolePothosEnum,
@@ -40,6 +43,7 @@ import type {
   AdminParentSnapshotReturnType,
   AdminStudentSnapshotReturnType,
   AdminTeacherSnapshotReturnType,
+  AdminUserActivityEntryReturnType,
   AdminUserDetailReturnType,
   AdminUserListItemReturnType,
   AdminUserPageReturnType,
@@ -155,6 +159,33 @@ export const AdminUserStatsPothosObject = gqlSchemaBuilder
       studentsCount: t.exposeInt("studentsCount"),
       parentsCount: t.exposeInt("parentsCount"),
       newThisWeekCount: t.exposeInt("newThisWeekCount"),
+    }),
+  });
+
+/**
+ * `AdminUserActivityEntry` — one row of the per-user "recent activity"
+ * timeline on the admin detail page (scoped `audit_logs` read-back:
+ * actions recorded ABOUT this user, newest-first). The raw `details` JSON
+ * payload is NOT exposed — only the defensively projected `changedFields`
+ * string list survives to the client (BOPLA on read-back). Backed by the
+ * canonical `AdminUserActivityEntryReturnType`.
+ */
+export const AdminUserActivityEntryPothosObject = gqlSchemaBuilder
+  .objectRef<AdminUserActivityEntryReturnType>("AdminUserActivityEntry")
+  .implement({
+    fields: t => ({
+      id: t.exposeInt("id"),
+      actionType: t.expose("actionType", { type: AuditActionTypePothosEnum }),
+      actorName: t.exposeString("actorName"),
+      changedFields: t.field({
+        type: ["String"],
+        nullable: true,
+        resolve: parent => (parent.changedFields ? [...parent.changedFields] : null),
+      }),
+      createdAt: t.field({
+        type: "String",
+        resolve: parent => parent.createdAt.toISOString(),
+      }),
     }),
   });
 

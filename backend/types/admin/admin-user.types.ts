@@ -1,3 +1,4 @@
+import type { AuditActionType } from "@/backend/enum/audit/audit-action-type.enum";
 import type { AdminUserGovernanceFilter } from "@/backend/enum/users/admin-user-governance-filter.enum";
 import type { Gender } from "@/backend/enum/users/gender.enum";
 import type { UserRole } from "@/backend/enum/users/user-role.enum";
@@ -98,6 +99,39 @@ export interface AdminUserStatsReturnType {
   readonly studentsCount: number;
   readonly parentsCount: number;
   readonly newThisWeekCount: number;
+}
+
+/**
+ * `AdminUserActivityEntryReturnType` — one audit-trail entry in the
+ * per-user "recent activity" timeline on the admin detail page. Scoped
+ * read-back of the append-only `audit_logs` table: rows WHERE
+ * `entity_type = 'user' AND entity_id = :userId` (actions performed ON
+ * this account), newest-first.
+ *
+ *  - `actionType` is re-applied as the `AuditActionType` TS enum over the
+ *    raw pgEnum string at map time (fail-closed on corrupt stored values).
+ *  - `actorName` is the acting admin's display name, resolved via an
+ *    INNER JOIN on `users.id = audit_logs.actor_id` (the FK is NOT NULL
+ *    RESTRICT, so the join never drops rows and never nulls the name).
+ *  - `changedFields` is the defensive projection of the `details` JSON
+ *    payload's `changedFields` array (audit rows written by the admin
+ *    user-management mutations carry `{"changedFields":[…]}` for updates).
+ *    Malformed/truncated/unparseable payloads degrade to `null` — the
+ *    timeline renders the action + actor + timestamp regardless. Only
+ *    STRING array members survive; anything else is filtered out (BOPLA
+ *    discipline on read-back: never echo unvalidated payload shapes).
+ *  - `createdAt` is the audit row's immutable insert timestamp.
+ *
+ * This is a deliberately SCOPED read-back (one user's governance
+ * timeline), NOT the global audit-trail browsing surface — that remains
+ * owned by DEV3-020 per the deferred-items ledger (D1).
+ */
+export interface AdminUserActivityEntryReturnType {
+  readonly id: number;
+  readonly actionType: AuditActionType;
+  readonly actorName: string;
+  readonly changedFields: readonly string[] | null;
+  readonly createdAt: Date;
 }
 
 /**

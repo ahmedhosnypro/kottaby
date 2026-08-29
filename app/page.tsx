@@ -317,7 +317,8 @@ export default function LandingPage(): ReactNode {
               <Button
                 onClick={() => setMode(mode === "dark" ? "light" : "dark")}
                 sx={{
-                  minWidth: "auto",
+                  minWidth: 44,
+                  minHeight: 44,
                   p: 1,
                   color: "var(--mui-palette-secondary-light)",
                   borderRadius: 2,
@@ -373,7 +374,8 @@ export default function LandingPage(): ReactNode {
               <Button
                 onClick={() => setMode(mode === "dark" ? "light" : "dark")}
                 sx={{
-                  minWidth: "auto",
+                  minWidth: 44,
+                  minHeight: 44,
                   p: 1,
                   color: "var(--mui-palette-secondary-light)",
                   borderRadius: 2,
@@ -386,7 +388,8 @@ export default function LandingPage(): ReactNode {
               <Button
                 onClick={() => setMobileOpen(prev => !prev)}
                 sx={{
-                  minWidth: "auto",
+                  minWidth: 44,
+                  minHeight: 44,
                   p: 1,
                   color: "var(--mui-palette-onPrimary)",
                   borderRadius: 2,
@@ -446,7 +449,8 @@ export default function LandingPage(): ReactNode {
                       textTransform: "none",
                       borderRadius: 1.5,
                       px: 2,
-                      py: 1.2,
+                      py: 1.5,
+                      minHeight: 44,
                       borderLeft: isActive ? "3px solid var(--mui-palette-secondary-main)" : "3px solid transparent",
                       "&:hover": { bgcolor: "color-mix(in srgb, var(--mui-palette-secondary-main) 12%, transparent)" },
                     }}
@@ -467,6 +471,7 @@ export default function LandingPage(): ReactNode {
                     fontWeight: 600,
                     textTransform: "none",
                     borderRadius: 2,
+                    minHeight: 44,
                   }}
                 >
                   {t.navSignIn}
@@ -484,6 +489,7 @@ export default function LandingPage(): ReactNode {
                     fontWeight: 700,
                     textTransform: "none",
                     borderRadius: 2,
+                    minHeight: 44,
                     "&::after": {
                       content: '""',
                       position: "absolute",
@@ -838,7 +844,6 @@ function BackToTopButton(): ReactNode {
     <Tooltip title={t.a11yBackToTop} placement="top" arrow>
       <span>
         <Fab
-          size="small"
           onClick={scrollToTop}
           aria-label={t.a11yBackToTop}
           sx={{
@@ -1752,12 +1757,14 @@ function VerseSection(): ReactNode {
           </Typography>
 
           {/* Copy / Share buttons */}
-          <Stack direction="row" spacing={1} sx={{ mt: -1 }}>
+          <Stack direction="row" spacing={1} sx={{ mt: -1, alignItems: "center" }}>
             <IconButton
               onClick={handleCopy}
               size="small"
               aria-label={t.verseCopy}
               sx={{
+                minHeight: 44,
+                minWidth: 44,
                 color: "var(--mui-palette-secondary-light)",
                 "&:hover": { bgcolor: "color-mix(in srgb, var(--mui-palette-secondary-light) 15%, transparent)" },
               }}
@@ -1781,6 +1788,8 @@ function VerseSection(): ReactNode {
               size="small"
               aria-label={t.verseShare}
               sx={{
+                minHeight: 44,
+                minWidth: 44,
                 color: "var(--mui-palette-secondary-light)",
                 "&:hover": { bgcolor: "color-mix(in srgb, var(--mui-palette-secondary-light) 15%, transparent)" },
               }}
@@ -2772,7 +2781,8 @@ const POPULAR_CTA_SX = {
   fontWeight: 700,
   textTransform: "none",
   borderRadius: 2,
-  py: 1.2,
+  py: 1.5,
+  minHeight: 44,
   "&::after": {
     content: '""',
     position: "absolute",
@@ -2800,7 +2810,8 @@ const STANDARD_CTA_SX = {
   fontWeight: 700,
   textTransform: "none",
   borderRadius: 2,
-  py: 1.2,
+  py: 1.5,
+  minHeight: 44,
   "&:hover": {
     bgcolor: "color-mix(in srgb, var(--mui-palette-secondary-main) 8%, transparent)",
     borderColor: "var(--mui-palette-secondary-dark)",
@@ -3040,12 +3051,12 @@ function PricingSection(): ReactNode {
           }}
         >
           <Button
-            size="small"
             onClick={() => setYearly(false)}
             sx={{
               borderRadius: 99,
               px: 2,
-              py: 0.5,
+              py: 1,
+              minHeight: 44,
               fontWeight: 600,
               textTransform: "none",
               fontSize: 14,
@@ -3062,12 +3073,12 @@ function PricingSection(): ReactNode {
             {t.pricingToggleMonthly}
           </Button>
           <Button
-            size="small"
             onClick={() => setYearly(true)}
             sx={{
               borderRadius: 99,
               px: 2,
-              py: 0.5,
+              py: 1,
+              minHeight: 44,
               fontWeight: 600,
               textTransform: "none",
               fontSize: 14,
@@ -3141,8 +3152,8 @@ function TestimonialsSection(): ReactNode {
             left: { xs: -8, md: -48 },
             transform: "translateY(-50%)",
             zIndex: 2,
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             border: "2px solid var(--mui-palette-secondary-main)",
             borderRadius: "50%",
             color: "var(--mui-palette-secondary-main)",
@@ -3171,8 +3182,8 @@ function TestimonialsSection(): ReactNode {
             right: { xs: -8, md: -48 },
             transform: "translateY(-50%)",
             zIndex: 2,
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             border: "2px solid var(--mui-palette-secondary-main)",
             borderRadius: "50%",
             color: "var(--mui-palette-secondary-main)",
@@ -3328,8 +3339,9 @@ function TestimonialsSection(): ReactNode {
           </Box>
         </Box>
 
-        {/* Dot indicators */}
-        <Stack direction="row" spacing={1} sx={{ justifyContent: "center", mt: 3 }}>
+        {/* Dot indicators — touch target floor 44×44 (WCAG AAA) while the
+            visible dot stays small for a clean carousel look. */}
+        <Stack direction="row" spacing={0.5} sx={{ justifyContent: "center", mt: 3 }}>
           {testimonials.map((_item, idx) => (
             <Box
               key={_item.name}
@@ -3338,15 +3350,34 @@ function TestimonialsSection(): ReactNode {
               onClick={() => setCurrent(idx)}
               aria-label={`Testimonial ${idx + 1}`}
               sx={{
-                width: idx === current ? 24 : 8,
-                height: 8,
-                borderRadius: 99,
-                bgcolor: idx === current ? "var(--mui-palette-secondary-main)" : "transparent",
-                border: idx === current ? "none" : "2px solid var(--mui-palette-secondary-main)",
-                transition: "all 0.3s ease",
+                minWidth: 44,
+                minHeight: 44,
+                p: 0,
+                border: "none",
+                bgcolor: "transparent",
                 cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                "&:focus-visible": {
+                  outline: "2px solid var(--mui-palette-secondary-main)",
+                  outlineOffset: 2,
+                  borderRadius: 1,
+                },
               }}
-            />
+            >
+              <Box
+                aria-hidden
+                sx={{
+                  width: idx === current ? 24 : 8,
+                  height: 8,
+                  borderRadius: 99,
+                  bgcolor: idx === current ? "var(--mui-palette-secondary-main)" : "transparent",
+                  border: idx === current ? "none" : "2px solid var(--mui-palette-secondary-main)",
+                  transition: "all 0.3s ease",
+                }}
+              />
+            </Box>
           ))}
         </Stack>
       </Box>
@@ -3407,14 +3438,14 @@ function FaqSection(): ReactNode {
       <Stack spacing={2} sx={{ maxWidth: 800, mx: "auto" }}>
         <Stack direction="row" sx={{ justifyContent: "flex-end" }}>
           <Button
-            size="small"
             onClick={handleToggleAll}
             sx={{
               color: "var(--mui-palette-secondary-main)",
               textTransform: "none",
               fontWeight: 600,
               fontSize: 13,
-              p: 0.5,
+              p: 1,
+              minHeight: 44,
               "&:hover": { bgcolor: "color-mix(in srgb, var(--mui-palette-secondary-main) 8%, transparent)" },
             }}
           >
@@ -3680,6 +3711,7 @@ function NewsletterSection(): ReactNode {
                   textTransform: "none",
                   borderRadius: 2,
                   px: 3,
+                  minHeight: 44,
                   whiteSpace: "nowrap",
                   "&::after": {
                     content: '""',
@@ -3839,7 +3871,8 @@ function ContactSection(): ReactNode {
               textTransform: "none",
               borderRadius: 2,
               px: 4,
-              py: 1.2,
+              py: 1.5,
+              minHeight: 44,
               "&::after": {
                 content: '""',
                 position: "absolute",
@@ -4427,12 +4460,13 @@ function CookieConsent(): ReactNode {
             <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
               <Button
                 onClick={handleDecline}
-                size="small"
                 sx={{
                   color: "var(--mui-palette-text-secondary)",
                   textTransform: "none",
                   fontWeight: 600,
                   borderRadius: 2,
+                  minHeight: 44,
+                  px: 2,
                   "&:hover": { bgcolor: "color-mix(in srgb, var(--mui-palette-text-secondary) 8%, transparent)" },
                 }}
               >
@@ -4440,12 +4474,13 @@ function CookieConsent(): ReactNode {
               </Button>
               <Button
                 onClick={openSettings}
-                size="small"
                 sx={{
                   color: "var(--mui-palette-secondary-main)",
                   textTransform: "none",
                   fontWeight: 600,
                   borderRadius: 2,
+                  minHeight: 44,
+                  px: 2,
                   "&:hover": { bgcolor: "color-mix(in srgb, var(--mui-palette-secondary-main) 8%, transparent)" },
                 }}
               >
@@ -4454,7 +4489,6 @@ function CookieConsent(): ReactNode {
               <Button
                 onClick={handleAccept}
                 variant="contained"
-                size="small"
                 sx={{
                   position: "relative",
                   overflow: "hidden",
@@ -4463,6 +4497,8 @@ function CookieConsent(): ReactNode {
                   textTransform: "none",
                   fontWeight: 700,
                   borderRadius: 2,
+                  minHeight: 44,
+                  px: 2,
                   "&::after": {
                     content: '""',
                     position: "absolute",
@@ -4812,11 +4848,12 @@ function TeacherSpotlightSection(): ReactNode {
               href="/register"
               variant="outlined"
               fullWidth
-              size="small"
               sx={{
                 position: "relative",
                 zIndex: 1,
                 mt: "auto",
+                minHeight: 44,
+                py: 1.5,
                 borderColor: "var(--mui-palette-secondary-main)",
                 color: "var(--mui-palette-secondary-main)",
                 fontWeight: 700,
@@ -4935,10 +4972,19 @@ function ResourcesSection(): ReactNode {
                 fontSize: 14,
                 textTransform: "none",
                 p: 0,
+                minHeight: 44,
+                minWidth: 44,
+                display: "inline-flex",
+                alignItems: "center",
                 background: "none",
                 border: "none",
                 cursor: "pointer",
                 "&:hover": { textDecoration: "underline" },
+                "&:focus-visible": {
+                  outline: "2px solid var(--mui-palette-secondary-main)",
+                  outlineOffset: 2,
+                  borderRadius: 1,
+                },
               }}
             >
               {t.resourceReadMore}

@@ -434,6 +434,179 @@ describe("AdminUserManagementService.getStats", () => {
   });
 });
 
+describe("AdminUserManagementService.getUserActivity", () => {
+  /** Counts every `audit_logs` row visible inside the tx. */
+  async function countAllAuditRows(tx: DBTransaction): Promise<number> {
+    const result = await tx.select({ count: sql<number>`count(*)::int` }).from(auditLogs);
+    return result[0]?.count ?? 0;
+  }
+
+  test("happy path — create + update audit rows surface newest-first with parsed changedFields + actorName", async () => {
+    await runInRollback(async tx => {
+      const admin = await provisionAdminActor(tx);
+
+      // createUser appends audit(Create); updateUser appends audit(Update,
+      // changedFields=[phone, country]).
+      const created = await AdminUserManagementService.createUser(makeCreateInput("student"), admin.id, LOCALE, tx);
+      await AdminUserManagementService.updateUser(
+        created.id,
+        { phone: "+201110000111", country: "Egypt" },
+        admin.id,
+        LOCALE,
+        tx
+      );
+
+      const auditBefore = await countAllAuditRows(tx);
+      const entries = await AdminUserManagementService.getUserActivity(created.id, LOCALE, admin.id, null, tx);
+
+      // Reads never audit — the timeline emission is zero.
+      expect(await countAllAuditRows(tx)).toBe(auditBefore);
+
+      // Exactly the two rows this flow wrote (entity-scoped: rows about OTHER
+      // entities never leak into this user's timeline).
+      expect(entries).toHaveLength(2);
+      // Newest-first: the Update row (higher id) precedes the Create row.
+      expect(entries[0].actionType).toBe(AuditActionType.Update);
+      expect(entries[1].actionType).toBe(AuditActionType.Create);
+      // The Update entry carries the defensively parsed changed-fields list.
+      expect(entries[0].changedFields).toEqual(["phone", "country"]);
+      // The Create entry has no changedFields projection (payload lacks the key).
+      expect(entries[1].changedFields).toBeNull();
+      // The acting admin's display name is resolved via the INNER JOIN.
+      expect(entries[0].actorName).toBe(admin.fullName);
+      expect(entries[1].actorName).toBe(admin.fullName);
+      // Timestamps are Dates (ISO serialization happens at the GraphQL layer).
+      expect(entries[0].createdAt).toBeInstanceOf(Date);
+    });
+  });
+
+  test("malformed details payload degrades changedFields to null; non-string members are filtered", async () => {
+    await runInRollback(async tx => {
+      const admin = await provisionAdminActor(tx);
+      const target = await createTestUser(tx, { role: "student" });
+      await createTestStudent(tx, target.id);
+
+      // Raw probe rows written directly (bypassing the service writer) to
+      // exercise the defensive projection on read-back.
+      await tx.insert(auditLogs).values([
+        {
+          actorId: admin.id,
+          actionType: AuditActionType.Update,
+          entityType: "user",
+          entityId: target.id,
+          details: "{not-json",
+        },
+        {
+          actorId: admin.id,
+          actionType: AuditActionType.Update,
+          entityType: "user",
+          entityId: target.id,
+          details: JSON.stringify({ changedFields: ["phone", 42, null, "country"] }),
+        },
+      ]);
+
+      const entries = await AdminUserManagementService.getUserActivity(target.id, LOCALE, admin.id, null, tx);
+      expect(entries).toHaveLength(2);
+      // Highest id first — the mixed-type payload row was inserted last.
+      expect(entries[0].changedFields).toEqual(["phone", "country"]);
+      expect(entries[1].changedFields).toBeNull();
+    });
+  });
+
+  test("limit clamps — 0 reads as 1; explicit small caps the result; oversized caps at 50", async () => {
+    await runInRollback(async tx => {
+      const admin = await provisionAdminActor(tx);
+      const target = await createTestUser(tx, { role: "student" });
+      await createTestStudent(tx, target.id);
+
+      // 55 probe rows with strictly increasing ids (same timestamp is fine —
+      // the id DESC tiebreak keeps the order deterministic).
+      const probeRows = Array.from({ length: 55 }, () => ({
+        actorId: admin.id,
+        actionType: AuditActionType.Update,
+        entityType: "user",
+        entityId: target.id,
+        details: null,
+      }));
+      await tx.insert(auditLogs).values(probeRows);
+
+      const zero = await AdminUserManagementService.getUserActivity(target.id, LOCALE, admin.id, 0, tx);
+      expect(zero).toHaveLength(1);
+
+      const small = await AdminUserManagementService.getUserActivity(target.id, LOCALE, admin.id, 3, tx);
+      expect(small).toHaveLength(3);
+
+      const capped = await AdminUserManagementService.getUserActivity(target.id, LOCALE, admin.id, 500, tx);
+      expect(capped).toHaveLength(50);
+
+      const defaulted = await AdminUserManagementService.getUserActivity(target.id, LOCALE, admin.id, null, tx);
+      expect(defaulted).toHaveLength(10);
+    });
+  });
+
+  test("user not found → NotFoundError(USER_NOT_FOUND)", async () => {
+    await runInRollback(async tx => {
+      const admin = await provisionAdminActor(tx);
+      const absent = await absentUserId(tx);
+      silenceDomainLog();
+
+      const error = await expectRepoError(() =>
+        AdminUserManagementService.getUserActivity(absent, LOCALE, admin.id, null, tx)
+      );
+      assertErrorCode(error, "USER_NOT_FOUND");
+      expect(error.message).toContain(tErrors.adminUsers.userNotFound);
+    });
+  });
+
+  test("invalid id (0) → ValidationError", async () => {
+    await runInRollback(async tx => {
+      const admin = await provisionAdminActor(tx);
+      silenceDomainLog();
+
+      const error = await expectRepoError(() =>
+        AdminUserManagementService.getUserActivity(0, LOCALE, admin.id, null, tx)
+      );
+      expect(error).toBeInstanceOf(ValidationError);
+    });
+  });
+
+  test("anonymous actor (id=0) → getUserActivity → UnauthorizedError; zero audit rows", async () => {
+    await runInRollback(async tx => {
+      const target = await createTestUser(tx, { role: "student" });
+      await createTestStudent(tx, target.id);
+      silenceDomainLog();
+      const auditBefore = await countAllAuditRows(tx);
+
+      const error = await expectRepoError(() =>
+        AdminUserManagementService.getUserActivity(target.id, LOCALE, ANONYMOUS_ACTOR_ID, null, tx)
+      );
+      expect(error).toBeInstanceOf(UnauthorizedError);
+      expect(error.message).toContain(tErrors.unauthorized);
+
+      expect(await countAllAuditRows(tx)).toBe(auditBefore);
+    });
+  });
+
+  test("non-admin actor → getUserActivity → ForbiddenError; zero audit rows", async () => {
+    await runInRollback(async tx => {
+      const nonAdmin = await createTestUser(tx, { role: "student" });
+      await createTestStudent(tx, nonAdmin.id);
+      const target = await createTestUser(tx, { role: "parent" });
+      await createTestParent(tx, target.id);
+      silenceDomainLog();
+      const auditBefore = await countAllAuditRows(tx);
+
+      const error = await expectRepoError(() =>
+        AdminUserManagementService.getUserActivity(target.id, LOCALE, nonAdmin.id, null, tx)
+      );
+      expect(error).toBeInstanceOf(ForbiddenError);
+      expect(error.message).toContain(tErrors.forbidden);
+
+      expect(await countAllAuditRows(tx)).toBe(auditBefore);
+    });
+  });
+});
+
 describe("AdminUserManagementService.getUserDetail", () => {
   // ─── Tier 1: role-child snapshot assembly ───────────────────────────────
 

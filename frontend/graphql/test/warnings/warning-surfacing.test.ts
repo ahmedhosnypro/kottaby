@@ -272,8 +272,26 @@ const MUTATION_SURFACE_INVENTORY_QUERY_DOCUMENT: DocumentNode = gql`
   }
 `;
 
-/** The exhaustive live root-mutation inventory (ground truth at lock time). */
-const KNOWN_LIVE_MUTATION_FIELDS = ["login", "logout", "refreshToken", "registerUser"];
+/**
+ * The exhaustive live root-mutation inventory (ground truth at lock time).
+ *
+ * Updated when DEV3-016 (Admin User CRUD) landed the three admin mutations
+ * `adminCreateUser`, `adminUpdateUser`, `adminSetUserDeleted` — they are
+ * warning-incapable (return the canonical `AdminUserDetail` payload, never
+ * a partial-success wrapper), so they do not exercise Rules #6/#7. They
+ * still belong on this drift-guard list because the contract is "every
+ * deployed Mutation root field is enumerated" — otherwise any new
+ * mutation ships without an explicit decision about warning propagation.
+ */
+const KNOWN_LIVE_MUTATION_FIELDS = [
+  "adminCreateUser",
+  "adminSetUserDeleted",
+  "adminUpdateUser",
+  "login",
+  "logout",
+  "refreshToken",
+  "registerUser",
+];
 /** Documented precedent surfaces that must ADOPT Rules #6/#7 when wired. */
 const DOCUMENTED_WARNING_SURFACES_PENDING = ["releaseQuotaIfDeducted", "deleteClassInstance"];
 

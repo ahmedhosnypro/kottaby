@@ -21,6 +21,8 @@
  * After registering a new enum here, run `bun run generate:gqlSchema` and
  * `bun codegen` to refresh the SDL + frontend codegen.
  */
+
+import { AuditActionType } from "@/backend/enum/audit/audit-action-type.enum";
 import { ApplicantStatus } from "@/backend/enum/teachers/applicant-status.enum";
 import { AdminUserGovernanceFilter } from "@/backend/enum/users/admin-user-governance-filter.enum";
 import { Gender } from "@/backend/enum/users/gender.enum";
@@ -82,4 +84,17 @@ export const ApplicantStatusPothosEnum = gqlSchemaBuilder.enumType(ApplicantStat
  */
 export const AdminUserGovernanceFilterPothosEnum = gqlSchemaBuilder.enumType(AdminUserGovernanceFilter, {
   name: "AdminUserGovernanceFilter",
+});
+
+/**
+ * GraphQL `AuditActionType` enum (create|update|delete|override|adjust|
+ * suspend|reactivate).
+ *
+ * Registered ONCE from the canonical TS enum that mirrors the
+ * `audit_action_type` pgEnum. Backs the per-user activity timeline on the
+ * admin user detail surface (scoped `audit_logs` read-back); the global
+ * audit-trail browsing surface remains owned by DEV3-020.
+ */
+export const AuditActionTypePothosEnum = gqlSchemaBuilder.enumType(AuditActionType, {
+  name: "AuditActionType",
 });

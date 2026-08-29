@@ -63,11 +63,12 @@ import { auditLogs } from "@/backend/db/schema/audit/audit-logs";
 import { admin } from "@/backend/db/schema/users/admin";
 import { users } from "@/backend/db/schema/users/users";
 import { hashPassword } from "@/backend/lib/auth/password";
-import { Gender, RegisterPublicRole, UserRole } from "@/frontend/graphql/generated/gql/graphql";
+import { AuditActionType, Gender, RegisterPublicRole, UserRole } from "@/frontend/graphql/generated/gql/graphql";
 import {
   adminCreateUserMutationDocument,
   adminSetUserDeletedMutationDocument,
   adminUpdateUserMutationDocument,
+  adminUserActivityQueryDocument,
   adminUserDetailQueryDocument,
   adminUserStatsQueryDocument,
   adminUsersQueryDocument,
@@ -249,12 +250,13 @@ function readErrorCode(body: unknown): string | undefined {
   return body.errors?.[0]?.extensions?.code;
 }
 
-/** The six admin operations covered by the matrix — sanity-checked
+/** The seven admin operations covered by the matrix — sanity-checked
  * against future drift if the operation set changes. */
 const ADMIN_OPERATIONS = [
   "adminUsers",
   "adminUserDetail",
   "adminUserStats",
+  "adminUserActivity",
   "adminCreateUser",
   "adminUpdateUser",
   "adminSetUserDeleted",
@@ -283,7 +285,7 @@ describe("Admin user-management GraphQL permission matrix", () => {
   });
 
   // ─── Tier 1: anonymous → each operation → UNAUTHORIZED ─────────────
-  describe("Tier 1 — anonymous caller denied across all six operations", () => {
+  describe("Tier 1 — anonymous caller denied across all seven operations", () => {
     test("adminUsers (list) → UNAUTHORIZED; zero audit writes", async () => {
       const auditBefore = await countAllAuditRows();
       const result = await testClient.query({ query: adminUsersQueryDocument });
@@ -303,6 +305,16 @@ describe("Admin user-management GraphQL permission matrix", () => {
       const result = await testClient.query({
         query: adminUserDetailQueryDocument,
         variables: { id: 1 },
+      });
+      expectMutationError(result.error, "UNAUTHORIZED");
+      expect(await countAllAuditRows()).toBe(auditBefore);
+    });
+
+    test("adminUserActivity → UNAUTHORIZED; zero audit writes", async () => {
+      const auditBefore = await countAllAuditRows();
+      const result = await testClient.query({
+        query: adminUserActivityQueryDocument,
+        variables: { id: 1, limit: 5 },
       });
       expectMutationError(result.error, "UNAUTHORIZED");
       expect(await countAllAuditRows()).toBe(auditBefore);
@@ -351,13 +363,13 @@ describe("Admin user-management GraphQL permission matrix", () => {
       expect(await countAllAuditRows()).toBe(auditBefore);
     });
 
-    test("the six operations enumerated (drift guard)", () => {
-      expect(ADMIN_OPERATIONS).toHaveLength(6);
+    test("the seven operations enumerated (drift guard)", () => {
+      expect(ADMIN_OPERATIONS).toHaveLength(7);
     });
   });
 
   // ─── Tier 2: non-admin roles → each operation → FORBIDDEN ─────────
-  describe("Tier 2 — non-admin roles denied across all six operations", () => {
+  describe("Tier 2 — non-admin roles denied across all seven operations", () => {
     const nonAdminRoles: ReadonlyArray<RegisterPublicRole> = [
       RegisterPublicRole.Student,
       RegisterPublicRole.Parent,
@@ -393,6 +405,18 @@ describe("Admin user-management GraphQL permission matrix", () => {
         const auditBefore = await countAllAuditRows();
         const result = await testClient.query({
           query: adminUserStatsQueryDocument,
+          context: bearer(accessToken),
+        });
+        expectMutationError(result.error, "FORBIDDEN");
+        expect(await countAllAuditRows()).toBe(auditBefore);
+      });
+
+      test(`${role} actor → adminUserActivity → FORBIDDEN; zero audit writes`, async () => {
+        const { accessToken } = await registerAndLogin(role);
+        const auditBefore = await countAllAuditRows();
+        const result = await testClient.query({
+          query: adminUserActivityQueryDocument,
+          variables: { id: 1, limit: 5 },
           context: bearer(accessToken),
         });
         expectMutationError(result.error, "FORBIDDEN");
@@ -632,6 +656,58 @@ describe("Admin user-management GraphQL permission matrix", () => {
       expect(detail.isDeleted).toBe(false);
       expect(detail.deletedAt).toBeNull();
       expect(await countAllAuditRows()).toBe(auditBefore + 1);
+    });
+
+    test("admin → adminUserActivity returns the audit trail newest-first with projected changedFields; zero audit writes; no leaks", async () => {
+      const auditBefore = await countAllAuditRows();
+      const result = await testClient.query({
+        query: adminUserActivityQueryDocument,
+        variables: { id: createdUserId, limit: 10 },
+        context: bearer(adminActor.accessToken),
+      });
+      expect(result.error).toBeUndefined();
+      const entries = result.data?.adminUserActivity;
+      if (!entries) throw new Error("adminUserActivity returned no data");
+
+      // The Tier-3 flow above wrote exactly four audit rows about this user:
+      // Create (adminCreateUser) → Update → Delete → Reactivate. The timeline
+      // returns them newest-first.
+      expect(entries).toHaveLength(4);
+      expect(entries[0].actionType).toBe(AuditActionType.Reactivate);
+      expect(entries[1].actionType).toBe(AuditActionType.Delete);
+      expect(entries[2].actionType).toBe(AuditActionType.Update);
+      expect(entries[3].actionType).toBe(AuditActionType.Create);
+      // `id` is the first key on every entry (Apollo cache normalization).
+      for (const entry of entries) {
+        expect(Object.keys(entry)[0]).toBe("id");
+        expect(entry.actorName).toBe("Admin Matrix Probe");
+      }
+      // The Update entry projects the changed-field names. The input
+      // supplied `dateOfBirth: null`, but the resolver maps null → undefined
+      // (partial-update semantics — explicit nulls are dropped, never
+      // "clear the value"; see QA 6-QA-4 P2-2), so the audit payload
+      // carries the four string/enum fields only.
+      expect(entries[2].changedFields).toEqual(["fullName", "phone", "country", "gender"]);
+      expect(entries[0].changedFields).toBeNull();
+      expect(entries[1].changedFields).toBeNull();
+      expect(entries[3].changedFields).toBeNull();
+      // Reads never audit — the timeline read emits zero audit rows.
+      expect(await countAllAuditRows()).toBe(auditBefore);
+      // Zero-leak: no `passwordHash` and no raw audit `details` JSON payload
+      // anywhere in the response (only the projected changedFields list).
+      expect(deepFindKey(result.data, "passwordHash")).toBe(false);
+      expect(deepFindKey(result.data, "details")).toBe(false);
+    });
+
+    test("admin → adminUserActivity for an unknown id → USER_NOT_FOUND; zero audit writes", async () => {
+      const auditBefore = await countAllAuditRows();
+      const result = await testClient.query({
+        query: adminUserActivityQueryDocument,
+        variables: { id: 99_999_999, limit: 5 },
+        context: bearer(adminActor.accessToken),
+      });
+      expectMutationError(result.error, "USER_NOT_FOUND");
+      expect(await countAllAuditRows()).toBe(auditBefore);
     });
   });
 

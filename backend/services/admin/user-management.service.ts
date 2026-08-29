@@ -85,6 +85,7 @@ import { AuditService } from "@/backend/services/admin/audit.service";
 import type {
   AdminCreateUserSubmitInput,
   AdminUpdateUserPatchInput,
+  AdminUserActivityEntryReturnType,
   AdminUserDetailReturnType,
   AdminUserFiltersSubmitInput,
   AdminUserListItemReturnType,
@@ -124,6 +125,59 @@ const HANDSHAKE_RETRY_LIMIT = 5;
 
 /** The `audit_logs.details` column ceiling — payloads are capped BEFORE insert. */
 const AUDIT_DETAILS_MAX_LENGTH = 2000;
+
+/** Activity-timeline bounds — out-of-range `limit` values clamp (read path, never errors). */
+const MIN_ACTIVITY_LIMIT = 1;
+const MAX_ACTIVITY_LIMIT = 50;
+const DEFAULT_ACTIVITY_LIMIT = 10;
+
+/**
+ * Runtime guard over the raw `audit_logs.action_type` pgEnum string.
+ * Fail-closed: a corrupt stored value surfaces as a resolver error rather
+ * than an unsafe cast (same discipline as `toUserRole` on directory rows).
+ */
+function toAuditActionType(raw: string): AuditActionType | null {
+  switch (raw) {
+    case AuditActionType.Create:
+      return AuditActionType.Create;
+    case AuditActionType.Update:
+      return AuditActionType.Update;
+    case AuditActionType.Delete:
+      return AuditActionType.Delete;
+    case AuditActionType.Override:
+      return AuditActionType.Override;
+    case AuditActionType.Adjust:
+      return AuditActionType.Adjust;
+    case AuditActionType.Suspend:
+      return AuditActionType.Suspend;
+    case AuditActionType.Reactivate:
+      return AuditActionType.Reactivate;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Defensively projects the `changedFields` array out of a raw audit
+ * `details` JSON string. Returns `null` for every non-conforming shape
+ * (unparseable JSON, non-object root, missing key, non-array value, or a
+ * fully-filtered non-string member set) — the timeline still renders the
+ * action + actor + timestamp. Only string members survive; nothing is
+ * echoed unvalidated (BOPLA discipline on read-back).
+ */
+function projectChangedFields(details: string | null): readonly string[] | null {
+  if (!details) return null;
+  try {
+    const parsed: unknown = JSON.parse(details);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+    const candidate = (parsed as { changedFields?: unknown }).changedFields;
+    if (!Array.isArray(candidate)) return null;
+    const fields = candidate.filter((entry): entry is string => typeof entry === "string");
+    return fields.length > 0 ? fields : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Email shape validator — RFC-5322-lite (sufficient for the create contract;
@@ -703,6 +757,80 @@ export namespace AdminUserManagementService {
       parentsCount: row.parentsCount,
       newThisWeekCount: row.newThisWeekCount,
     };
+  }
+
+  /**
+   * Resolves the per-user "recent activity" timeline: the newest-first
+   * `audit_logs` rows recorded ABOUT the target user
+   * (`entity_type = 'user' AND entity_id = :userId`), with the acting
+   * admin's display name and the defensively projected `changedFields`
+   * list per entry.
+   *
+   * Pure read: ZERO audit rows (reads never audit — matches
+   * `listDirectory`/`getUserDetail`/`getStats`), zero writes. Defense-in-
+   * depth BFLA applies as everywhere else (anonymous →
+   * `UnauthorizedError`, authenticated non-admin → `ForbiddenError`, both
+   * BEFORE any DB read beyond the actor probe).
+   *
+   * `userId` is re-asserted defensively (positive safe integer) and must
+   * resolve to an existing row — a missing id yields
+   * `NotFoundError("USER", …)` → `USER_NOT_FOUND` (same contract as
+   * `getUserDetail`). `limit` CLAMPS into `1..50` (default 10) — the
+   * timeline is a bounded read surface, so an out-of-range limit is never
+   * an error (read-path leniency, mirroring pagination defaulting).
+   *
+   * Scoped read-back discipline: this surfaces ONE user's governance
+   * timeline only. The global audit-trail browsing surface remains owned
+   * by DEV3-020 (deferred-items ledger D1).
+   */
+  export async function getUserActivity(
+    userId: number,
+    locale: string,
+    actorId: number,
+    limit?: number | null,
+    outerTx?: DBTransaction
+  ): Promise<AdminUserActivityEntryReturnType[]> {
+    await assertActorAdmin(actorId, locale, outerTx);
+
+    const tErrors = getServerTranslations(locale).errorsTranslations;
+
+    if (!isPositiveSafeInteger(userId)) {
+      throw new ValidationError(tErrors.validation);
+    }
+
+    // Clamp-first limit resolution: `undefined`/`null`/non-finite → default;
+    // every finite value truncates then clamps into 1..50. An explicit 0
+    // reads as "minimum" (1), never as "unbounded".
+    const rawLimit = limit ?? DEFAULT_ACTIVITY_LIMIT;
+    const truncated = Number.isFinite(rawLimit) ? Math.trunc(rawLimit) : DEFAULT_ACTIVITY_LIMIT;
+    const resolvedLimit = Math.min(Math.max(truncated, MIN_ACTIVITY_LIMIT), MAX_ACTIVITY_LIMIT);
+
+    const userExists = await AdminUserRepository.existsById(userId, outerTx);
+    if (!userExists) {
+      logger.logDomainError("Admin user activity lookup: user not found", {
+        code: "USER_NOT_FOUND",
+        entity: "user",
+        entityId: userId,
+      });
+      throw new NotFoundError(USER_ENTITY, tErrors.adminUsers.userNotFound);
+    }
+
+    const rows = await AdminUserRepository.getActivity(userId, resolvedLimit, outerTx);
+    return rows.map(row => {
+      const actionType = toAuditActionType(row.actionType);
+      if (actionType === null) {
+        // Fail-closed on a corrupt stored enum value — surfaces as a
+        // resolver error rather than an unsafe cast.
+        throw new Error(`Unexpected audit action type: ${row.actionType}`);
+      }
+      return {
+        id: row.id,
+        actionType,
+        actorName: row.actorName ?? "",
+        changedFields: projectChangedFields(row.details),
+        createdAt: row.createdAt,
+      };
+    });
   }
 
   /**

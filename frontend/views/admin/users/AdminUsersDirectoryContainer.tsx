@@ -626,6 +626,13 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
                         href={`/admin/users/${u.id}`}
                         underline="hover"
                         aria-label={`${labels.quickActions.viewProfile}: ${u.fullName}`}
+                        sx={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          minHeight: 44,
+                          minWidth: 44,
+                          boxSizing: "border-box",
+                        }}
                       >
                         {u.fullName}
                       </MuiLink>
@@ -687,7 +694,13 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
                       href={`/admin/users/${u.id}`}
                       underline="hover"
                       noWrap
-                      sx={{ minWidth: 0 }}
+                      sx={{
+                        minWidth: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        minHeight: 44,
+                        boxSizing: "border-box",
+                      }}
                       aria-label={`${labels.quickActions.viewProfile}: ${u.fullName}`}
                     >
                       {u.fullName}

@@ -44,6 +44,7 @@ import { logger } from "@/backend/lib/logger";
 import { RecitationCatalogService } from "@/backend/services/shared/recitation-catalog.service";
 import type {
   AdminRegistrationSubmitInput,
+  ApiFieldErrorType,
   DBTransaction,
   RegistrationReturnType,
   RegistrationSubmitInput,
@@ -144,7 +145,7 @@ export namespace RegistrationService {
   ): Promise<RegistrationReturnType> {
     const t = getServerTranslations(locale).authTranslations;
 
-    validateInput(input, t);
+    validateInput(input, locale);
 
     // Validate preferredRecitation against the canonical catalog BEFORE
     // any DB work. Contract metadata only — NOT persisted to `recitation`
@@ -188,7 +189,7 @@ export namespace RegistrationService {
 
     // Validate shared fields with a public-shaped proxy; admin role is the
     // only permitted role here (the type enforces it).
-    validateInput({ ...input, role: "student" }, t);
+    validateInput({ ...input, role: "student" }, locale);
 
     // Validate preferredRecitation for the admin path too (same session-link guard).
     const preferredRecitation = RecitationCatalogService.validateOptionalReading(input.preferredRecitation, locale);
@@ -212,43 +213,70 @@ export namespace RegistrationService {
    * Validates the public input shape. Throws localized `ValidationError` on
    * any failure. BFLA defense: `role` is constrained by the
    * `RegisterPublicRole` type union — `admin` is structurally rejected.
+   *
+   * Field-payload projection (same contract as the admin
+   * `validateCreateInput`): instead of throw-on-first-failure, the validator
+   * COLLECTS every failed check as an `ApiFieldErrorType` entry
+   * (`{ field, code, message }` — field names match the registration form
+   * paths exactly: `fullName`, `email`, `phone`, `password`, `country`,
+   * `role`, `gender`) and throws ONE `ValidationError` whose top-level
+   * message is the FIRST entry's message (backwards-compatible with the
+   * single-failure message contract — the check order is unchanged) and
+   * whose `fields` array carries every failed field. The GraphQL boundary
+   * finalizer mirrors `fields` into `extensions.fields`, and the public
+   * registration form projects them as inline per-field helperText via
+   * `extractFieldErrors` (the form's `REGISTER_FIELD_PATHS` mapping already
+   * covers every path emitted here). Entries are built explicitly per check
+   * — never an echo/spread of client input (BOPLA discipline applies to
+   * error payloads too).
    */
-  function validateInput(
-    input: RegistrationSubmitInput,
-    t: ReturnType<typeof getServerTranslations>["authTranslations"]
-  ): void {
+  function validateInput(input: RegistrationSubmitInput, locale: string): void {
+    const translations = getServerTranslations(locale);
+    const t = translations.authTranslations;
+    const tErrors = translations.errorsTranslations;
+    const entries: ApiFieldErrorType[] = [];
+
     if (!input.fullName || input.fullName.trim().length === 0) {
-      throw new ValidationError(t.nameRequired);
+      entries.push({ field: "fullName", code: "NAME_REQUIRED", message: t.nameRequired });
     }
     if (!input.email || input.email.trim().length === 0) {
-      throw new ValidationError(t.emailRequired);
-    }
-    if (!isValidEmail(input.email)) {
-      throw new ValidationError(t.emailInvalid);
+      entries.push({ field: "email", code: "EMAIL_REQUIRED", message: t.emailRequired });
+    } else if (!isValidEmail(input.email)) {
+      entries.push({ field: "email", code: "EMAIL_INVALID", message: t.emailInvalid });
     }
     if (!input.phone || input.phone.trim().length === 0) {
-      throw new ValidationError(t.phoneRequired);
+      entries.push({ field: "phone", code: "PHONE_REQUIRED", message: t.phoneRequired });
     }
     if (!input.password || input.password.length === 0) {
-      throw new ValidationError(t.passwordRequired);
-    }
-    if (input.password.length < MIN_PASSWORD_LENGTH) {
-      throw new ValidationError(t.passwordTooShort);
+      entries.push({ field: "password", code: "PASSWORD_REQUIRED", message: t.passwordRequired });
+    } else if (input.password.length < MIN_PASSWORD_LENGTH) {
+      entries.push({ field: "password", code: "PASSWORD_TOO_SHORT", message: t.passwordTooShort });
     }
     if (!input.country || input.country.trim().length === 0) {
-      throw new ValidationError(t.countryRequired);
-    }
-    if (!input.role) {
-      throw new ValidationError(t.roleRequired);
+      entries.push({ field: "country", code: "COUNTRY_REQUIRED", message: t.countryRequired });
     }
     // BFLA: role ∈ {student, teacher, parent}. The TS type enforces this at
     // compile time; this runtime guard defends against transport-layer tamper.
-    if (input.role !== "student" && input.role !== "teacher" && input.role !== "parent") {
-      throw new ValidationError("ROLE_FORBIDDEN", t.roleForbidden);
+    if (!input.role) {
+      entries.push({ field: "role", code: "ROLE_REQUIRED", message: t.roleRequired });
+    } else if (input.role !== "student" && input.role !== "teacher" && input.role !== "parent") {
+      // Transport-tamper rejection keeps the canonical custom code as the
+      // top-level `code` (ROLE_FORBIDDEN) while the entry projects onto the
+      // `role` form path for inline feedback.
+      entries.push({ field: "role", code: "ROLE_FORBIDDEN", message: t.roleForbidden });
+      throw new ValidationError("ROLE_FORBIDDEN", t.roleForbidden, undefined, entries);
     }
     // gender is optional — `undefined` is valid (schema column is nullable).
     if (input.gender !== undefined && !isValidGender(input.gender)) {
-      throw new ValidationError(t.emailInvalid);
+      // Historical note: this branch previously threw `t.emailInvalid` (a
+      // copy-paste bug — the message had nothing to do with gender). The
+      // field payload now carries the generic localized validation message
+      // under the GENDER_INVALID code on the `gender` form path.
+      entries.push({ field: "gender", code: "GENDER_INVALID", message: tErrors.validation });
+    }
+
+    if (entries.length > 0) {
+      throw new ValidationError(entries[0].message, entries);
     }
   }
 

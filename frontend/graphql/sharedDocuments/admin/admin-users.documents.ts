@@ -15,6 +15,8 @@ import type {
   AdminCreateUserMutation,
   AdminSetUserDeletedMutation,
   AdminUpdateUserMutation,
+  AdminUserActivityQuery,
+  AdminUserActivityQueryVariables,
   AdminUserDetailQuery,
   AdminUserStatsQuery,
   AdminUsersQuery,
@@ -144,6 +146,27 @@ export const adminUserDetailQueryDocument: TypedDocumentNode<AdminUserDetailQuer
   query AdminUserDetail($id: Int!) {
     adminUserDetail(id: $id) {
       ...AdminUserDetailFields
+    }
+  }
+`;
+
+/**
+ * Per-user activity-timeline query — scoped `audit_logs` read-back
+ * (actions recorded ABOUT this user, newest-first). `id` selected FIRST
+ * per the Apollo cache-normalization rule; the raw `details` JSON is
+ * never selected — only the defensively projected `changedFields` list.
+ */
+export const adminUserActivityQueryDocument: TypedDocumentNode<
+  AdminUserActivityQuery,
+  AdminUserActivityQueryVariables
+> = gql`
+  query AdminUserActivity($id: Int!, $limit: Int) {
+    adminUserActivity(id: $id, limit: $limit) {
+      id
+      actionType
+      actorName
+      changedFields
+      createdAt
     }
   }
 `;

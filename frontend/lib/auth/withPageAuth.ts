@@ -69,12 +69,23 @@ export async function withPageAuth(options?: WithPageAuthOptions): Promise<WithP
 
   if (!ctx.user || !ctx.role || !ctx.userId) {
     // Anonymous — redirect to /login with the return path.
+    //
+    // Use a RELATIVE path here, never an absolute URL built off
+    // `http://localhost:3000`. Building `new URL(path, "http://localhost:3000")`
+    // emits a `Location: http://localhost:3000/login?redirect=...` header — when
+    // the page is served via the public HTTPS preview gateway (Caddy on a
+    // `*.space-z.ai` host), the browser treats this as a public-to-private
+    // network navigation and Chrome's Private Network Access (PNA) feature
+    // blocks it ("The connection is blocked because it was initiated by a
+    // public page to connect to devices or servers on your local network").
+    // Next.js's `redirect()` resolves a relative path against the actual
+    // request origin (respecting `X-Forwarded-Host` / `X-Forwarded-Proto`),
+    // so the redirect stays on the same origin the browser used to reach us.
     const redirectTo = options?.redirectTo ?? "";
-    const loginUrl = new URL(
-      redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login",
-      process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"
-    );
-    redirect(loginUrl.toString());
+    const loginPath = redirectTo
+      ? `/login?redirect=${encodeURIComponent(redirectTo)}`
+      : "/login";
+    redirect(loginPath);
   }
 
   // Role check — OR semantics over the supplied role set.

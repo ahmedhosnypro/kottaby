@@ -17,8 +17,8 @@ function SocialIcon({ children, label }: Readonly<{ children: ReactNode; label: 
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        width: 36,
-        height: 36,
+        width: 44,
+        height: 44,
         borderRadius: 1,
         border: "1px solid rgba(255, 255, 255, 0.3)",
         color: "var(--mui-palette-onPrimary)",
@@ -282,7 +282,12 @@ function FooterLink({ href, children }: Readonly<{ href: string; children: React
         color: "var(--mui-palette-onPrimary)",
         opacity: 0.85,
         transition: "opacity 0.15s ease, color 0.15s ease, transform 0.15s ease",
-        display: "inline-block",
+        // Block-level + flex centering so the link occupies a 44px-tall touch
+        // target (WCAG AAA 2.5.5) without changing the visible text size.
+        display: "flex",
+        alignItems: "center",
+        minHeight: 44,
+        boxSizing: "border-box",
         "&:hover": {
           opacity: 1,
           color: "var(--mui-palette-secondary-light)",

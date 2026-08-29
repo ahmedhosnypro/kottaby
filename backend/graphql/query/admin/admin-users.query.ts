@@ -29,6 +29,7 @@
  */
 import { UserRole } from "@/backend/enum/users/user-role.enum";
 import {
+  AdminUserActivityEntryPothosObject,
   AdminUserDetailPothosObject,
   AdminUserFiltersInput,
   AdminUserPagePothosObject,
@@ -149,6 +150,32 @@ gqlSchemaBuilder.queryField("adminUserDetail", t =>
       }
       const id = requirePositiveIntId(args.id, "id");
       return AdminUserManagementService.getUserDetail(id, ctx.locale, ctx.user.id);
+    },
+  })
+);
+
+// Side-effect: register the `adminUserActivity` per-user timeline query field.
+// Scoped `audit_logs` read-back (actions recorded ABOUT one user,
+// newest-first, limit clamped 1..50 server-side with a default of 10).
+gqlSchemaBuilder.queryField("adminUserActivity", t =>
+  t.field({
+    type: [AdminUserActivityEntryPothosObject],
+    args: {
+      id: t.arg({ type: "Int", required: true }),
+      limit: t.arg({ type: "Int", required: false }),
+    },
+    authScopes: {
+      $all: {
+        authenticated: true,
+        role: [UserRole.Admin],
+      },
+    },
+    resolve: async (_root, args, ctx) => {
+      if (!ctx.user) {
+        throw new UnauthorizedError("Authentication required.");
+      }
+      const id = requirePositiveIntId(args.id, "id");
+      return AdminUserManagementService.getUserActivity(id, ctx.locale, ctx.user.id, args.limit ?? null);
     },
   })
 );

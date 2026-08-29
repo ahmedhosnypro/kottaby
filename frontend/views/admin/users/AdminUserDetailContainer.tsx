@@ -34,6 +34,7 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Divider,
   IconButton,
   Link as MuiLink,
   Snackbar,
@@ -45,14 +46,18 @@ import { type ReactNode, useCallback, useMemo, useState } from "react";
 import {
   type AdminSetUserDeletedMutation,
   type AdminUpdateUserMutation,
+  type AdminUserActivityQuery,
+  type AdminUserActivityQueryVariables,
   type AdminUserDetailQuery,
   type AdminUserDetailQueryVariables,
   ApplicantStatus as ApplicantStatusEnum,
+  AuditActionType as AuditActionTypeEnum,
   Gender as GenderEnum,
 } from "@/frontend/graphql/generated/gql/graphql";
 import {
   adminSetUserDeletedMutationDocument,
   adminUpdateUserMutationDocument,
+  adminUserActivityQueryDocument,
   adminUserDetailQueryDocument,
 } from "@/frontend/graphql/sharedDocuments/admin";
 import { useAppLocale } from "@/frontend/hooks/useAppLocale";
@@ -68,6 +73,9 @@ interface AdminUserDetailContainerProps {
 
 type Role = "Admin" | "Teacher" | "Student" | "Parent";
 type Governance = "Active" | "Suspended" | "Blocked" | "Deleted";
+
+/** Entries fetched for the per-user activity timeline (server clamps 1..50). */
+const ACTIVITY_TIMELINE_LIMIT = 10;
 
 export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailContainerProps): ReactNode {
   const locale = useAppLocale();
@@ -128,6 +136,21 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
     adminUserDetailQueryDocument,
     { variables: { id: userId }, fetchPolicy: "cache-and-network" }
   );
+
+  // Per-user activity timeline — scoped `audit_logs` read-back. Independent
+  // query so a timeline failure never blocks the detail surface; refetched
+  // after each successful inline mutation so a just-written audit row
+  // appears immediately (the mutation itself only merges the detail
+  // fragment into the cache).
+  const {
+    data: activityData,
+    loading: activityLoading,
+    error: activityError,
+    refetch: refetchActivity,
+  } = useQuery<AdminUserActivityQuery, AdminUserActivityQueryVariables>(adminUserActivityQueryDocument, {
+    variables: { id: userId, limit: ACTIVITY_TIMELINE_LIMIT },
+    fetchPolicy: "cache-and-network",
+  });
 
   // Inline header mutations — the detail page invokes the SAME whitelist
   // operations the directory uses (adminUpdateUser / adminSetUserDeleted)
@@ -435,6 +458,62 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
         </Card>
       )}
 
+      {/* Recent activity — scoped audit-trail read-back for THIS account
+          (newest-first). Independent of the detail query: a timeline error
+          degrades to an inline warning without affecting the profile
+          surface, and the card refetches after every successful inline
+          mutation above. */}
+      <Card variant="outlined">
+        <CardContent>
+          <Typography variant="h6" component="h2" gutterBottom>
+            {labels.activity.title}
+          </Typography>
+          {activityLoading && !activityData ? (
+            <Stack sx={{ alignItems: "center", py: 4 }}>
+              <CircularProgress size={24} />
+            </Stack>
+          ) : activityError ? (
+            <Alert severity="warning">{labels.errorState.title}</Alert>
+          ) : (activityData?.adminUserActivity.length ?? 0) === 0 ? (
+            <Typography variant="body2" sx={theme => ({ color: theme.palette.text.secondary, py: 2 })}>
+              {labels.activity.empty}
+            </Typography>
+          ) : (
+            <Stack
+              divider={<Divider component="div" />}
+              sx={{ maxHeight: 384, overflowY: "auto", pr: 1 }}
+              aria-label={labels.activity.title}
+            >
+              {activityData?.adminUserActivity.map(entry => (
+                <Stack key={entry.id} spacing={1} sx={{ py: 1.5, minWidth: 0 }}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+                    <ActivityActionChip action={entry.actionType} labels={labels} />
+                    <Typography variant="body2" sx={theme => ({ color: theme.palette.text.secondary })}>
+                      {labels.activity.byActor} {entry.actorName} · {fmtTimestamp(entry.createdAt)}
+                    </Typography>
+                  </Stack>
+                  {entry.changedFields && entry.changedFields.length > 0 && (
+                    <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+                      <Typography variant="caption" sx={theme => ({ color: theme.palette.text.secondary })}>
+                        {labels.activity.changedFields}
+                      </Typography>
+                      {entry.changedFields.map(field => (
+                        <Chip
+                          key={field}
+                          size="small"
+                          variant="outlined"
+                          label={localizeAuditFieldName(field, labels)}
+                        />
+                      ))}
+                    </Stack>
+                  )}
+                </Stack>
+              ))}
+            </Stack>
+          )}
+        </CardContent>
+      </Card>
+
       {editOpen && (
         <EditUserDialog
           labels={labels}
@@ -447,6 +526,8 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
             await updateUser({ variables: { id: user.id, input } });
             setEditOpen(false);
             setSnackbarMessage(labels.snackbars.updated);
+            // The mutation appended an audit row — refresh the timeline.
+            void refetchActivity();
           }}
         />
       )}
@@ -464,6 +545,8 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
             await setDeleted({ variables: { id: user.id, deleted: !isReactivate } });
             setDeleteOpen(false);
             setSnackbarMessage(isReactivate ? labels.snackbars.reactivated : labels.snackbars.deleted);
+            // The mutation appended an audit row — refresh the timeline.
+            void refetchActivity();
           }}
         />
       )}
@@ -536,4 +619,77 @@ function StatusChip({ governance, labels }: { governance: Governance; labels: Ad
     color = "success";
   }
   return <Chip size="small" color={color} label={label} />;
+}
+
+/**
+ * Maps an audit `action_type` to its localized chip label + palette color.
+ * Exhaustive over the `AuditActionType` enum; the default arm is structurally
+ * unreachable (fail-safe neutral chip).
+ */
+function ActivityActionChip({ action, labels }: { action: AuditActionTypeEnum; labels: AdminUsersLabels }): ReactNode {
+  let label: string;
+  let color: "success" | "primary" | "error" | "warning" | "secondary" | "default";
+  switch (action) {
+    case AuditActionTypeEnum.Create:
+      label = labels.activity.actionCreate;
+      color = "success";
+      break;
+    case AuditActionTypeEnum.Update:
+      label = labels.activity.actionUpdate;
+      color = "primary";
+      break;
+    case AuditActionTypeEnum.Delete:
+      label = labels.activity.actionDelete;
+      color = "error";
+      break;
+    case AuditActionTypeEnum.Reactivate:
+      label = labels.activity.actionReactivate;
+      color = "success";
+      break;
+    case AuditActionTypeEnum.Suspend:
+      label = labels.activity.actionSuspend;
+      color = "warning";
+      break;
+    case AuditActionTypeEnum.Override:
+      label = labels.activity.actionOverride;
+      color = "secondary";
+      break;
+    case AuditActionTypeEnum.Adjust:
+      label = labels.activity.actionAdjust;
+      color = "default";
+      break;
+    default: {
+      // Exhaustiveness guard — the enum union guarantees unreachability.
+      const exhaustive: never = action;
+      label = exhaustive;
+      color = "default";
+    }
+  }
+  return <Chip size="small" color={color} label={label} aria-label={`${labels.activity.entryActionLabel}: ${label}`} />;
+}
+
+/**
+ * Localizes a raw audit `changedFields` column name (e.g. `"fullName"`)
+ * using the existing label blocks; unknown names fall back to the raw
+ * string (future fields render honestly instead of blanking out).
+ */
+function localizeAuditFieldName(field: string, labels: AdminUsersLabels): string {
+  switch (field) {
+    case "fullName":
+      return labels.headers.name;
+    case "email":
+      return labels.headers.email;
+    case "phone":
+      return labels.createDialog.phone;
+    case "country":
+      return labels.headers.country;
+    case "gender":
+      return labels.createDialog.gender;
+    case "dateOfBirth":
+      return labels.editDialog.dateOfBirth;
+    case "role":
+      return labels.headers.role;
+    default:
+      return field;
+  }
 }

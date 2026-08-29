@@ -31,8 +31,9 @@
  *    canonical escape point (the service) + one canonical binding point
  *    (the repo's `ilike`).
  */
-import { and, asc, eq, ilike, isNull, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNull, or, type SQL, sql } from "drizzle-orm";
 import { db } from "@/backend/db";
+import { auditLogs } from "@/backend/db/schema/audit/audit-logs";
 import { subscriptions } from "@/backend/db/schema/billing/subscriptions";
 import { parents } from "@/backend/db/schema/parents/parents";
 import { students } from "@/backend/db/schema/students/students";
@@ -226,6 +227,24 @@ export interface AdminUserStatsRow {
   readonly studentsCount: number;
   readonly parentsCount: number;
   readonly newThisWeekCount: number;
+}
+
+/**
+ * `AdminUserActivityRow` — raw row shape returned by `getActivity`. The
+ * `actionType` member carries the raw pgEnum string union (mirrors the
+ * `RawUserRole` discipline above — the service maps it to the canonical
+ * `AuditActionType` TS enum at projection time). `actorName` is resolved
+ * via the INNER JOIN on `users.id = audit_logs.actor_id` (NOT NULL FK —
+ * never null in practice; typed nullable for Drizzle inference parity).
+ * `details` is the raw `varchar(2000)` JSON string, parsed defensively by
+ * the service.
+ */
+export interface AdminUserActivityRow {
+  readonly id: number;
+  readonly actionType: string;
+  readonly actorName: string | null;
+  readonly details: string | null;
+  readonly createdAt: Date;
 }
 
 /**
@@ -461,6 +480,49 @@ export namespace AdminUserRepository {
       parentsCount: row?.parentsCount ?? 0,
       newThisWeekCount: row?.newThisWeekCount ?? 0,
     };
+  }
+
+  /**
+   * Resolves the per-user "recent activity" timeline: `audit_logs` rows
+   * WHERE `entity_type = 'user' AND entity_id = :userId` (actions
+   * performed ON the account), newest-first, capped at `limit`.
+   *
+   * Single-round-trip INNER JOIN over `users` resolves the acting admin's
+   * display name (the `actor_id` FK is NOT NULL RESTRICT, so the join
+   * never drops rows and never orphans an entry). The deterministic
+   * tiebreak on `id DESC` keeps same-timestamp entries (batch mutations
+   * share a transaction timestamp) in a stable insertion-latest order.
+   *
+   * The `entity_type = 'user'` literal is the canonical audit entity label
+   * written by this feature's mutations (`AUDIT_ENTITY_TYPE` in the
+   * service layer); the read-back binds the same literal so the timeline
+   * and the writer can never drift apart.
+   *
+   * @param userId  The target user's id (activity ABOUT this account).
+   * @param limit   Maximum entries to return (1..50; the resolver clamps).
+   * @param tx      Optional transaction executor.
+   * @returns Rows newest-first; empty array when the user has no recorded
+   *          activity (including when the user id itself does not exist —
+   *          existence is the service layer's concern, not the repo's).
+   */
+  export async function getActivity(
+    userId: number,
+    limit: number,
+    tx?: DBTransaction
+  ): Promise<AdminUserActivityRow[]> {
+    return (tx ?? db)
+      .select({
+        id: auditLogs.id,
+        actionType: auditLogs.actionType,
+        actorName: users.fullName,
+        details: auditLogs.details,
+        createdAt: auditLogs.createdAt,
+      })
+      .from(auditLogs)
+      .innerJoin(users, eq(users.id, auditLogs.actorId))
+      .where(and(eq(auditLogs.entityType, "user"), eq(auditLogs.entityId, userId)))
+      .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
+      .limit(limit);
   }
 
   /**

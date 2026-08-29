@@ -41,6 +41,14 @@ input AdminUpdateUserInput {
   phone: String
 }
 
+type AdminUserActivityEntry {
+  actionType: AuditActionType!
+  actorName: String!
+  changedFields: [String!]
+  createdAt: String!
+  id: Int!
+}
+
 type AdminUserDetail {
   applicant: ApplicantProfile
   blockedAt: String
@@ -139,6 +147,16 @@ enum ApplicantStatus {
   Pending
 }
 
+enum AuditActionType {
+  Adjust
+  Create
+  Delete
+  Override
+  Reactivate
+  Suspend
+  Update
+}
+
 enum Gender {
   Female
   Male
@@ -196,6 +214,7 @@ type Mutation {
 
 type Query {
   _health: HealthCheck!
+  adminUserActivity(id: Int!, limit: Int): [AdminUserActivityEntry!]!
   adminUserDetail(id: Int!): AdminUserDetail!
   adminUserStats: AdminUserStats!
   adminUsers(filters: AdminUserFiltersInput, page: Int, pageSize: Int): AdminUserPage!

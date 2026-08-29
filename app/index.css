@@ -9,13 +9,28 @@ body {
   padding: 0;
   box-sizing: border-box;
   width: 100%;
-  height: 100%;
+  /* `min-height: 100%` (not `height: 100%`) lets html/body grow naturally
+   * with content. Combined with the `overflow-x: clip` below, this preserves
+   * the standard scrolling model: `<html>` is the single scrollingElement,
+   * `window.scrollY` works, and short pages stick the footer to the bottom
+   * via the flex layout on `body` (min-height: 100vh + flex-direction: column
+   * + content `flex: 1 0 auto`), while long pages push the footer down
+   * naturally. The previous `height: 100%` + `overflow-x: hidden` combination
+   * made `overflow-y` implicitly `auto`, turning html and body into
+   * fixed-viewport scroll containers — when content overflowed the viewport,
+   * the body's internal scrollbar was invisible (Chrome uses html as
+   * scrollingElement) and the footer's last row was silently clipped. */
+  min-height: 100%;
   max-width: 100vw;
-  overflow-x: hidden;
+  /* `clip` (not `hidden`) avoids the implicit `overflow-y: auto` that
+   * CSS 2.1 mandates when only `overflow-x` is set to a non-`visible`
+   * value. With `clip`, `overflow-y` stays `visible`, so the html element
+   * remains the only scroll container (the standard scrolling model). */
+  overflow-x: clip;
 }
 
 body {
-  min-height: 100%;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   font-family: var(--font-inter), var(--font-cairo), system-ui, sans-serif;
