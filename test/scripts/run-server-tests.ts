@@ -538,7 +538,16 @@ async function setupTestParser(
 function buildTestArgs(bunBin: string, e2e: boolean, coverage: boolean, bail: boolean, testPaths: string[]): string[] {
   const timeout = e2e ? "300000" : "120000";
   const testEnvFile = process.env.TEST_ENV_FILE ?? ".env.test";
-  const args = [bunBin, `--env-file=${testEnvFile}`, "test", "--parallel=1", `--timeout=${timeout}`];
+  // Under PGlite every GraphQL `describeGraphqlSuite` is skipped wholesale
+  // (single-connection WASM PG cannot share live writes between the test
+  // process and the warm dev server). Bun 1.3.14 segfaults when
+  // `--parallel=1` runs multiple GraphQL-suite files that import
+  // `@apollo/client` via the `graphql-interop` preload — a Bun runtime
+  // bug, not a code defect. Skipping `--parallel=1` in PGlite mode avoids
+  // the crash; the suite is trivially fast in skip-only mode anyway.
+  const isPgliteProvider = (process.env.DB_PROVIDER ?? "").toLowerCase() === "pglite";
+  const parallelArg = isPgliteProvider ? [] : ["--parallel=1"];
+  const args = [bunBin, `--env-file=${testEnvFile}`, "test", ...parallelArg, `--timeout=${timeout}`];
   if (e2e) {
     args.push("--preload", "./test/ui/test-env.ts");
   }
@@ -559,6 +568,30 @@ function handleServerReadyFailure(port: number, ticker: ReturnType<typeof setInt
     `\n❌ Dev server failed to respond within ${SERVER_READY_TIMEOUT_MS / 1000}s on port ${port}.\n`
   );
   process.exit(1);
+}
+
+/**
+ * Waits for the warm dev server to become ready, unless the suite is running
+ * under PGlite (in which case every `describeGraphqlSuite` skips wholesale
+ * and no server is needed). Mutates `state.lastServerAction` to reflect the
+ * current phase so the TUI frame stays informative.
+ */
+async function waitForServerIfNeeded(
+  isPgliteProvider: boolean,
+  port: number,
+  state: TestState,
+  onFail: (port: number, ticker: ReturnType<typeof setInterval>, cleanup: () => void) => never,
+  failArgs: [number, ReturnType<typeof setInterval>, () => void]
+): Promise<void> {
+  if (isPgliteProvider) {
+    state.lastServerAction = "PGlite mode — skipping warm-server spawn (GraphQL suite skipped).";
+    return;
+  }
+  state.lastServerAction = "Waiting for server to become ready...";
+  const isReady = await pollServerReady(`http://localhost:${port}/api/graphql`, Date.now() + SERVER_READY_TIMEOUT_MS);
+  if (!isReady) {
+    onFail(...failArgs);
+  }
 }
 
 async function main(): Promise<void> {
@@ -598,7 +631,17 @@ async function main(): Promise<void> {
 
   killListenersOnPort(port);
   const logStream = createWriteStream(fullLogPath, { flags: "w" });
-  const serverProc = spawnTestServer(port, logStream);
+
+  // PGlite (sandbox/CI in-process Postgres) cannot serve the GraphQL
+  // integration suite: the suite's `describeGraphqlSuite` wrapper skips
+  // every describe when `DB_PROVIDER=pglite` (single-connection WASM PG
+  // does not share live writes across the test + warm-server processes,
+  // and the 4 GB sandbox RAM cannot keep both alive concurrently). Skip
+  // the server spawn entirely in that mode — the test process will still
+  // run, every test will skip, and the runner exits clean without a
+  // wasted 180 s `pollServerReady` timeout or OOM-killed child.
+  const isPgliteProvider = (process.env.DB_PROVIDER ?? "").toLowerCase() === "pglite";
+  const serverProc = isPgliteProvider ? (null as unknown as ChildProcess) : spawnTestServer(port, logStream);
 
   if (isTty) {
     process.stdout.write("\x1b[?25l"); // Hide cursor
@@ -620,7 +663,7 @@ async function main(): Promise<void> {
       // ignore
     }
     try {
-      serverProc.kill("SIGKILL");
+      serverProc?.kill("SIGKILL");
     } catch {
       // ignore
     }
@@ -649,7 +692,7 @@ async function main(): Promise<void> {
     }
   };
 
-  serverProc.stdout?.on("data", (chunk: Buffer) => {
+  serverProc?.stdout?.on("data", (chunk: Buffer) => {
     recordServerLogs(chunk, state);
     const action = parseServerChunk(chunk);
     if (action) {
@@ -658,7 +701,7 @@ async function main(): Promise<void> {
   });
 
   let serverErrBuffer = "";
-  serverProc.stderr?.on("data", (chunk: Buffer) => {
+  serverProc?.stderr?.on("data", (chunk: Buffer) => {
     recordServerLogs(chunk, state);
     const text = chunk.toString();
     serverErrBuffer += text;
@@ -667,7 +710,7 @@ async function main(): Promise<void> {
     }
   });
 
-  serverProc.on("exit", (code, signal) => {
+  serverProc?.on("exit", (code, signal) => {
     if (!isCleanedUp && !errorCaptured && code !== 0 && code !== null) {
       handleAbort(`Dev server exited unexpectedly (code: ${code}, signal: ${signal})\n${serverErrBuffer}`);
     }
@@ -676,16 +719,11 @@ async function main(): Promise<void> {
   const ticker = setInterval(() => renderTuiFrame(state, port, isTty), TUI_REFRESH_INTERVAL_MS);
 
   try {
-    state.lastServerAction = "Waiting for server to become ready...";
     renderTuiFrame(state, port, isTty);
-
-    const isReady = await pollServerReady(`http://localhost:${port}/api/graphql`, Date.now() + SERVER_READY_TIMEOUT_MS);
-
-    if (!isReady) {
-      handleServerReadyFailure(port, ticker, cleanup);
-    }
-
-    state.lastServerAction = "Server ready. Executing tests...";
+    await waitForServerIfNeeded(isPgliteProvider, port, state, handleServerReadyFailure, [port, ticker, cleanup]);
+    state.lastServerAction = isPgliteProvider
+      ? "PGlite mode — executing tests (all will skip)."
+      : "Server ready. Executing tests...";
 
     const testArgs = buildTestArgs(process.execPath, e2e, coverage, bail, testPaths);
 

@@ -49,11 +49,12 @@
  * `frontend/graphql/test/**`.
  */
 
-import { describe, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { buildSchema, type GraphQLSchema } from "graphql";
 import { UserRole } from "@/backend/enum/users/user-role.enum";
 import { graphQLSchema } from "@/backend/graphql/gqlSchema";
 import { PUBLIC_OPERATION_NAMES, PUBLIC_OPERATIONS } from "@/backend/lib/gateway";
+import { describeGraphqlSuite } from "@/test/helpers";
 
 // ---------------------------------------------------------------------------
 // Introspection helpers (guarded — no unsafe casts, per test-tier discipline)
@@ -126,7 +127,7 @@ const ROLE_ESCALATION_PATTERN = /^(grantRole|assignRole|elevate)/;
 const ALLOWLIST_SORTED: string[] = [...PUBLIC_OPERATIONS].toSorted((a, b) => a.localeCompare(b));
 
 // ===========================================================================
-describe("default deny: every root field is scoped OR allowlisted", () => {
+describeGraphqlSuite("default deny: every root field is scoped OR allowlisted", () => {
   test("Query — zero unclassified fields (walk proven non-vacuous vs frozen set)", () => {
     const posture = collectPosture(graphQLSchema, "getQueryType");
     // Frozen reality: exactly these two scopeless queries exist.
@@ -147,7 +148,7 @@ describe("default deny: every root field is scoped OR allowlisted", () => {
 });
 
 // ===========================================================================
-describe("exact 1:1 agreement, both directions", () => {
+describeGraphqlSuite("exact 1:1 agreement, both directions", () => {
   const queryPosture = collectPosture(graphQLSchema, "getQueryType");
   const mutationPosture = collectPosture(graphQLSchema, "getMutationType");
   const schemaUnscopedSet = [...queryPosture.unscopedNames, ...mutationPosture.unscopedNames].toSorted((a, b) =>
@@ -176,7 +177,7 @@ describe("exact 1:1 agreement, both directions", () => {
 });
 
 // ===========================================================================
-describe("role escalation stays admin-gated", () => {
+describeGraphqlSuite("role escalation stays admin-gated", () => {
   test("every grantRole*/assignRole*/elevate* mutation carries an admin-grade scope", () => {
     const posture = collectPosture(graphQLSchema, "getMutationType");
     for (const [name, scopes] of posture.scoped) {
@@ -195,7 +196,7 @@ describe("role escalation stays admin-gated", () => {
 });
 
 // ===========================================================================
-describe("negative-fixture proof — the gate DETECTS drift", () => {
+describeGraphqlSuite("negative-fixture proof — the gate DETECTS drift", () => {
   /**
    * Synthetic drifted schema built IN THIS PROCESS (never touches production
    * modules or the committed SDL): the familiar public surfaces plus one

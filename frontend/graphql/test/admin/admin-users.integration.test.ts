@@ -80,6 +80,7 @@ import {
 import {
   countUsersByIds,
   deleteUsersByIds,
+  describeGraphqlSuite,
   expectMutationError,
   setupTestServerLifecycle,
   testClient,
@@ -262,7 +263,7 @@ const ADMIN_OPERATIONS = [
   "adminSetUserDeleted",
 ] as const;
 
-describe("Admin user-management GraphQL permission matrix", () => {
+describeGraphqlSuite("Admin user-management GraphQL permission matrix", () => {
   // The sandbox dev server (port 3000) is already running and is
   // graphQL-live. Per the AGENTS.md "Memory-constrained sandbox
   // adaptation", setting TEST_SERVER_EXTERNAL=1 reuses the warm server

@@ -143,3 +143,7 @@ skills/
 node_modules/
 /.zscripts
 /agent-ctx
+
+# PGlite in-process Postgres data dirs (binary, runtime-mutated)
+db/pglite
+db/pglite-test

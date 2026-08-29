@@ -61,7 +61,7 @@
  *            resolver with one.
  */
 
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { parse } from "graphql";
 
@@ -79,6 +79,7 @@ import { myApplicantProfileQueryDocument } from "@/frontend/graphql/sharedDocume
 import {
   countUsersByIds,
   deleteUsersByIds,
+  describeGraphqlSuite,
   expectMutationError,
   setupTestServerLifecycle,
   testClient,
@@ -156,7 +157,7 @@ async function registerAndLogin(
   return { userId, accessToken };
 }
 
-describe("myApplicantProfile GraphQL Integration", () => {
+describeGraphqlSuite("myApplicantProfile GraphQL Integration", () => {
   // Memory-constrained sandbox adaptation: setting TEST_SERVER_EXTERNAL=1 +
   // GRAPHQL_TEST_PORT=<already-running server> runs the suite against that
   // warm server instead of spawning a second `next dev` (whose turbopack

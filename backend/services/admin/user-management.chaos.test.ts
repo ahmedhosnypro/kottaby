@@ -212,8 +212,19 @@ function partitionOutcomes<T>(results: ReadonlyArray<PromiseSettledResult<T>>): 
 }
 
 describe("AdminUserManagementService — chaos & concurrency", () => {
+  // PGlite is a single-connection WASM Postgres — two concurrent top-level
+  // `db.transaction(...)` calls share the same underlying connection and
+  // interleave their `BEGIN` / `UPDATE` / `COMMIT` statements at the
+  // protocol level, which breaks the row-lock serialization that the chaos
+  // probes below assert. The probes are only meaningful against a real
+  // multi-connection pool (production PG / Neon / CI). Skip them under
+  // `DB_PROVIDER=pglite` to avoid false negatives that reflect a
+  // transport limitation, not a service-layer defect.
+  const IS_PGLITE = (process.env.DB_PROVIDER ?? "").toLowerCase() === "pglite";
+  const concurrencyTest = IS_PGLITE ? test.skip : test;
+
   // ─── (a) Concurrent double soft-delete ──────────────────────────────
-  test("concurrent setUserDeleted(true) ×2 on the same active user → exactly one success + one USER_ALREADY_DELETED", async () => {
+  concurrencyTest("concurrent setUserDeleted(true) ×2 on the same active user → exactly one success + one USER_ALREADY_DELETED", async () => {
     silenceDomainLog();
     const target = await provisionStudentTarget();
     const adminId = fixtures.adminActor.id;
@@ -247,7 +258,7 @@ describe("AdminUserManagementService — chaos & concurrency", () => {
   });
 
   // ─── (b) Concurrent delete ⚡ reactivate ────────────────────────────
-  test("concurrent setUserDeleted(true) ⚡ setUserDeleted(false) → exactly one winner; final state consistent with the winner", async () => {
+  concurrencyTest("concurrent setUserDeleted(true) ⚡ setUserDeleted(false) → exactly one winner; final state consistent with the winner", async () => {
     silenceDomainLog();
     const target = await provisionStudentTarget();
     const adminId = fixtures.adminActor.id;
@@ -287,7 +298,7 @@ describe("AdminUserManagementService — chaos & concurrency", () => {
   });
 
   // ─── (c) Concurrent patches — last-write-wins ──────────────────────
-  test("concurrent updateUser ×2 on the same user — both succeed; final state reflects the later-committed write", async () => {
+  concurrencyTest("concurrent updateUser ×2 on the same user — both succeed; final state reflects the later-committed write", async () => {
     silenceDomainLog();
     const target = await provisionStudentTarget();
     const adminId = fixtures.adminActor.id;
@@ -316,7 +327,7 @@ describe("AdminUserManagementService — chaos & concurrency", () => {
   });
 
   // ─── (d) Concurrent double-create same email ───────────────────────
-  test("concurrent createUser ×2 with the same email → exactly one success + one CONFLICT (23505 rollback)", async () => {
+  concurrencyTest("concurrent createUser ×2 with the same email → exactly one success + one CONFLICT (23505 rollback)", async () => {
     silenceDomainLog();
     const adminId = fixtures.adminActor.id;
 
@@ -371,7 +382,7 @@ describe("AdminUserManagementService — chaos & concurrency", () => {
   });
 
   // ─── (e) Forced-failure create → directory count unchanged ──────────
-  test("forced-failure createUser (duplicate email) — directory count unchanged for the failed call", async () => {
+  concurrencyTest("forced-failure createUser (duplicate email) — directory count unchanged for the failed call", async () => {
     silenceDomainLog();
     const adminId = fixtures.adminActor.id;
 

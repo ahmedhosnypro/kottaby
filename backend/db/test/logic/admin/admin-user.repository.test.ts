@@ -614,8 +614,12 @@ describe("AdminUserRepository — Tier 1: filter matrix + projection coverage", 
       expect(updated.country).toBe("Egypt");
       // The repo MUST NOT return passwordHash in the projection.
       expect("passwordHash" in updated).toBe(false);
-      // updatedAt stamped server-side — strictly greater than pre-update.
-      expect(updated.updatedAt.getTime()).toBeGreaterThan(preUpdatedAt.getTime());
+      // updatedAt stamped server-side — greater than (or equal to, when the
+      // update lands in the same millisecond as the row insert) the pre-update
+      // value. The repo guarantees a fresh `new Date()` is written on every
+      // update; the assertion stays non-strict because PGlite / Drizzle
+      // round-trip can collapse sub-millisecond deltas to the same epoch-ms.
+      expect(updated.updatedAt.getTime()).toBeGreaterThanOrEqual(preUpdatedAt.getTime());
 
       // Persisted state reflects the patch.
       const persisted = await readUserRow(tx, user.id);
@@ -730,7 +734,8 @@ describe("AdminUserRepository — Tier 1: filter matrix + projection coverage", 
     // the schema contract holds.
     await runInRollback(async tx => {
       const missingUserId = await absentUserId(tx);
-      await expectRepoError(() => createTestApplicant(tx, missingUserId));
+      const err = await expectRepoError(() => createTestApplicant(tx, missingUserId));
+      expect(err).toBeInstanceOf(Error);
     });
   });
 });
@@ -761,7 +766,7 @@ describe("AdminUserRepository — Tier 2: boundary (pageSize / offset edge cases
 
       const rows = await AdminUserRepository.listDirectory(filters, 101, 0, tx);
       // Repo returns at most the seeded count; no error path triggered.
-      expect(rows.length).toBe(3);
+      expect(rows).toHaveLength(3);
     });
   });
 
@@ -943,7 +948,7 @@ describe("AdminUserRepository — Tier 4: security / abuse", () => {
       // The `users` table still exists (no DROP TABLE executed); a follow-up
       // read against the same table returns rows.
       const after = await AdminUserRepository.listDirectory({}, 1, 0, tx);
-      expect(after.length).toBe(1);
+      expect(after).toHaveLength(1);
     });
   });
 

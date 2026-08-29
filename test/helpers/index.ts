@@ -8,3 +8,4 @@ export {
   TEST_SERVER_PORT,
 } from "./port-helpers";
 export { setupTestServerLifecycle } from "./test-lifecycle";
+export { describeGraphqlSuite, isPgliteProvider } from "./skip-when-pglite";

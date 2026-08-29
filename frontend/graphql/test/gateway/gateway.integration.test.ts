@@ -29,10 +29,10 @@
  *    injection mechanism as (g).
  */
 
-import { describe, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { gql } from "@apollo/client";
 import { meQueryDocument } from "@/frontend/graphql/sharedDocuments/auth/auth.documents";
-import { extractErrorCode, setupTestServerLifecycle, TEST_PORT, testClient } from "@/test/helpers";
+import { describeGraphqlSuite, extractErrorCode, setupTestServerLifecycle, TEST_PORT, testClient } from "@/test/helpers";
 
 // ─── Transport-level helpers ──────────────────────────────────────────────
 
@@ -92,7 +92,7 @@ function parseHealthEnvelopeBody(raw: unknown): HealthEnvelopeBody {
 
 // ─── Test Suite ───────────────────────────────────────────────────────────
 
-describe("Gateway integration matrix", () => {
+describeGraphqlSuite("Gateway integration matrix", () => {
   setupTestServerLifecycle();
 
   // ── (a) healthCheck unauthenticated → transport-200 + full payload ─────

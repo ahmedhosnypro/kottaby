@@ -246,6 +246,31 @@ function isPositiveSafeInteger(value: unknown): value is number {
 }
 
 /**
+ * Normalizes a DATE column read-back to a stable `YYYY-MM-DD` string.
+ *
+ * The `users.date_of_birth` column is a SQL `DATE`. Different drivers return
+ * different shapes:
+ *  - production `pg` over a real PostgreSQL pool returns `"2000-01-01"`
+ *    (string in `YYYY-MM-DD`).
+ *  - the sandbox `@electric-sql/pglite` shim returns the full ISO 8601
+ *    timestamp string `"2000-01-01T00:00:00.000Z"` (PGlite emits the date
+ *    with a zero time component, mirroring how PG stores DATE internally).
+ *
+ * The public service contract (consumed by GraphQL resolvers + frontend
+ * Apollo cache) is a `YYYY-MM-DD` string. This helper accepts either shape
+ * (Date | ISO string | date string) and emits the canonical `YYYY-MM-DD`
+ * slice. `null` / `undefined` pass through unchanged so the projection
+ * preserves nullable columns.
+ */
+function normalizeDateOnly(value: Date | string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+  return String(value).slice(0, 10);
+}
+
+/**
  * Safely truncates a string to a maximum length without ever throwing.
  */
 function truncateSafely(value: string, maxLength: number): string {
@@ -512,7 +537,7 @@ function mapDirectoryRow(row: AdminUserDirectoryRow, locale: string): AdminUserL
     phone: row.phone,
     role,
     gender: row.gender === null ? null : (toGender(row.gender) ?? null),
-    dateOfBirth: row.dateOfBirth,
+    dateOfBirth: normalizeDateOnly(row.dateOfBirth),
     country: row.country,
     isDeleted: row.isDeleted ?? false,
     suspended: row.suspended ?? false,
@@ -608,7 +633,7 @@ function assembleDetail(row: AdminUserDetailRow, locale: string): AdminUserDetai
     email: row.email,
     phone: row.phone,
     role,
-    dateOfBirth: row.dateOfBirth,
+    dateOfBirth: normalizeDateOnly(row.dateOfBirth),
     gender: row.gender,
     country: row.country,
     isDeleted: row.isDeleted ?? false,

@@ -17,8 +17,8 @@
  *    auth contract tests in PostgreSQL CI.
  */
 
-import { describe, expect, test } from "bun:test";
-import { setupTestServerLifecycle, TEST_PORT } from "@/test/helpers";
+import { expect, test } from "bun:test";
+import { describeGraphqlSuite, setupTestServerLifecycle, TEST_PORT } from "@/test/helpers";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -64,7 +64,7 @@ async function fireHealth(): Promise<HealthResult> {
 
 // ─── Test Suite ─────────────────────────────────────────────────────────────
 
-describe("Concurrency & Chaos Tier", () => {
+describeGraphqlSuite("Concurrency & Chaos Tier", () => {
   setupTestServerLifecycle();
 
   // ── (1) _health storm — all 200, each with fresh ISO timestamp ──────────

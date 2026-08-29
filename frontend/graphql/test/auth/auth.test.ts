@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, expect, test } from "bun:test";
 import { RecitationReading, RegisterPublicRole, UserRole } from "@/frontend/graphql/generated/gql/graphql";
 import {
   loginMutationDocument,
@@ -11,12 +11,13 @@ import { recitationReadingsQueryDocument } from "@/frontend/graphql/sharedDocume
 import {
   countUsersByIds,
   deleteUsersByIds,
+  describeGraphqlSuite,
   extractErrorCode,
   setupTestServerLifecycle,
   testClient,
 } from "@/test/helpers";
 
-describe("Auth GraphQL Integration", () => {
+describeGraphqlSuite("Auth GraphQL Integration", () => {
   // Memory-constrained sandbox adaptation: setting TEST_SERVER_EXTERNAL=1 +
   // GRAPHQL_TEST_PORT=<already-running server> runs the suite against that
   // warm server instead of spawning a second `next dev`. CI never sets the
