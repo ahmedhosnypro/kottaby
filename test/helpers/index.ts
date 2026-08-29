@@ -1,3 +1,4 @@
+export { countUsersByIds, deleteUsersByIds } from "./db-cleanup";
 export * from "./expect-mutation-error";
 export { extractErrorCode, TEST_PORT, testClient } from "./graphql-test-helpers";
 export {

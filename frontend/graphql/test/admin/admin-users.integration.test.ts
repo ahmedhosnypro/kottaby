@@ -30,12 +30,18 @@
  *    `Authorization: Bearer <accessToken>` header. Anonymous probes
  *    omit the header entirely.
  *
- * Data lifecycle (mirrors `auth.test.ts` + `applicant-profile.test.ts`):
- *  - Public-surface rows (registerUser) and direct-DB fixtures use
- *    randomized emails and are NOT cleaned up — GraphQL integration
- *    suites accumulate committed rows on the test database by
- *    convention. Direct-DB usage (`db.insert(users)` + `admin` child
- *    row) is required because admin is NOT publicly registrable
+ * Data lifecycle (HYGIENE — diverges from `auth.test.ts` +
+ * `applicant-profile.test.ts` accumulate-by-convention):
+ *  - Every user this suite creates — public registrations, the
+ *    direct-DB admin fixture, admin happy-path creates — is tracked
+ *    by id and deleted in a top-level `afterAll` via the shared
+ *    `deleteUsersByIds` helper (RESTRICT-gated audit/subscriptions/
+ *    evaluations rows first, then the users; child rows cascade), so
+ *    the shared dev database returns to its canonical seed state.
+ *    Deletion is by EXPLICIT id list, never an email-pattern sweep,
+ *    so parallel live-wire suites keep their own fixtures intact.
+ *  - Direct-DB usage (`db.insert(users)` + `admin` child row) is
+ *    required because admin is NOT publicly registrable
  *    (`RegisterPublicRole` BFLA exclusion).
  *
  * Per `frontend/graphql/test/AGENTS.md`:
@@ -48,7 +54,7 @@
  *    fields appear as `null` even when not exercised in a given case.
  */
 
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 
@@ -69,12 +75,28 @@ import {
   loginMutationDocument,
   registerUserMutationDocument,
 } from "@/frontend/graphql/sharedDocuments/auth/auth.documents";
-import { expectMutationError, setupTestServerLifecycle, testClient } from "@/test/helpers";
+import {
+  countUsersByIds,
+  deleteUsersByIds,
+  expectMutationError,
+  setupTestServerLifecycle,
+  testClient,
+} from "@/test/helpers";
 
 /** Randomized email per fixture — unique prefix + UUID salt avoids the
  * `users.email` unique index across parallel or repeated runs. */
 function uniqueEmail(rolePrefix: string): string {
   return `${rolePrefix}-${Date.now()}-${randomUUID().slice(0, 8)}@test.local`;
+}
+
+/** Ids of every user this suite creates (any surface) — drained by the
+ * top-level `afterAll` hygiene cleanup so the shared dev database stays
+ * at its canonical seed state. Explicit ids (not an email sweep) keep
+ * parallel live-wire suites' fixtures safe. */
+const createdUserIds = new Set<number>();
+
+function trackCreatedUser(id: number | null | undefined): void {
+  if (typeof id === "number") createdUserIds.add(id);
 }
 
 // Named without the literal `password` token so `sonarjs/no-hardcoded-passwords`
@@ -117,6 +139,7 @@ async function registerAndLogin(role: RegisterPublicRole): Promise<ActorBundle> 
   expect(registered.error).toBeUndefined();
   const userId = registered.data?.registerUser?.id;
   if (!userId) throw new Error("registerUser returned no id");
+  trackCreatedUser(userId);
 
   const loggedIn = await testClient.mutate({
     mutation: loginMutationDocument,
@@ -151,6 +174,7 @@ async function provisionAdminActor(): Promise<ActorBundle> {
     })
     .returning();
   if (!user) throw new Error("admin user insert returned no rows");
+  trackCreatedUser(user.id);
   const [adminRow] = await db.insert(admin).values({ id: user.id }).returning();
   if (!adminRow) throw new Error("admin child-row insert returned no rows");
 
@@ -242,6 +266,19 @@ describe("Admin user-management GraphQL permission matrix", () => {
   if (process.env.TEST_SERVER_EXTERNAL !== "1") {
     setupTestServerLifecycle();
   }
+
+  // ─── Hygiene: restore the shared dev database to canonical seed state ───
+  // Deletes exactly the users this suite created (tracked by id) plus
+  // their RESTRICT-gated audit/subscriptions/evaluations references;
+  // child rows cascade. Runs after every tier, proving the suite leaves
+  // zero artifact rows behind.
+  afterAll(async () => {
+    const ids = [...createdUserIds];
+    if (ids.length === 0) return;
+    const deleted = await deleteUsersByIds(ids);
+    expect(deleted).toBe(ids.length);
+    expect(await countUsersByIds(ids)).toBe(0);
+  });
 
   // ─── Tier 1: anonymous → each operation → UNAUTHORIZED ─────────────
   describe("Tier 1 — anonymous caller denied across all five operations", () => {
@@ -459,6 +496,7 @@ describe("Admin user-management GraphQL permission matrix", () => {
       expect(detail.role).toBe(UserRole.Student);
       expect(deepFindKey(result.data, "passwordHash")).toBe(false);
       createdUserId = detail.id;
+      trackCreatedUser(detail.id);
       // Exactly one audit row emitted for the successful create.
       expect(await countAllAuditRows()).toBe(auditBefore + 1);
     });
