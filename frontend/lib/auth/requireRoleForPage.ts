@@ -71,9 +71,7 @@ export async function requireRoleForPage(
     // served via the public HTTPS preview gateway. `redirect()` resolves a
     // relative path against the actual request origin (respecting
     // `X-Forwarded-Host` / `X-Forwarded-Proto`).
-    const loginPath = redirectTo
-      ? `/login?redirect=${encodeURIComponent(redirectTo)}`
-      : "/login";
+    const loginPath = redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login";
     redirect(loginPath);
   }
 

@@ -82,9 +82,7 @@ export async function withPageAuth(options?: WithPageAuthOptions): Promise<WithP
     // request origin (respecting `X-Forwarded-Host` / `X-Forwarded-Proto`),
     // so the redirect stays on the same origin the browser used to reach us.
     const redirectTo = options?.redirectTo ?? "";
-    const loginPath = redirectTo
-      ? `/login?redirect=${encodeURIComponent(redirectTo)}`
-      : "/login";
+    const loginPath = redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login";
     redirect(loginPath);
   }
 

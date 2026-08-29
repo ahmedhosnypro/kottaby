@@ -138,19 +138,19 @@ const DEFAULT_ACTIVITY_LIMIT = 10;
  */
 function toAuditActionType(raw: string): AuditActionType | null {
   switch (raw) {
-    case AuditActionType.Create:
+    case "create":
       return AuditActionType.Create;
-    case AuditActionType.Update:
+    case "update":
       return AuditActionType.Update;
-    case AuditActionType.Delete:
+    case "delete":
       return AuditActionType.Delete;
-    case AuditActionType.Override:
+    case "override":
       return AuditActionType.Override;
-    case AuditActionType.Adjust:
+    case "adjust":
       return AuditActionType.Adjust;
-    case AuditActionType.Suspend:
+    case "suspend":
       return AuditActionType.Suspend;
-    case AuditActionType.Reactivate:
+    case "reactivate":
       return AuditActionType.Reactivate;
     default:
       return null;
