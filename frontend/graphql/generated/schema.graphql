@@ -1,3 +1,112 @@
+input AdminCreateUserInput {
+  country: String!
+  email: String!
+  fullName: String!
+  gender: Gender
+  password: String!
+  phone: String!
+  role: RegisterPublicRole!
+}
+
+type AdminParentSnapshot {
+  linkedChildrenCount: Int!
+}
+
+type AdminStudentSnapshot {
+  anotherLanguage: String
+  balanceHifz: Int
+  balanceReviews: Int
+  balanceTajweed: Int
+  balanceTrial: Int
+  handshakeCode: String!
+  hasActiveSubscription: Boolean!
+  hasParentLink: Boolean!
+  parentId: Int
+  primaryLanguage: String
+  trialGrantedAt: String
+}
+
+type AdminTeacherSnapshot {
+  averageRating: String
+  isApproved: Boolean!
+  isEvaluator: Boolean!
+  isOnline: Boolean!
+}
+
+input AdminUpdateUserInput {
+  country: String
+  dateOfBirth: String
+  fullName: String
+  gender: Gender
+  phone: String
+}
+
+type AdminUserDetail {
+  applicant: ApplicantProfile
+  blockedAt: String
+  country: String
+  createdAt: String!
+  dateOfBirth: String
+  deletedAt: String
+  email: String!
+  fullName: String!
+  gender: Gender
+  id: Int!
+  isBlocked: Boolean
+  isDeleted: Boolean
+  lastActiveAt: String
+  parent: AdminParentSnapshot
+  phone: String
+  role: UserRole!
+  student: AdminStudentSnapshot
+  suspended: Boolean
+  suspendedAt: String
+  suspendedPeriodDays: Int
+  teacher: AdminTeacherSnapshot
+  updatedAt: String!
+}
+
+input AdminUserFiltersInput {
+  country: String
+  governance: AdminUserGovernanceFilter
+  role: UserRole
+  search: String
+}
+
+enum AdminUserGovernanceFilter {
+  Active
+  Blocked
+  Deleted
+  Suspended
+}
+
+type AdminUserListItem {
+  applicantStatus: ApplicantStatus
+  country: String
+  createdAt: String!
+  email: String!
+  fullName: String!
+  id: Int!
+  isBlocked: Boolean!
+  isDeleted: Boolean!
+  lastActiveAt: String
+  parentLinkedChildrenCount: Int
+  phone: String
+  role: UserRole!
+  studentHasActiveSubscription: Boolean
+  studentHasParentLink: Boolean
+  suspended: Boolean!
+  teacherIsApproved: Boolean
+  teacherIsEvaluator: Boolean
+}
+
+type AdminUserPage {
+  items: [AdminUserListItem!]!
+  page: Int!
+  pageSize: Int!
+  totalCount: Int!
+}
+
 type ApplicantProfile {
   canPurchaseVerification: Boolean!
   cooldownActive: Boolean!
@@ -49,6 +158,10 @@ type LogoutPayload {
 }
 
 type Mutation {
+  adminCreateUser(input: AdminCreateUserInput!): AdminUserDetail!
+  adminSetUserDeleted(deleted: Boolean!, id: Int!): AdminUserDetail!
+  adminUpdateUser(id: Int!, input: AdminUpdateUserInput!): AdminUserDetail!
+
   """
   Authenticate with email + password. Returns the authenticated user + access + refresh tokens. The access_token + refresh_token + session_id are also set as httpOnly cookies.
   """
@@ -68,6 +181,8 @@ type Mutation {
 
 type Query {
   _health: HealthCheck!
+  adminUserDetail(id: Int!): AdminUserDetail!
+  adminUsers(filters: AdminUserFiltersInput, page: Int, pageSize: Int): AdminUserPage!
 
   """
   Returns the authenticated user (or null for anonymous). Anonymous callers receive null — the AuthProvider uses this to detect expired access tokens and silently restore the session via `refreshToken`.

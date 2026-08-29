@@ -16,11 +16,13 @@
  *  - `Gender`
  *  - `RegisterPublicRole` (public subset — student/teacher/parent — BFLA)
  *  - `RecitationReading`, `ApplicantStatus`
+ *  - `AdminUserGovernanceFilter` (active|suspended|blocked|deleted — admin directory filter)
  *
  * After registering a new enum here, run `bun run generate:gqlSchema` and
  * `bun codegen` to refresh the SDL + frontend codegen.
  */
 import { ApplicantStatus } from "@/backend/enum/teachers/applicant-status.enum";
+import { AdminUserGovernanceFilter } from "@/backend/enum/users/admin-user-governance-filter.enum";
 import { Gender } from "@/backend/enum/users/gender.enum";
 import { RegisterPublicRole } from "@/backend/enum/users/register-public-role.enum";
 import { UserRole } from "@/backend/enum/users/user-role.enum";
@@ -68,4 +70,16 @@ export const RecitationReadingPothosEnum = gqlSchemaBuilder.enumType(RecitationR
  */
 export const ApplicantStatusPothosEnum = gqlSchemaBuilder.enumType(ApplicantStatus, {
   name: "ApplicantStatus",
+});
+
+/**
+ * GraphQL `AdminUserGovernanceFilter` enum (active|suspended|blocked|deleted).
+ *
+ * Backs the admin user directory `governance` filter. Unknown transport values
+ * fail GraphQL input validation before any resolver runs; absent or `null`
+ * drops out at the service layer (the directory falls back to the unfiltered
+ * listing rather than erroring).
+ */
+export const AdminUserGovernanceFilterPothosEnum = gqlSchemaBuilder.enumType(AdminUserGovernanceFilter, {
+  name: "AdminUserGovernanceFilter",
 });

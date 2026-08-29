@@ -251,7 +251,7 @@
 
 ### 3.1 Pothos Objects & Enum Registrations
 
-- [ ] **3.1 Register admin user GraphQL objects + enums**
+- [x] **3.1 Register admin user GraphQL objects + enums**
   - Create `backend/graphql/pothos/admin/admin-user.pothos.ts` + `backend/graphql/pothos/admin/index.ts` barrel
   - Objects backed by canonical types ONLY: `objectRef<AdminUserListItemReturnType>("AdminUserListItem")`, `objectRef<AdminUserPageReturnType>("AdminUserPage")`, `objectRef<AdminUserDetailReturnType>("AdminUserDetail")` (field `id` FIRST — Apollo normalization), snapshot objects from `backend/types/admin/` types; reuse DEV2-004's `ApplicantProfile` object for the `applicant` field (no re-declaration)
   - SDL fields exactly per plan §3.1 (`AdminUserGovernance` enum; `AdminUserFiltersInput`; `AdminCreateUserInput`; `AdminUpdateUserInput`)
@@ -259,16 +259,16 @@
   - `passwordHash` appears in NO object (structural — type composition enforces it)
   - Applicable docs: `backend/graphql/pothos/**AGENTS.md`, `docs/graphql/api-gateway-and-routing.md`
   - _Requirements: REQ-003, REQ-033, REQ-060, REQ-061_
-  - [ ] 3.1.QL **Quality Loop**: sub-loop on every new/modified pothos file (exit 0)
-  - [ ] 3.1.TE **Test Engineering**: schema-shape assertions land in 5.1/5.2 (generated SDL greps); this task's gate is `bun tsgo` clean + successful builder composition.
-  - [ ] 3.1.SEC **Security & Tenancy Audit**: no sensitive field exposed; `applicant` projection is the DEV2-004 approved shape only; no local types defined inline in pothos files.
-  - [ ] 3.1.SR **Semantic Review**: enums as value imports; no `await import`; builder registrations are side-effect-based per gateway contract.
-  - [ ] 3.1.IV **Instruction Verification**: validate against pothos layer AGENTS.md + gateway routing doc Rule 8.
-  - [ ] 3.1.OUT **Outcome**: `outcome/3.1-outcome.md`.
+  - [x] 3.1.QL **Quality Loop**: sub-loop on every new/modified pothos file (exit 0)
+  - [x] 3.1.TE **Test Engineering**: schema-shape assertions land in 5.1/5.2 (generated SDL greps); this task's gate is `bun tsgo` clean + successful builder composition.
+  - [x] 3.1.SEC **Security & Tenancy Audit**: no sensitive field exposed; `applicant` projection is the DEV2-004 approved shape only; no local types defined inline in pothos files.
+  - [x] 3.1.SR **Semantic Review**: enums as value imports; no `await import`; builder registrations are side-effect-based per gateway contract.
+  - [x] 3.1.IV **Instruction Verification**: validate against pothos layer AGENTS.md + gateway routing doc Rule 8.
+  - [x] 3.1.OUT **Outcome**: `outcome/3.1-outcome.md`.
 
 ### 3.2 Queries & Mutations (authScopes + Thin Resolvers)
 
-- [ ] **3.2 Implement admin user queries & mutations**
+- [x] **3.2 Implement admin user queries & mutations**
   - Create `backend/graphql/query/admin/admin-users.query.ts` (2 queries) and `backend/graphql/mutation/admin/admin-users.mutation.ts` (3 mutations) + per-directory barrels with side-effect registration imports (NO `await import`)
   - EVERY operation carries EXACTLY `authScopes: { $all: { authenticated: true, role: [UserRole.Admin] } }` (D10 — `$all` conjunction; plain key-map = ANY semantics = FORBIDDEN pattern)
   - Resolver bodies are thin: ID arg → positive-safe-integer guard (no `as number`) → service call with `(…, ctx.user.id, ctx.locale)` → return. Resolvers throw NOTHING directly; service DomainErrors propagate with `extensions.code` and boundary masking
@@ -276,12 +276,12 @@
   - `backend/lib/gateway/public-operations.ts` UNTOUCHED — run the existing 1:1 allowlist-coverage gate and confirm green
   - Run `bun run generate:gqlSchema && bun codegen`; commit generated artifacts in the same change set; assert generated SDL contains ZERO `deleteUser`/`hardDelete*`/`suspendUser`/`blockUser` operations (grep gate — REQ-021, INV-U4)
   - _Requirements: REQ-050, REQ-054, REQ-060, REQ-061, REQ-062, REQ-030_
-  - [ ] 3.2.QL **Quality Loop**: sub-loop on both resolver files (exit 0)
-  - [ ] 3.2.TE **Test Engineering**: full behavior coverage via Phase 5.1 GraphQL integration matrix (`setupTestServerLifecycle` + `testClient`); ID-guard boundary fuzz (0, negative, float, `2^53`, non-numeric string → `VALIDATION` pre-DB — assert zero DB round-trips via a repository spy count) lands in this task's resolver unit tier.
-  - [ ] 3.2.SEC **Security & Tenancy Audit**: scope map present on all five operations (grep-asserted); anonymous → `UNAUTHORIZED`, non-admin → `FORBIDDEN` BEFORE resolver body (order proven by permission-matrix tests); `ctx.user.id` is the sole actor source.
-  - [ ] 3.2.SR **Semantic Review**: thin-resolver discipline; no business logic leaked above the service; locale propagation via `ctx.locale` on every call; no `console.*`.
-  - [ ] 3.2.IV **Instruction Verification**: validate against gateway/routing doc (registration, allowlist, codegen workflow) and `docs/auth/jwt-authentication-service.md` scope-semantics section.
-  - [ ] 3.2.OUT **Outcome**: `outcome/3.2-outcome.md` with SDL grep evidence + codegen diff summary (no unrelated drift).
+  - [x] 3.2.QL **Quality Loop**: sub-loop on both resolver files (exit 0)
+  - [x] 3.2.TE **Test Engineering**: full behavior coverage via Phase 5.1 GraphQL integration matrix (`setupTestServerLifecycle` + `testClient`); ID-guard boundary fuzz (0, negative, float, `2^53`, non-numeric string → `VALIDATION` pre-DB — assert zero DB round-trips via a repository spy count) lands in this task's resolver unit tier.
+  - [x] 3.2.SEC **Security & Tenancy Audit**: scope map present on all five operations (grep-asserted); anonymous → `UNAUTHORIZED`, non-admin → `FORBIDDEN` BEFORE resolver body (order proven by permission-matrix tests); `ctx.user.id` is the sole actor source.
+  - [x] 3.2.SR **Semantic Review**: thin-resolver discipline; no business logic leaked above the service; locale propagation via `ctx.locale` on every call; no `console.*`.
+  - [x] 3.2.IV **Instruction Verification**: validate against gateway/routing doc (registration, allowlist, codegen workflow) and `docs/auth/jwt-authentication-service.md` scope-semantics section.
+  - [x] 3.2.OUT **Outcome**: `outcome/3.2-outcome.md` with SDL grep evidence + codegen diff summary (no unrelated drift).
 
 ---
 

@@ -13,3 +13,4 @@
  * `refreshToken`, `logout`).
  */
 import "./auth.mutation";
+import "./admin";
