@@ -28,6 +28,7 @@ import { resolveRequestId } from "@/backend/lib/api";
 import { AUTH_COOKIE_NAMES, type AuthCookieOut, createAuthCookieOut, parseCookies } from "@/backend/lib/auth/cookies";
 import { verifyAccessToken } from "@/backend/lib/auth/jwt";
 import type { RegistrationReturnType } from "@/backend/types";
+import { LOCALE_COOKIE_NAME } from "@/shared/locale/server-cookies";
 import { getServerTranslations } from "@/shared/locale/server-graphql";
 import type { Translations } from "@/shared/locale/types/message";
 
@@ -97,6 +98,18 @@ const DEFAULT_LOCALE = "en";
 const SUPPORTED_LOCALES = new Set(["en", "ar"]);
 
 /**
+ * Locale-cookie matcher, built from the CANONICAL cookie-name constant the
+ * UI writes (`LOCALE_COOKIE_NAME = "NEXT_LOCALE"` — see
+ * `shared/locale/server-cookies.ts`). Cookie names are case-sensitive per
+ * RFC 6265, so the historical lowercase-only `next-locale` literal NEVER
+ * matched the cookie the language toggle actually sets — the API silently
+ * fell back to Accept-Language/DEFAULT for every request. The alternation
+ * additionally tolerates the legacy lowercase spelling; the locale VALUES
+ * stay case-sensitive (the app only ever writes lowercase `en`/`ar`).
+ */
+const LOCALE_COOKIE_RE = new RegExp(`(?:${LOCALE_COOKIE_NAME}|next-locale)=(en|ar)`);
+
+/**
  * Extracts the locale from the request — checks the `next-locale` cookie
  * first, then the `Accept-Language` header, falling back to `DEFAULT_LOCALE`.
  *
@@ -108,7 +121,7 @@ const SUPPORTED_LOCALES = new Set(["en", "ar"]);
 export function extractLocale(request: NextRequest | Request): string {
   // 1. Cookie (client-side routing sets this on locale switch).
   const cookieHeader = request.headers.get("cookie") ?? "";
-  const match = /next-locale=(en|ar)/.exec(cookieHeader);
+  const match = LOCALE_COOKIE_RE.exec(cookieHeader);
   if (match?.[1]) return match[1];
 
   // 2. Accept-Language header.

@@ -659,6 +659,59 @@ describe("AdminUserManagementService.createUser", () => {
     });
   });
 
+  // ─── Field-payload projection (extensions.fields for inline helperText) ──
+
+  test("multi-field failure → ValidationError carries a fields payload naming every offending field", async () => {
+    await runInRollback(async tx => {
+      const admin = await provisionAdminActor(tx);
+      silenceDomainLog();
+      const input: AdminCreateUserSubmitInput = {
+        fullName: "   ",
+        email: "not-an-email",
+        phone: "",
+        password: "short",
+        country: "",
+        role: "student",
+      };
+      const error = await expectRepoError(() => AdminUserManagementService.createUser(input, admin.id, LOCALE, tx));
+      expect(error).toBeInstanceOf(ValidationError);
+      // Top-level message stays the FIRST failure's message (single-failure
+      // contract preserved for existing consumers).
+      expect(error.message).toContain(tAuth.nameRequired);
+      // The fields payload names every failed field — one entry per field,
+      // never duplicates.
+      const fields = (error as ValidationError).fields;
+      expect(Array.isArray(fields)).toBe(true);
+      if (!Array.isArray(fields)) throw new Error("expected a fields payload");
+      const byField = new Map(fields.map(entry => [entry.field, entry.code]));
+      expect(byField.get("fullName")).toBe("NAME_REQUIRED");
+      expect(byField.get("email")).toBe("EMAIL_INVALID");
+      expect(byField.get("phone")).toBe("PHONE_REQUIRED");
+      expect(byField.get("password")).toBe("PASSWORD_TOO_SHORT");
+      expect(byField.get("country")).toBe("COUNTRY_REQUIRED");
+      // Every entry carries a localized message (non-empty string).
+      for (const entry of fields) {
+        expect(typeof entry.message).toBe("string");
+        expect(entry.message.length).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  test("single-field failure → fields payload has exactly one entry mirroring the top-level message", async () => {
+    await runInRollback(async tx => {
+      const admin = await provisionAdminActor(tx);
+      silenceDomainLog();
+      const input = { ...makeCreateInput(), email: "bad-email" };
+      const error = await expectRepoError(() => AdminUserManagementService.createUser(input, admin.id, LOCALE, tx));
+      expect(error).toBeInstanceOf(ValidationError);
+      const fields = (error as ValidationError).fields;
+      if (fields?.length !== 1) throw new Error("expected exactly one field entry");
+      expect(fields[0].field).toBe("email");
+      expect(fields[0].code).toBe("EMAIL_INVALID");
+      expect(fields[0].message).toBe(error.message);
+    });
+  });
+
   test("duplicate email → ConflictError (23505 cause-chain traversal)", async () => {
     await runInRollback(async tx => {
       const admin = await provisionAdminActor(tx);
@@ -791,6 +844,42 @@ describe("AdminUserManagementService.updateUser", () => {
         AdminUserManagementService.updateUser(student.id, { dateOfBirth: futureDate }, admin.id, LOCALE, tx)
       );
       expect(error).toBeInstanceOf(ValidationError);
+      // Field-payload projection: the entry names the offending field so the
+      // edit dialog can project inline helperText under the date input.
+      const fields = (error as ValidationError).fields;
+      if (fields?.length !== 1) throw new Error("expected exactly one field entry");
+      expect(fields[0].field).toBe("dateOfBirth");
+      expect(fields[0].code).toBe("DATE_OF_BIRTH_INVALID");
+    });
+  });
+
+  test("multi-field patch failure → fields payload names every offending patch field", async () => {
+    await runInRollback(async tx => {
+      const admin = await provisionAdminActor(tx);
+      const student = await createTestUser(tx, { role: "student" });
+      await createTestStudent(tx, student.id);
+      silenceDomainLog();
+
+      const futureDate = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+      const patch: AdminUpdateUserPatchInput = {
+        fullName: "",
+        phone: "+".concat("1".repeat(30)),
+        country: "   ",
+        dateOfBirth: futureDate,
+      };
+      const error = await expectRepoError(() =>
+        AdminUserManagementService.updateUser(student.id, patch, admin.id, LOCALE, tx)
+      );
+      expect(error).toBeInstanceOf(ValidationError);
+      expect(error.message).toContain(tErrors.validation);
+      const fields = (error as ValidationError).fields;
+      expect(Array.isArray(fields)).toBe(true);
+      if (!Array.isArray(fields)) throw new Error("expected a fields payload");
+      const byField = new Map(fields.map(entry => [entry.field, entry.code]));
+      expect(byField.get("fullName")).toBe("FULL_NAME_INVALID");
+      expect(byField.get("phone")).toBe("PHONE_TOO_LONG");
+      expect(byField.get("country")).toBe("COUNTRY_INVALID");
+      expect(byField.get("dateOfBirth")).toBe("DATE_OF_BIRTH_INVALID");
     });
   });
 

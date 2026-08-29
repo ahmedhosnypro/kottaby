@@ -35,6 +35,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  FormHelperText,
   InputLabel,
   MenuItem,
   Select,
@@ -44,7 +45,7 @@ import {
 } from "@mui/material";
 import { type ReactNode, type SubmitEventHandler, useState } from "react";
 import type { Gender } from "@/frontend/graphql/generated/gql/graphql";
-import { extractErrorCode, extractFieldErrors } from "@/frontend/lib/graphql-error-utils";
+import { extractErrorCode, extractErrorMessage, extractFieldErrors } from "@/frontend/lib/graphql-error-utils";
 import type { AdminUsersLabels } from "@/shared/locale/types/adminUsers";
 
 /**
@@ -104,10 +105,15 @@ export function EditUserDialog({ labels, user, loading, onClose, onSubmit }: Edi
     dateOfBirth: user.dateOfBirth ?? "",
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // Top-level fallback for rejections WITHOUT a field payload (e.g.
+  // USER_NOT_FOUND on a stale row) — without it the dialog would stay open
+  // with zero feedback, leaving the admin to guess why nothing happened.
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleSubmit: SubmitEventHandler<HTMLFormElement> = async e => {
     e.preventDefault();
     setFieldErrors({});
+    setFormError(null);
     try {
       await onSubmit({
         fullName: form.fullName || undefined,
@@ -118,7 +124,11 @@ export function EditUserDialog({ labels, user, loading, onClose, onSubmit }: Edi
       });
     } catch (err) {
       const errors = extractFieldErrors(err as unknown);
-      if (Object.keys(errors).length > 0) setFieldErrors(errors);
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+      } else {
+        setFormError(extractErrorMessage(err as unknown));
+      }
     }
   };
 
@@ -128,6 +138,7 @@ export function EditUserDialog({ labels, user, loading, onClose, onSubmit }: Edi
         <DialogTitle>{labels.editDialog.title}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
+            {formError && <Alert severity="error">{formError}</Alert>}
             <TextField
               label={labels.editDialog.fullName}
               value={form.fullName}
@@ -139,13 +150,17 @@ export function EditUserDialog({ labels, user, loading, onClose, onSubmit }: Edi
               label={labels.editDialog.phone}
               value={form.phone}
               onChange={e => setForm({ ...form, phone: e.target.value })}
+              error={!!fieldErrors.phone}
+              helperText={fieldErrors.phone}
             />
             <TextField
               label={labels.editDialog.country}
               value={form.country}
               onChange={e => setForm({ ...form, country: e.target.value })}
+              error={!!fieldErrors.country}
+              helperText={fieldErrors.country}
             />
-            <FormControl fullWidth>
+            <FormControl fullWidth error={!!fieldErrors.gender}>
               <InputLabel htmlFor={EDIT_GENDER_ID}>{labels.editDialog.gender}</InputLabel>
               <Select
                 id={EDIT_GENDER_ID}
@@ -158,6 +173,7 @@ export function EditUserDialog({ labels, user, loading, onClose, onSubmit }: Edi
                 <MenuItem value="Female">{labels.genderOptions.female}</MenuItem>
                 <MenuItem value="Other">{labels.genderOptions.other}</MenuItem>
               </Select>
+              {fieldErrors.gender && <FormHelperText>{fieldErrors.gender}</FormHelperText>}
             </FormControl>
             <TextField
               label={labels.editDialog.dateOfBirth}
@@ -165,6 +181,8 @@ export function EditUserDialog({ labels, user, loading, onClose, onSubmit }: Edi
               value={form.dateOfBirth}
               onChange={e => setForm({ ...form, dateOfBirth: e.target.value })}
               slotProps={{ inputLabel: { shrink: true } }}
+              error={!!fieldErrors.dateOfBirth}
+              helperText={fieldErrors.dateOfBirth}
             />
           </Stack>
         </DialogContent>

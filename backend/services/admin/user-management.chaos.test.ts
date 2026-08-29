@@ -44,8 +44,13 @@
  *    (`DeprecationWarning: Calling client.query() when the client is
  *    already executing a query`), so passing the same `tx` to
  *    Promise.allSettled would crash. The fixture user is provisioned
- *    in a committed `db.transaction` and cleaned up via direct
- *    `db.delete(users)` after the test.
+ *    in a committed `db.transaction` and cleaned in the describe-scoped
+ *    `afterAll` via the shared `deleteUsersByIds` helper — pre-cleaning
+ *    the RESTRICT-gated `audit_logs` rows (the probes emit audit rows
+ *    BOTH as the admin actor AND about the student targets, so a bare
+ *    `db.delete(users)` on the actor fails the `audit_logs.actor_id` FK
+ *    RESTRICT — the historical `.catch(() => {})` wrapper silently
+ *    swallowed that failure and leaked the actor row).
  *  - BFLA + fuzz probes (f)–(g): use `runInRollback` — no concurrency,
  *    so the shared-tx path is safe and the rollback auto-cleans.
  *
@@ -78,6 +83,10 @@ import { logger } from "@/backend/lib/logger";
 import { AdminUserManagementService } from "@/backend/services/admin/user-management.service";
 import type { AdminCreateUserSubmitInput, UserSelectType } from "@/backend/types";
 import { getServerTranslations } from "@/shared/locale/server-graphql";
+// Deep import (NOT the `@/test/helpers` barrel) — the barrel pulls the
+// Apollo test client into a backend-suite module graph; the db-cleanup
+// module itself only needs drizzle + the db handle.
+import { countUsersByIds, deleteUsersByIds } from "@/test/helpers/db-cleanup";
 
 const LOCALE = "en";
 const tErrors = getServerTranslations(LOCALE).errorsTranslations;
@@ -122,22 +131,19 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Cleanup — hard-delete every fixture user. The `users` FK ON DELETE
-  // RESTRICT on `audit_logs` blocks direct delete of admin actors with
-  // audit rows; the suite's admin actor only emits audit rows for chaos
-  // targets (NOT for itself), so direct delete is safe. Collected into
-  // a Promise.all to satisfy the no-await-in-loop rule.
-  await Promise.all(
-    fixtures.createdUserIds.map(id =>
-      db
-        .delete(users)
-        .where(eq(users.id, id))
-        .catch(() => {
-          // Non-fatal — the row may have been cleaned up by an earlier test
-          // or be retention-locked by a FK constraint.
-        })
-    )
-  );
+  // Cleanup — the shared `deleteUsersByIds` helper hard-deletes every
+  // fixture user AND pre-cleans the RESTRICT-gated references first:
+  // audit rows written BY the fixtures (`actor_id`) and ABOUT them
+  // (`entity_type = 'user'` + `entity_id`), then subscriptions /
+  // evaluations, then the users (child rows cascade). The asserted
+  // `deleted === ids.length` + zero-remain check replaces the historical
+  // silent `.catch(() => {})` wrapper that masked FK-RESTRICT failures and
+  // leaked the admin actor row whenever its probes emitted audit rows.
+  const ids = [...fixtures.createdUserIds];
+  if (ids.length === 0) return;
+  const deleted = await deleteUsersByIds(ids);
+  expect(deleted).toBe(ids.length);
+  expect(await countUsersByIds(ids)).toBe(0);
 });
 
 /** Provisions a student fixture (users + students rows) committed to DB. */

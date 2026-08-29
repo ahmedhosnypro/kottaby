@@ -91,6 +91,7 @@ import type {
   AdminUserPageReturnType,
   AdminUserStatsReturnType,
   AdminUserUpdateDbPatch,
+  ApiFieldErrorType,
   AuditLogWriteContract,
   DBTransaction,
   UserInsertType,
@@ -254,44 +255,56 @@ async function assertActorAdmin(actorId: number, locale: string, outerTx?: DBTra
  * `ValidationError` on any failure. BFLA: `role` is constrained by the
  * `RegisterPublicRole` type union at compile time; the runtime role
  * pre-guard (`createUser`) is the transport-tamper defense.
+ *
+ * Field-payload projection: instead of throw-on-first-failure, the validator
+ * COLLECTS every failed check as an `ApiFieldErrorType` entry
+ * (`{ field, code, message }` — field names match the create-dialog form
+ * paths exactly) and throws ONE `ValidationError` whose top-level message is
+ * the FIRST entry's message (backwards-compatible with the single-failure
+ * message contract) and whose `fields` array carries every failed field. The
+ * GraphQL boundary finalizer mirrors `fields` into `extensions.fields`, and
+ * the admin create dialog projects them as inline per-field helperText via
+ * `extractFieldErrors`. Entries are built explicitly per check — never an
+ * echo/spread of client input (BOPLA discipline applies to error payloads
+ * too).
  */
 function validateCreateInput(input: AdminCreateUserSubmitInput, locale: string): void {
   const t = getServerTranslations(locale);
   const tErrors = t.errorsTranslations;
   const tAuth = t.authTranslations;
+  const entries: ApiFieldErrorType[] = [];
 
   if (!input.fullName || input.fullName.trim().length === 0) {
-    throw new ValidationError(tAuth.nameRequired);
-  }
-  if (input.fullName.trim().length > MAX_FULL_NAME_LENGTH) {
-    throw new ValidationError(tErrors.validation);
+    entries.push({ field: "fullName", code: "NAME_REQUIRED", message: tAuth.nameRequired });
+  } else if (input.fullName.trim().length > MAX_FULL_NAME_LENGTH) {
+    entries.push({ field: "fullName", code: "NAME_TOO_LONG", message: tErrors.validation });
   }
   if (!input.email || input.email.trim().length === 0) {
-    throw new ValidationError(tAuth.emailRequired);
-  }
-  if (!isValidEmail(input.email)) {
-    throw new ValidationError(tAuth.emailInvalid);
+    entries.push({ field: "email", code: "EMAIL_REQUIRED", message: tAuth.emailRequired });
+  } else if (!isValidEmail(input.email)) {
+    entries.push({ field: "email", code: "EMAIL_INVALID", message: tAuth.emailInvalid });
   }
   if (!input.phone || input.phone.trim().length === 0) {
-    throw new ValidationError(tAuth.phoneRequired);
-  }
-  if (input.phone.length > MAX_PHONE_LENGTH) {
-    throw new ValidationError(tErrors.validation);
+    entries.push({ field: "phone", code: "PHONE_REQUIRED", message: tAuth.phoneRequired });
+  } else if (input.phone.length > MAX_PHONE_LENGTH) {
+    entries.push({ field: "phone", code: "PHONE_TOO_LONG", message: tErrors.validation });
   }
   if (!input.password || input.password.length === 0) {
-    throw new ValidationError(tAuth.passwordRequired);
-  }
-  if (input.password.length < MIN_PASSWORD_LENGTH) {
-    throw new ValidationError(tAuth.passwordTooShort);
+    entries.push({ field: "password", code: "PASSWORD_REQUIRED", message: tAuth.passwordRequired });
+  } else if (input.password.length < MIN_PASSWORD_LENGTH) {
+    entries.push({ field: "password", code: "PASSWORD_TOO_SHORT", message: tAuth.passwordTooShort });
   }
   if (!input.country || input.country.trim().length === 0) {
-    throw new ValidationError(tAuth.countryRequired);
-  }
-  if (input.country.trim().length > MAX_COUNTRY_LENGTH) {
-    throw new ValidationError(tErrors.validation);
+    entries.push({ field: "country", code: "COUNTRY_REQUIRED", message: tAuth.countryRequired });
+  } else if (input.country.trim().length > MAX_COUNTRY_LENGTH) {
+    entries.push({ field: "country", code: "COUNTRY_TOO_LONG", message: tErrors.validation });
   }
   if (input.gender !== undefined && !isValidGender(input.gender)) {
-    throw new ValidationError(tErrors.validation);
+    entries.push({ field: "gender", code: "GENDER_INVALID", message: tErrors.validation });
+  }
+
+  if (entries.length > 0) {
+    throw new ValidationError(entries[0].message, entries);
   }
 }
 
@@ -312,33 +325,45 @@ function isValidGender(value: unknown): value is Gender {
  * validators below treat `null` as the "clear the stored value" intent
  * — passing `null` through to the repo is valid; the guards only
  * reject malformed string values.
+ *
+ * Field-payload projection: failed checks COLLECT into an `ApiFieldErrorType[]`
+ * (field names match the edit-dialog form paths exactly — `fullName`, `phone`,
+ * `country`, `gender`, `dateOfBirth`) and throw ONE `ValidationError` whose
+ * top-level message stays the canonical `tErrors.validation` string while the
+ * `fields` payload identifies the offending fields for inline helperText
+ * projection (same contract as `validateCreateInput` above).
  */
 function validateUpdatePatch(patch: AdminUserUpdateDbPatch, locale: string): void {
   const tErrors = getServerTranslations(locale).errorsTranslations;
+  const entries: ApiFieldErrorType[] = [];
 
   if (patch.fullName !== undefined) {
     const trimmed = patch.fullName.trim();
     if (trimmed.length === 0 || trimmed.length > MAX_FULL_NAME_LENGTH) {
-      throw new ValidationError(tErrors.validation);
+      entries.push({ field: "fullName", code: "FULL_NAME_INVALID", message: tErrors.validation });
     }
   }
   if (typeof patch.phone === "string" && patch.phone.length > MAX_PHONE_LENGTH) {
-    throw new ValidationError(tErrors.validation);
+    entries.push({ field: "phone", code: "PHONE_TOO_LONG", message: tErrors.validation });
   }
   if (typeof patch.country === "string") {
     const trimmed = patch.country.trim();
     if (trimmed.length === 0 || trimmed.length > MAX_COUNTRY_LENGTH) {
-      throw new ValidationError(tErrors.validation);
+      entries.push({ field: "country", code: "COUNTRY_INVALID", message: tErrors.validation });
     }
   }
   if (patch.gender !== undefined && patch.gender !== null && !isValidGender(patch.gender)) {
-    throw new ValidationError(tErrors.validation);
+    entries.push({ field: "gender", code: "GENDER_INVALID", message: tErrors.validation });
   }
   if (typeof patch.dateOfBirth === "string") {
     const parsed = new Date(patch.dateOfBirth);
     if (Number.isNaN(parsed.getTime()) || parsed.getTime() > Date.now()) {
-      throw new ValidationError(tErrors.validation);
+      entries.push({ field: "dateOfBirth", code: "DATE_OF_BIRTH_INVALID", message: tErrors.validation });
     }
+  }
+
+  if (entries.length > 0) {
+    throw new ValidationError(entries[0].message, entries);
   }
 }
 

@@ -28,10 +28,15 @@
  *    the production client path per `gqlContextFactory.extractAccessToken`.
  *    This sidesteps any shared-cookie juggling across roles entirely.
  *
- * Data lifecycle (mirrors auth.test.ts):
- *  - Public-surface rows (registerUser) and direct-DB fixtures use
- *    randomized emails and are NOT cleaned up — GraphQL integration suites
- *    accumulate committed rows on the test database by convention.
+ * Data lifecycle (HYGIENE — diverges from the historical auth.test.ts
+ * accumulate-by-convention; mirrors the admin-users suite):
+ *  - Every user this suite creates — public registrations, direct-DB
+ *    fixtures — is tracked by id and deleted in a describe-scoped
+ *    `afterAll` via the shared `deleteUsersByIds` helper (RESTRICT-gated
+ *    audit/subscriptions/evaluations rows first, then the users; child rows
+ *    cascade) so the shared dev database returns to its canonical seed
+ *    state. Deletion is by EXPLICIT id list, never an email-pattern sweep,
+ *    so parallel live-wire suites keep their own fixtures intact.
  *  - Direct-DB usage (`db.insert(users)` / teacher / admin child rows) is
  *    safe in this harness because `run-server-tests.ts` loads `.env.test`
  *    into the bun-test process; fixtures with REAL bcrypt hashes log in via
@@ -56,7 +61,7 @@
  *            resolver with one.
  */
 
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { parse } from "graphql";
 
@@ -71,7 +76,13 @@ import {
   registerUserMutationDocument,
 } from "@/frontend/graphql/sharedDocuments/auth/auth.documents";
 import { myApplicantProfileQueryDocument } from "@/frontend/graphql/sharedDocuments/teachers/applicant.documents";
-import { expectMutationError, setupTestServerLifecycle, testClient } from "@/test/helpers";
+import {
+  countUsersByIds,
+  deleteUsersByIds,
+  expectMutationError,
+  setupTestServerLifecycle,
+  testClient,
+} from "@/test/helpers";
 
 /** Inline query document — selection set = EXACTLY the seven exposed fields. */
 const myApplicantProfileQuery = myApplicantProfileQueryDocument;
@@ -92,6 +103,16 @@ const testCredential = "Password123";
 interface RegistrationOutcome {
   readonly userId: number;
   readonly accessToken: string;
+}
+
+/** Ids of every user this suite creates (any surface) — drained by the
+ * describe-scoped `afterAll` hygiene cleanup so the shared dev database
+ * stays at its canonical seed state. Explicit ids (not an email sweep)
+ * keep parallel live-wire suites' fixtures safe. */
+const createdUserIds = new Set<number>();
+
+function trackCreatedUser(id: number | null | undefined): void {
+  if (typeof id === "number") createdUserIds.add(id);
 }
 
 /**
@@ -122,6 +143,7 @@ async function registerAndLogin(
   expect(registered.error).toBeUndefined();
   const userId = registered.data?.registerUser?.id;
   if (!userId) throw new Error("registerUser returned no id");
+  trackCreatedUser(userId);
 
   const loggedIn = await testClient.mutate({
     mutation: loginMutationDocument,
@@ -143,6 +165,19 @@ describe("myApplicantProfile GraphQL Integration", () => {
   if (process.env.TEST_SERVER_EXTERNAL !== "1") {
     setupTestServerLifecycle();
   }
+
+  // ─── Hygiene: restore the shared dev database to canonical seed state ───
+  // Deletes exactly the users this suite created (tracked by id) plus
+  // their RESTRICT-gated audit/subscriptions/evaluations references;
+  // child rows cascade. Explicit ids (not an email sweep) keep parallel
+  // live-wire suites' fixtures safe.
+  afterAll(async () => {
+    const ids = [...createdUserIds];
+    if (ids.length === 0) return;
+    const deleted = await deleteUsersByIds(ids);
+    expect(deleted).toBe(ids.length);
+    expect(await countUsersByIds(ids)).toBe(0);
+  });
 
   test("Tier 1 — teacher applicant receives the full seven-field profile shape", async () => {
     const { userId, accessToken } = await registerAndLogin(RegisterPublicRole.Teacher);
@@ -194,6 +229,7 @@ describe("myApplicantProfile GraphQL Integration", () => {
       })
       .returning();
     if (!user) throw new Error("certified-teacher user insert returned no rows");
+    trackCreatedUser(user.id);
     const [teacherRow] = await db.insert(teacher).values({ id: user.id }).returning();
     if (!teacherRow) throw new Error("teacher child-row insert returned no rows");
 
@@ -260,6 +296,7 @@ describe("myApplicantProfile GraphQL Integration", () => {
       })
       .returning();
     if (!user) throw new Error("admin user insert returned no rows");
+    trackCreatedUser(user.id);
     const [adminRow] = await db.insert(admin).values({ id: user.id }).returning();
     if (!adminRow) throw new Error("admin child-row insert returned no rows");
 

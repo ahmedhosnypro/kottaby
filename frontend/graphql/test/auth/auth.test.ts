@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import { RecitationReading, RegisterPublicRole, UserRole } from "@/frontend/graphql/generated/gql/graphql";
 import {
   loginMutationDocument,
@@ -8,10 +8,37 @@ import {
   registerUserMutationDocument,
 } from "@/frontend/graphql/sharedDocuments/auth/auth.documents";
 import { recitationReadingsQueryDocument } from "@/frontend/graphql/sharedDocuments/auth/recitation.documents";
-import { extractErrorCode, setupTestServerLifecycle, testClient } from "@/test/helpers";
+import {
+  countUsersByIds,
+  deleteUsersByIds,
+  extractErrorCode,
+  setupTestServerLifecycle,
+  testClient,
+} from "@/test/helpers";
 
 describe("Auth GraphQL Integration", () => {
-  setupTestServerLifecycle();
+  // Memory-constrained sandbox adaptation: setting TEST_SERVER_EXTERNAL=1 +
+  // GRAPHQL_TEST_PORT=<already-running server> runs the suite against that
+  // warm server instead of spawning a second `next dev`. CI never sets the
+  // flag and keeps the standard boot lifecycle.
+  if (process.env.TEST_SERVER_EXTERNAL !== "1") {
+    setupTestServerLifecycle();
+  }
+
+  // ─── Hygiene: restore the shared dev database to canonical seed state ───
+  // Deletes exactly the user this suite registers (tracked by id) plus any
+  // RESTRICT-gated audit/subscriptions/evaluations references; child rows
+  // cascade. Rejection-path probes never create rows, so the set holds only
+  // the single happy-path registration.
+  const createdUserIds = new Set<number>();
+
+  afterAll(async () => {
+    const ids = [...createdUserIds];
+    if (ids.length === 0) return;
+    const deleted = await deleteUsersByIds(ids);
+    expect(deleted).toBe(ids.length);
+    expect(await countUsersByIds(ids)).toBe(0);
+  });
 
   let testEmail: string;
   // Named without the literal `password` token so `sonarjs/no-hardcoded-passwords`
@@ -43,6 +70,7 @@ describe("Auth GraphQL Integration", () => {
     const user = result.data?.registerUser;
     if (!user) throw new Error("registerUser returned no data");
     expect(user.id).toBeDefined();
+    if (typeof user.id === "number") createdUserIds.add(user.id);
     expect(user.email).toBe(testEmail);
     expect(user.role).toBe(UserRole.Student);
   });

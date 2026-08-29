@@ -84,7 +84,7 @@ import {
   adminUserStatsQueryDocument,
   adminUsersQueryDocument,
 } from "@/frontend/graphql/sharedDocuments/admin";
-import { extractErrorCode, extractFieldErrors } from "@/frontend/lib/graphql-error-utils";
+import { extractErrorCode, extractErrorMessage, extractFieldErrors } from "@/frontend/lib/graphql-error-utils";
 import { UserAvatar } from "@/frontend/views/admin/users/AdminUserAvatar";
 import { DeleteConfirmDialog, EditUserDialog } from "@/frontend/views/admin/users/AdminUserDialogs";
 import type { AdminUsersLabels } from "@/shared/locale/types/adminUsers";
@@ -796,10 +796,15 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
     role: "Student" as "Student" | "Teacher" | "Parent",
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // Top-level fallback for rejections WITHOUT a field payload (e.g. a
+  // duplicate-email CONFLICT) — without it the dialog would stay open with
+  // zero feedback, leaving the admin to guess why nothing happened.
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleSubmit: SubmitEventHandler<HTMLFormElement> = async e => {
     e.preventDefault();
     setFieldErrors({});
+    setFormError(null);
     try {
       await onSubmit({
         fullName: form.fullName,
@@ -812,7 +817,11 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
       });
     } catch (err) {
       const errors = extractFieldErrors(err as unknown);
-      if (Object.keys(errors).length > 0) setFieldErrors(errors);
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+      } else {
+        setFormError(extractErrorMessage(err as unknown));
+      }
     }
   };
 
@@ -822,6 +831,7 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
         <DialogTitle>{labels.createDialog.title}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
+            {formError && <Alert severity="error">{formError}</Alert>}
             <TextField
               label={labels.createDialog.fullName}
               value={form.fullName}
@@ -844,6 +854,8 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
               value={form.phone}
               onChange={e => setForm({ ...form, phone: e.target.value })}
               required
+              error={!!fieldErrors.phone}
+              helperText={fieldErrors.phone}
             />
             <TextField
               label={labels.createDialog.password}
@@ -851,6 +863,8 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
               value={form.password}
               onChange={e => setForm({ ...form, password: e.target.value })}
               required
+              error={!!fieldErrors.password}
+              helperText={fieldErrors.password}
             />
             <FormControl fullWidth>
               <InputLabel htmlFor={CREATE_GENDER_ID}>{labels.createDialog.gender}</InputLabel>
@@ -871,6 +885,8 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
               value={form.country}
               onChange={e => setForm({ ...form, country: e.target.value })}
               required
+              error={!!fieldErrors.country}
+              helperText={fieldErrors.country}
             />
             <FormControl fullWidth>
               <InputLabel htmlFor={CREATE_ROLE_ID}>{labels.createDialog.role}</InputLabel>

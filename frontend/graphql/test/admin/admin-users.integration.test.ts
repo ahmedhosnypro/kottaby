@@ -675,6 +675,50 @@ describe("Admin user-management GraphQL permission matrix", () => {
       expect(await countAllAuditRows()).toBe(auditBefore);
     });
 
+    test("admin createUser multi-field rejection → VALIDATION + extensions.fields wire payload; zero audit writes", async () => {
+      const auditBefore = await countAllAuditRows();
+      const result = await testClient.mutate({
+        mutation: adminCreateUserMutationDocument,
+        variables: {
+          input: {
+            fullName: "   ",
+            email: "not-an-email",
+            phone: "",
+            password: "short",
+            gender: null,
+            country: "",
+            role: RegisterPublicRole.Student,
+          },
+        },
+        context: bearer(adminActor.accessToken),
+      });
+      const gqlError = expectMutationError(result.error, "VALIDATION");
+      expect(await countAllAuditRows()).toBe(auditBefore);
+
+      // Wire projection: the first GraphQL error item carries
+      // `extensions.fields` naming EVERY failed field — the exact payload the
+      // create dialog reduces to inline per-field helperText via
+      // `extractFieldErrors`. Narrowed structurally (no unsafe assertions).
+      const fieldsPayload = gqlError.errors[0]?.extensions?.fields;
+      expect(Array.isArray(fieldsPayload)).toBe(true);
+      if (!Array.isArray(fieldsPayload)) throw new Error("expected extensions.fields on the wire");
+      const byField = new Map<string, string>();
+      for (const entry of fieldsPayload) {
+        if (typeof entry?.field === "string" && typeof entry.code === "string") {
+          byField.set(entry.field, entry.code);
+        }
+      }
+      expect(byField.get("fullName")).toBe("NAME_REQUIRED");
+      expect(byField.get("email")).toBe("EMAIL_INVALID");
+      expect(byField.get("phone")).toBe("PHONE_REQUIRED");
+      expect(byField.get("password")).toBe("PASSWORD_TOO_SHORT");
+      expect(byField.get("country")).toBe("COUNTRY_REQUIRED");
+      // Every entry also carries a localized message for helperText.
+      for (const entry of fieldsPayload) {
+        expect(typeof entry?.message).toBe("string");
+      }
+    });
+
     test("admin fetches unknown user id → USER_NOT_FOUND; zero audit writes", async () => {
       const auditBefore = await countAllAuditRows();
       const result = await testClient.query({
