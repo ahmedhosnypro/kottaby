@@ -137,6 +137,8 @@ export interface AdminUserDirectoryRow {
   readonly email: string;
   readonly phone: string | null;
   readonly role: RawUserRole;
+  readonly gender: RawGender | null;
+  readonly dateOfBirth: string | null;
   readonly country: string | null;
   readonly isDeleted: boolean | null;
   readonly suspended: boolean | null;
@@ -337,6 +339,8 @@ export namespace AdminUserRepository {
       email: users.email,
       phone: users.phone,
       role: users.role,
+      gender: users.gender,
+      dateOfBirth: users.dateOfBirth,
       country: users.country,
       isDeleted: users.isDeleted,
       suspended: users.suspended,

@@ -63,5 +63,12 @@ export interface ErrorsLabels {
     readonly adminRoleCreationForbidden: string;
     /** Validation deny: a profile patch carried no whitelisted field. */
     readonly userPatchEmpty: string;
+    /**
+     * Near-unreachable deny: server-generated `handshake_code` retry budget
+     * exhausted on consecutive unique-violation collisions. Surfaced as
+     * `ConflictError("HANDSHAKE_EXHAUSTED", …)`; admin-authored identifiers
+     * MUST NOT appear in the message — only generic copy.
+     */
+    readonly handshakeExhausted: string;
   };
 }

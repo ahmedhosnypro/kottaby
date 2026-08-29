@@ -38,6 +38,8 @@ export interface AdminUserListItemReturnType {
   readonly email: string;
   readonly phone: string | null;
   readonly role: UserRole;
+  readonly gender: Gender | null;
+  readonly dateOfBirth: string | null;
   readonly country: string | null;
   readonly isDeleted: boolean;
   readonly suspended: boolean;

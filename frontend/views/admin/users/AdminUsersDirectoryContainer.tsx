@@ -19,6 +19,7 @@
 import { useMutation, useQuery } from "@apollo/client/react";
 import {
   AddOutlined as AddIcon,
+  ClearOutlined as ClearIcon,
   DeleteOutlineOutlined as DeleteIcon,
   EditOutlined as EditIcon,
   PersonOutlineOutlined as PersonIcon,
@@ -182,6 +183,7 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
         labels={labels}
         items={items}
         loading={loading}
+        hasFilters={roleFilter !== "" || governanceFilter !== "" || countryFilter !== "" || searchDebounced !== ""}
         onEdit={setEditTarget}
         onDelete={setDeleteTarget}
       />
@@ -281,6 +283,10 @@ function FilterBar(props: FilterBarProps): ReactNode {
   // component name to avoid collisions across FilterBar instances.
   const ROLE_FILTER_ID = "admin-users-filter-role";
   const GOVERNANCE_FILTER_ID = "admin-users-filter-governance";
+  // "Clear filters" only renders when at least one filter is set; clears every
+  // filter slot in one click rather than forcing the admin to reset each field.
+  const hasFilters =
+    props.roleFilter !== "" || props.governanceFilter !== "" || props.countryFilter !== "" || props.searchInput !== "";
   return (
     <Card variant="outlined">
       <CardContent>
@@ -293,7 +299,7 @@ function FilterBar(props: FilterBarProps): ReactNode {
               label={labels.filters.role}
               onChange={e => props.setRoleFilter((e.target.value || "") as Role | "")}
             >
-              <MenuItem value="">—</MenuItem>
+              <MenuItem value="">{labels.genderOptions.unspecified}</MenuItem>
               <MenuItem value="Admin">{labels.roleLabels.admin}</MenuItem>
               <MenuItem value="Teacher">{labels.roleLabels.teacher}</MenuItem>
               <MenuItem value="Student">{labels.roleLabels.student}</MenuItem>
@@ -308,7 +314,7 @@ function FilterBar(props: FilterBarProps): ReactNode {
               label={labels.filters.governance}
               onChange={e => props.setGovernanceFilter((e.target.value || "") as Governance | "")}
             >
-              <MenuItem value="">—</MenuItem>
+              <MenuItem value="">{labels.genderOptions.unspecified}</MenuItem>
               <MenuItem value="Active">{labels.statusBadges.active}</MenuItem>
               <MenuItem value="Suspended">{labels.statusBadges.suspended}</MenuItem>
               <MenuItem value="Blocked">{labels.statusBadges.blocked}</MenuItem>
@@ -332,6 +338,22 @@ function FilterBar(props: FilterBarProps): ReactNode {
               input: { startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: "text.secondary" }} /> },
             }}
           />
+          {hasFilters && (
+            <Button
+              size="small"
+              color="inherit"
+              startIcon={<ClearIcon />}
+              onClick={() => {
+                props.setRoleFilter("");
+                props.setGovernanceFilter("");
+                props.setCountryFilter("");
+                props.setSearchInput("");
+              }}
+              sx={{ alignSelf: "center", minHeight: 44, color: "text.secondary" }}
+            >
+              {labels.filters.clear}
+            </Button>
+          )}
         </Stack>
       </CardContent>
     </Card>
@@ -342,12 +364,13 @@ interface DirectoryTableProps {
   readonly labels: AdminUsersLabels;
   readonly items: readonly AdminUserListItem[];
   readonly loading: boolean;
+  readonly hasFilters: boolean;
   readonly onEdit: (user: AdminUserListItem) => void;
   readonly onDelete: (user: AdminUserListItem) => void;
 }
 
 function DirectoryTable(props: DirectoryTableProps): ReactNode {
-  const { labels, items, loading, onEdit, onDelete } = props;
+  const { labels, items, loading, hasFilters, onEdit, onDelete } = props;
   return (
     <TableContainer component={Card} variant="outlined">
       <Table size="small" sx={{ display: { xs: "none", md: "table" } }}>
@@ -403,7 +426,12 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
               <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
                 <Stack spacing={1} sx={{ alignItems: "center" }}>
                   <PersonIcon color="disabled" sx={{ fontSize: 48 }} />
-                  <Typography color="text.secondary">{labels.emptyState.message}</Typography>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    {hasFilters ? labels.emptyState.filteredTitle : labels.emptyState.title}
+                  </Typography>
+                  <Typography color="text.secondary">
+                    {hasFilters ? labels.emptyState.filteredMessage : labels.emptyState.message}
+                  </Typography>
                 </Stack>
               </TableCell>
             </TableRow>
@@ -509,6 +537,8 @@ interface CreateDialogProps {
 }
 
 function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogProps): ReactNode {
+  const CREATE_GENDER_ID = "admin-users-create-gender";
+  const CREATE_ROLE_ID = "admin-users-create-role";
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -576,16 +606,17 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
               required
             />
             <FormControl fullWidth>
-              <InputLabel>{labels.createDialog.gender}</InputLabel>
+              <InputLabel htmlFor={CREATE_GENDER_ID}>{labels.createDialog.gender}</InputLabel>
               <Select
+                id={CREATE_GENDER_ID}
                 value={form.gender}
                 label={labels.createDialog.gender}
                 onChange={e => setForm({ ...form, gender: e.target.value as "" | "Male" | "Female" | "Other" })}
               >
-                <MenuItem value="">—</MenuItem>
-                <MenuItem value="Male">Male</MenuItem>
-                <MenuItem value="Female">Female</MenuItem>
-                <MenuItem value="Other">Other</MenuItem>
+                <MenuItem value="">{labels.genderOptions.unspecified}</MenuItem>
+                <MenuItem value="Male">{labels.genderOptions.male}</MenuItem>
+                <MenuItem value="Female">{labels.genderOptions.female}</MenuItem>
+                <MenuItem value="Other">{labels.genderOptions.other}</MenuItem>
               </Select>
             </FormControl>
             <TextField
@@ -595,8 +626,9 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
               required
             />
             <FormControl fullWidth>
-              <InputLabel>{labels.createDialog.role}</InputLabel>
+              <InputLabel htmlFor={CREATE_ROLE_ID}>{labels.createDialog.role}</InputLabel>
               <Select
+                id={CREATE_ROLE_ID}
                 value={form.role}
                 label={labels.createDialog.role}
                 onChange={e => setForm({ ...form, role: e.target.value as "Student" | "Teacher" | "Parent" })}
@@ -609,7 +641,7 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={onClose} disabled={loading}>
+          <Button onClick={onClose} disabled={loading} sx={{ minHeight: 44 }}>
             {labels.createDialog.cancel}
           </Button>
           <Button type="submit" variant="contained" disabled={loading} sx={{ minHeight: 44 }}>
@@ -636,12 +668,17 @@ interface EditDialogProps {
 }
 
 function EditUserDialog({ labels, user, loading, onClose, onSubmit }: EditDialogProps): ReactNode {
+  const EDIT_GENDER_ID = "admin-users-edit-gender";
   const [form, setForm] = useState({
     fullName: user.fullName,
     phone: user.phone ?? "",
     country: user.country ?? "",
-    gender: "" as "" | "Male" | "Female" | "Other",
-    dateOfBirth: "",
+    // Pre-fill gender + dateOfBirth from the directory row so admins see the
+    // current value when patching. The list fragment was extended with these
+    // two safe `users` columns to avoid a second round-trip to the detail
+    // endpoint. `null` / `undefined` are mapped to the empty select value.
+    gender: (user.gender ?? "") as "" | "Male" | "Female" | "Other",
+    dateOfBirth: user.dateOfBirth ?? "",
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -686,16 +723,17 @@ function EditUserDialog({ labels, user, loading, onClose, onSubmit }: EditDialog
               onChange={e => setForm({ ...form, country: e.target.value })}
             />
             <FormControl fullWidth>
-              <InputLabel>{labels.editDialog.gender}</InputLabel>
+              <InputLabel htmlFor={EDIT_GENDER_ID}>{labels.editDialog.gender}</InputLabel>
               <Select
+                id={EDIT_GENDER_ID}
                 value={form.gender}
                 label={labels.editDialog.gender}
                 onChange={e => setForm({ ...form, gender: e.target.value as "" | "Male" | "Female" | "Other" })}
               >
-                <MenuItem value="">—</MenuItem>
-                <MenuItem value="Male">Male</MenuItem>
-                <MenuItem value="Female">Female</MenuItem>
-                <MenuItem value="Other">Other</MenuItem>
+                <MenuItem value="">{labels.genderOptions.unspecified}</MenuItem>
+                <MenuItem value="Male">{labels.genderOptions.male}</MenuItem>
+                <MenuItem value="Female">{labels.genderOptions.female}</MenuItem>
+                <MenuItem value="Other">{labels.genderOptions.other}</MenuItem>
               </Select>
             </FormControl>
             <TextField
@@ -708,7 +746,7 @@ function EditUserDialog({ labels, user, loading, onClose, onSubmit }: EditDialog
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={onClose} disabled={loading}>
+          <Button onClick={onClose} disabled={loading} sx={{ minHeight: 44 }}>
             {labels.editDialog.cancel}
           </Button>
           <Button type="submit" variant="contained" disabled={loading} sx={{ minHeight: 44 }}>
@@ -757,7 +795,7 @@ function DeleteConfirmDialog({ labels, user, loading, onClose, onConfirm }: Dele
         </Stack>
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
-        <Button onClick={onClose} disabled={loading}>
+        <Button onClick={onClose} disabled={loading} sx={{ minHeight: 44 }}>
           {isReactivate ? labels.reactivateConfirm.cancel : labels.deleteConfirm.cancel}
         </Button>
         <Button

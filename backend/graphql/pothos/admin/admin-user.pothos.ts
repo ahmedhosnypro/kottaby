@@ -70,6 +70,19 @@ export const AdminUserListItemPothosObject = gqlSchemaBuilder
         },
       }),
       country: t.exposeString("country", { nullable: true }),
+      gender: t.field({
+        type: GenderPothosEnum,
+        nullable: true,
+        resolve: parent => {
+          if (!parent.gender) return null;
+          const gender = toGender(parent.gender);
+          if (gender === null) {
+            throw new Error(`Unexpected user gender: ${parent.gender}`);
+          }
+          return gender;
+        },
+      }),
+      dateOfBirth: t.exposeString("dateOfBirth", { nullable: true }),
       isDeleted: t.field({ type: "Boolean", resolve: parent => parent.isDeleted }),
       suspended: t.field({ type: "Boolean", resolve: parent => parent.suspended }),
       isBlocked: t.field({ type: "Boolean", resolve: parent => parent.isBlocked }),

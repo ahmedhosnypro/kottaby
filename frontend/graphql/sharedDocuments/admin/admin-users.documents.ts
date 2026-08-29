@@ -27,6 +27,8 @@ const ADMIN_USER_LIST_ITEM_FIELDS = gql`
     email
     phone
     role
+    gender
+    dateOfBirth
     country
     isDeleted
     suspended

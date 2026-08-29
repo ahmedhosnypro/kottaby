@@ -86,16 +86,22 @@ export interface AdminUsersLabels {
     readonly search: string;
     /** Placeholder shown inside an empty search input. */
     readonly searchPlaceholder: string;
+    /** "Clear filters" button — restores the directory to its unfiltered state. */
+    readonly clear: string;
   };
 
   /** Empty-state copy rendered inside the table body when no rows match. */
   readonly emptyState: {
-    /** Empty-state heading line. */
+    /** Empty-state heading line — shown when no users exist at all. */
     readonly title: string;
-    /** Empty-state body line explaining why no rows are visible. */
+    /** Empty-state body line explaining why no rows are visible (zero users). */
     readonly message: string;
     /** Call-to-action button label for the empty state. */
     readonly cta: string;
+    /** Empty-state heading line — shown when filters returned zero matches. */
+    readonly filteredTitle: string;
+    /** Empty-state body explaining filters narrowed the result set to zero. */
+    readonly filteredMessage: string;
   };
 
   /** Error-state copy rendered when the directory query fails. */
@@ -106,6 +112,18 @@ export interface AdminUsersLabels {
     readonly message: string;
     /** Retry button label for the error state. */
     readonly retry: string;
+  };
+
+  /** Gender option labels shared by the create/edit dialog gender select. */
+  readonly genderOptions: {
+    /** Select-option label for the empty (unspecified) gender entry. */
+    readonly unspecified: string;
+    /** Select-option label for the `Male` gender enum value. */
+    readonly male: string;
+    /** Select-option label for the `Female` gender enum value. */
+    readonly female: string;
+    /** Select-option label for the `Other` gender enum value. */
+    readonly other: string;
   };
 
   /** Create-user dialog field labels, button labels, and dialog title. */
@@ -198,6 +216,61 @@ export interface AdminUsersLabels {
     readonly notFoundTitle: string;
     /** Not-found section body explaining the row is gone or never existed. */
     readonly notFoundMessage: string;
+    /** Inline edit action button on the detail page header. */
+    readonly editAction: string;
+    /** Inline soft-delete action button on the detail page header. */
+    readonly deleteAction: string;
+    /** Inline reactivate action button on the detail page header. */
+    readonly reactivateAction: string;
+    /** Field label for the soft-deletion timestamp on the governance card. */
+    readonly deletedAt: string;
+    /** Field label for the suspension timestamp on the governance card. */
+    readonly suspendedAt: string;
+    /** Field label for the block timestamp on the governance card. */
+    readonly blockedAt: string;
+    /** Field labels for the applicant role-child snapshot card. */
+    readonly applicantFields: {
+      readonly status: string;
+      readonly verificationAttempts: string;
+      readonly lastAttempt: string;
+      readonly cooldownUntil: string;
+      readonly cooldownActive: string;
+      readonly canPurchaseVerification: string;
+    };
+    /** Localized display values for the `ApplicantStatus` enum. */
+    readonly applicantStatus: {
+      readonly pending: string;
+      readonly inEvaluation: string;
+      readonly passed: string;
+      readonly failed: string;
+    };
+    /** Field labels for the teacher role-child snapshot card. */
+    readonly teacherFields: {
+      readonly approved: string;
+      readonly evaluator: string;
+      readonly online: string;
+      readonly averageRating: string;
+    };
+    /** Field labels for the student role-child snapshot card. */
+    readonly studentFields: {
+      readonly handshakeCode: string;
+      readonly hasParentLink: string;
+      readonly parentId: string;
+      readonly hasActiveSubscription: string;
+      readonly balanceHifz: string;
+      readonly balanceTajweed: string;
+      readonly balanceReviews: string;
+      readonly trialGrantedAt: string;
+    };
+    /** Field labels for the parent role-child snapshot card. */
+    readonly parentFields: {
+      readonly linkedChildrenCount: string;
+    };
+    /** Localized Yes/No labels for boolean field display. */
+    readonly booleanValues: {
+      readonly yes: string;
+      readonly no: string;
+    };
   };
 
   /**

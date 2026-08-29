@@ -84,8 +84,10 @@ type AdminUserListItem {
   applicantStatus: ApplicantStatus
   country: String
   createdAt: String!
+  dateOfBirth: String
   email: String!
   fullName: String!
+  gender: Gender
   id: Int!
   isBlocked: Boolean!
   isDeleted: Boolean!

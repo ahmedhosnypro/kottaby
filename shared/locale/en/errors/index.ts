@@ -29,5 +29,6 @@ export const errorsEn: ErrorsLabels = {
     userSelfDeactivationForbidden: "You cannot delete your own account.",
     adminRoleCreationForbidden: "Admin accounts cannot be created from this surface.",
     userPatchEmpty: "No updatable fields were supplied.",
+    handshakeExhausted: "Could not generate a unique handshake code. Please try again.",
   },
 };

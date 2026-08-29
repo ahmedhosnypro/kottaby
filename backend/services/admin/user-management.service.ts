@@ -67,7 +67,7 @@ import type {
 } from "@/backend/db/repo/admin/admin-user.repository";
 import { AuditActionType } from "@/backend/enum/audit/audit-action-type.enum";
 import { ApplicantStatus, isApplicantStatus } from "@/backend/enum/teachers/applicant-status.enum";
-import { Gender } from "@/backend/enum/users/gender.enum";
+import { Gender, toGender } from "@/backend/enum/users/gender.enum";
 import { toUserRole, UserRole } from "@/backend/enum/users/user-role.enum";
 import { hashPassword } from "@/backend/lib/auth/password";
 import { escapeLikeWildcards } from "@/backend/lib/db/escape-like-wildcards";
@@ -431,6 +431,8 @@ function mapDirectoryRow(row: AdminUserDirectoryRow, locale: string): AdminUserL
     email: row.email,
     phone: row.phone,
     role,
+    gender: row.gender === null ? null : (toGender(row.gender) ?? null),
+    dateOfBirth: row.dateOfBirth,
     country: row.country,
     isDeleted: row.isDeleted ?? false,
     suspended: row.suspended ?? false,
@@ -724,7 +726,7 @@ export namespace AdminUserManagementService {
         const insert = buildCreateUserInsert(input, passwordHash);
         const created = await UserRepository.create(insert, tx);
 
-        await createRoleChild(created.id, input.role, tx);
+        await createRoleChild(created.id, input.role, locale, tx);
 
         // Audit row shares the caller's transaction fate.
         await AuditService.createAuditLog(
@@ -755,11 +757,12 @@ export namespace AdminUserManagementService {
   async function createRoleChild(
     userId: number,
     role: "student" | "teacher" | "parent",
+    locale: string,
     tx: DBTransaction
   ): Promise<void> {
     switch (role) {
       case "student": {
-        await createStudentWithHandshakeRetry(userId, tx);
+        await createStudentWithHandshakeRetry(userId, locale, tx);
         return;
       }
       case "teacher": {
@@ -783,7 +786,8 @@ export namespace AdminUserManagementService {
    * throws `ConflictError` and logs via `logger.logDomainError` (never
    * `console.*`).
    */
-  async function createStudentWithHandshakeRetry(userId: number, tx: DBTransaction): Promise<void> {
+  async function createStudentWithHandshakeRetry(userId: number, locale: string, tx: DBTransaction): Promise<void> {
+    const tErrors = getServerTranslations(locale).errorsTranslations;
     const attemptInsert = async (attempt: number, lastError: unknown): Promise<void> => {
       if (attempt > HANDSHAKE_RETRY_LIMIT) {
         logger.logDomainError("Handshake code retry budget exhausted during admin user creation", {
@@ -792,7 +796,7 @@ export namespace AdminUserManagementService {
           entityId: userId,
           attempts: String(HANDSHAKE_RETRY_LIMIT),
         });
-        throw new ConflictError("Handshake code generation failed after retries", {
+        throw new ConflictError("HANDSHAKE_EXHAUSTED", tErrors.adminUsers.handshakeExhausted, {
           cause: lastError instanceof Error ? lastError : undefined,
         });
       }

@@ -29,5 +29,6 @@ export const errorsAr: ErrorsLabels = {
     userSelfDeactivationForbidden: "لا يمكنك حذف حسابك الخاص.",
     adminRoleCreationForbidden: "لا يمكن إنشاء حسابات المسؤولين من هذه الصفحة.",
     userPatchEmpty: "لم يتم تقديم أي حقول قابلة للتحديث.",
+    handshakeExhausted: "تعذّر توليد رمز التحقق الفريد. يرجى المحاولة مرة أخرى.",
   },
 };
