@@ -4,16 +4,19 @@
  * AdminUserDetailContainer — the admin user detail client surface.
  *
  * Renders the user profile card (safe `users` columns incl. governance
- * timestamps — read-only here) plus the role-child snapshot cards
- * (applicant / teacher / student / parent). Reuses the directory's edit +
- * delete/reactivate dialogs via callbacks (simplified: edit/delete handled
- * via navigation back to directory for now).
+ * timestamps) plus the role-child snapshot cards (applicant / teacher /
+ * student / parent). The header carries INLINE mutations: Edit opens the
+ * shared `EditUserDialog` (adminUpdateUser) and Delete/Reactivate opens the
+ * shared `DeleteConfirmDialog` (adminSetUserDeleted) — both from
+ * AdminUserDialogs, the same dialogs the directory uses. Post-write detail
+ * fragments merge into the Apollo cache (`AdminUserDetail:<id>`, id-first)
+ * so this query re-renders without an explicit refetch.
  *
  * A `USER_NOT_FOUND` response (stale link) renders a localized not-found
  * section with a back-to-directory CTA.
  */
 
-import { useQuery } from "@apollo/client/react";
+import { useMutation, useQuery } from "@apollo/client/react";
 import {
   ArrowBackOutlined as BackIcon,
   DeleteOutlineOutlined as DeleteIcon,
@@ -32,16 +35,23 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import {
+  type AdminSetUserDeletedMutation,
+  type AdminUpdateUserMutation,
   type AdminUserDetailQuery,
   type AdminUserDetailQueryVariables,
   ApplicantStatus as ApplicantStatusEnum,
   Gender as GenderEnum,
 } from "@/frontend/graphql/generated/gql/graphql";
-import { adminUserDetailQueryDocument } from "@/frontend/graphql/sharedDocuments/admin";
+import {
+  adminSetUserDeletedMutationDocument,
+  adminUpdateUserMutationDocument,
+  adminUserDetailQueryDocument,
+} from "@/frontend/graphql/sharedDocuments/admin";
 import { useAppLocale } from "@/frontend/hooks/useAppLocale";
 import { extractErrorCode } from "@/frontend/lib/graphql-error-utils";
+import { DeleteConfirmDialog, EditUserDialog } from "@/frontend/views/admin/users/AdminUserDialogs";
 import type { AdminUsersLabels } from "@/shared/locale/types/adminUsers";
 
 interface AdminUserDetailContainerProps {
@@ -112,6 +122,21 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
     { variables: { id: userId }, fetchPolicy: "cache-and-network" }
   );
 
+  // Inline header mutations — the detail page invokes the SAME whitelist
+  // operations the directory uses (adminUpdateUser / adminSetUserDeleted)
+  // through the SAME shared dialogs (AdminUserDialogs). Both mutations return
+  // the post-write `AdminUserDetailFields` fragment, which Apollo merges into
+  // the `AdminUserDetail:<id>` normalized entity (id-first rule) — the
+  // useQuery watcher above re-renders with fresh data automatically.
+  const [updateUser, { loading: updateLoading }] = useMutation<AdminUpdateUserMutation>(
+    adminUpdateUserMutationDocument
+  );
+  const [setDeleted, { loading: deleteLoading }] = useMutation<AdminSetUserDeletedMutation>(
+    adminSetUserDeletedMutationDocument
+  );
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
   if (loading && !data) {
     return (
       <Stack sx={{ alignItems: "center", py: 8 }}>
@@ -155,14 +180,13 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
           {labels.detailTitle}
         </Typography>
         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-          <Button component={MuiLink} href={`/admin/users/${user.id}`} startIcon={<EditIcon />} sx={{ minHeight: 44 }}>
+          <Button startIcon={<EditIcon />} onClick={() => setEditOpen(true)} sx={{ minHeight: 44 }}>
             {labels.detail.editAction}
           </Button>
           <Button
-            component={MuiLink}
-            href={`/admin/users`}
             color={isReactivate ? "success" : "error"}
             startIcon={isReactivate ? <RefreshIcon /> : <DeleteIcon />}
+            onClick={() => setDeleteOpen(true)}
             sx={{ minHeight: 44 }}
           >
             {isReactivate ? labels.detail.reactivateAction : labels.detail.deleteAction}
@@ -319,6 +343,37 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
             </Stack>
           </CardContent>
         </Card>
+      )}
+
+      {editOpen && (
+        <EditUserDialog
+          labels={labels}
+          user={user}
+          loading={updateLoading}
+          onClose={() => setEditOpen(false)}
+          onSubmit={async input => {
+            // NO try/catch — rejections propagate into the dialog's submit
+            // handler for inline field-error projection (see AdminUserDialogs).
+            await updateUser({ variables: { id: user.id, input } });
+            setEditOpen(false);
+          }}
+        />
+      )}
+
+      {deleteOpen && (
+        <DeleteConfirmDialog
+          labels={labels}
+          user={user}
+          loading={deleteLoading}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={async () => {
+            // NO try/catch — rejections propagate into the dialog's confirm
+            // handler: USER_SELF_DEACTIVATION_FORBIDDEN keeps the dialog open
+            // with the warning alert; other codes leave it open for retry.
+            await setDeleted({ variables: { id: user.id, deleted: !isReactivate } });
+            setDeleteOpen(false);
+          }}
+        />
       )}
     </Stack>
   );

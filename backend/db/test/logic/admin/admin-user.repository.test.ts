@@ -421,23 +421,32 @@ describe("AdminUserRepository — Tier 1: filter matrix + projection coverage", 
       const u2 = await createTestUser(tx, { fullName: "Page Probe 2" });
       const u3 = await createTestUser(tx, { fullName: "Page Probe 3" });
 
+      // Narrow the directory to JUST the three fixtures via the search
+      // filter — the shared test DB carries committed seed rows (demo
+      // admin/teacher/student/parent) that are older than every fixture,
+      // so an unfiltered `createdAt ASC` first page would return seed rows,
+      // not u1/u2. Uncommitted fixture rows from concurrently running test
+      // files are invisible to this transaction (PostgreSQL MVCC), so the
+      // filtered count is deterministic: exactly 3.
+      const filters = { searchPattern: serviceEscapedSearchPattern("Page Probe") };
+
       // Page 1 of size 2 → first two seeded users (in createdAt ASC order).
-      const page1 = await AdminUserRepository.listDirectory({}, 2, 0, tx);
-      const total = await AdminUserRepository.countDirectory({}, tx);
-      expect(total).toBeGreaterThanOrEqual(3);
+      const page1 = await AdminUserRepository.listDirectory(filters, 2, 0, tx);
+      const total = await AdminUserRepository.countDirectory(filters, tx);
+      expect(total).toBe(3);
       expect(page1).toHaveLength(2);
       expect(page1[0].id).toBe(u1.id);
       expect(page1[1].id).toBe(u2.id);
 
       // Page 2 of size 2 → the third user.
-      const page2 = await AdminUserRepository.listDirectory({}, 2, 2, tx);
+      const page2 = await AdminUserRepository.listDirectory(filters, 2, 2, tx);
       expect(page2.length).toBeGreaterThanOrEqual(1);
       expect(page2[0].id).toBe(u3.id);
 
       // Out-of-range page → empty array, NOT an error; totalCount unchanged.
-      const farPage = await AdminUserRepository.listDirectory({}, 2, 10_000, tx);
+      const farPage = await AdminUserRepository.listDirectory(filters, 2, 10_000, tx);
       expect(farPage).toEqual([]);
-      const farTotal = await AdminUserRepository.countDirectory({}, tx);
+      const farTotal = await AdminUserRepository.countDirectory(filters, tx);
       expect(farTotal).toBe(total);
     });
   });
@@ -497,11 +506,16 @@ describe("AdminUserRepository — Tier 1: filter matrix + projection coverage", 
       if (!detail) throw new Error("expected detail row");
       expect(detail.id).toBe(user.id);
       expect(detail.role).toBe("admin");
-      // Role-child slots stay null for the admin role (no applicant/teacher/student/parent row).
+      // Role-child COLUMN slots stay null for the admin role (no
+      // applicant/teacher/student/parent row). `parentRowExists` is the one
+      // exception: it is a COMPUTED boolean (`parents.id IS NOT NULL`), not a
+      // LEFT JOIN column — an absent parent row yields `false`, never `null`.
+      // The service layer maps BOTH (`=== null || !row.parentRowExists`) to
+      // "absent parent" when assembling the detail snapshot.
       expect(detail.applicantStatus).toBeNull();
       expect(detail.teacherIsApproved).toBeNull();
       expect(detail.studentHandshakeCode).toBeNull();
-      expect(detail.parentRowExists).toBeNull();
+      expect(detail.parentRowExists).toBe(false);
       // passwordHash structurally absent.
       expect("passwordHash" in detail).toBe(false);
     });
@@ -738,9 +752,16 @@ describe("AdminUserRepository — Tier 2: boundary (pageSize / offset edge cases
       await createTestUser(tx, { fullName: "Limit Large Probe 2" });
       await createTestUser(tx, { fullName: "Limit Large Probe 3" });
 
-      const rows = await AdminUserRepository.listDirectory({}, 101, 0, tx);
+      // Narrow to JUST the three fixtures via the search filter — the shared
+      // test DB carries committed seed rows that an unfiltered query would
+      // also return, making an absolute row-count assertion seed-dependent.
+      // Uncommitted rows from concurrently running test files are invisible
+      // (PostgreSQL MVCC), so the filtered result is deterministic: exactly 3.
+      const filters = { searchPattern: serviceEscapedSearchPattern("Limit Large Probe") };
+
+      const rows = await AdminUserRepository.listDirectory(filters, 101, 0, tx);
       // Repo returns at most the seeded count; no error path triggered.
-      expect(rows.length).toBeLessThanOrEqual(3);
+      expect(rows.length).toBe(3);
     });
   });
 

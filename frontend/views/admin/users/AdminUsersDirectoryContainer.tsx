@@ -70,6 +70,7 @@ import {
   adminUsersQueryDocument,
 } from "@/frontend/graphql/sharedDocuments/admin";
 import { extractErrorCode, extractFieldErrors } from "@/frontend/lib/graphql-error-utils";
+import { DeleteConfirmDialog, EditUserDialog } from "@/frontend/views/admin/users/AdminUserDialogs";
 import type { AdminUsersLabels } from "@/shared/locale/types/adminUsers";
 
 type AdminUserListItem = AdminUsersQuery["adminUsers"]["items"][number];
@@ -209,12 +210,12 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
           loading={createLoading}
           onClose={() => setCreateOpen(false)}
           onSubmit={async input => {
-            try {
-              await createUser({ variables: { input } });
-              setCreateOpen(false);
-            } catch {
-              // Error surfaces via the form's field-error projection.
-            }
+            // NO try/catch here — rejections MUST propagate into the dialog's
+            // own submit handler so VALIDATION field errors project inline
+            // (`extractFieldErrors` on `extensions.fields`). The dialog closes
+            // only on success (this line runs after the mutation resolves).
+            await createUser({ variables: { input } });
+            setCreateOpen(false);
           }}
         />
       )}
@@ -227,12 +228,10 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
           loading={updateLoading}
           onClose={() => setEditTarget(null)}
           onSubmit={async input => {
-            try {
-              await updateUser({ variables: { id: editTarget.id, input } });
-              setEditTarget(null);
-            } catch {
-              // Error surfaces via the form's field-error projection.
-            }
+            // NO try/catch — rejections propagate into the dialog's submit
+            // handler for inline field-error projection (see AdminUserDialogs).
+            await updateUser({ variables: { id: editTarget.id, input } });
+            setEditTarget(null);
           }}
         />
       )}
@@ -244,18 +243,11 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
           loading={deleteLoading}
           onClose={() => setDeleteTarget(null)}
           onConfirm={async () => {
-            try {
-              await setDeleted({ variables: { id: deleteTarget.id, deleted: !deleteTarget.isDeleted } });
-              setDeleteTarget(null);
-            } catch (err) {
-              // Self-deactivation conflict stays open to show the alert.
-              const code = extractErrorCode(err as unknown);
-              if (code === "USER_SELF_DEACTIVATION_FORBIDDEN") {
-                // keep dialog open — the alert renders below
-              } else {
-                setDeleteTarget(null);
-              }
-            }
+            // NO try/catch — rejections propagate into the dialog's confirm
+            // handler: USER_SELF_DEACTIVATION_FORBIDDEN keeps the dialog open
+            // with the warning alert; other codes leave it open for retry.
+            await setDeleted({ variables: { id: deleteTarget.id, deleted: !deleteTarget.isDeleted } });
+            setDeleteTarget(null);
           }}
         />
       )}
@@ -653,161 +645,6 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
   );
 }
 
-interface EditDialogProps {
-  readonly labels: AdminUsersLabels;
-  readonly user: AdminUserListItem;
-  readonly loading: boolean;
-  readonly onClose: () => void;
-  readonly onSubmit: (input: {
-    readonly fullName?: string;
-    readonly phone?: string;
-    readonly country?: string;
-    readonly gender?: "Male" | "Female" | "Other";
-    readonly dateOfBirth?: string;
-  }) => Promise<void>;
-}
-
-function EditUserDialog({ labels, user, loading, onClose, onSubmit }: EditDialogProps): ReactNode {
-  const EDIT_GENDER_ID = "admin-users-edit-gender";
-  const [form, setForm] = useState({
-    fullName: user.fullName,
-    phone: user.phone ?? "",
-    country: user.country ?? "",
-    // Pre-fill gender + dateOfBirth from the directory row so admins see the
-    // current value when patching. The list fragment was extended with these
-    // two safe `users` columns to avoid a second round-trip to the detail
-    // endpoint. `null` / `undefined` are mapped to the empty select value.
-    gender: (user.gender ?? "") as "" | "Male" | "Female" | "Other",
-    dateOfBirth: user.dateOfBirth ?? "",
-  });
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  const handleSubmit: SubmitEventHandler<HTMLFormElement> = async e => {
-    e.preventDefault();
-    setFieldErrors({});
-    try {
-      await onSubmit({
-        fullName: form.fullName || undefined,
-        phone: form.phone || undefined,
-        country: form.country || undefined,
-        gender: form.gender || undefined,
-        dateOfBirth: form.dateOfBirth || undefined,
-      });
-    } catch (err) {
-      const errors = extractFieldErrors(err as unknown);
-      if (Object.keys(errors).length > 0) setFieldErrors(errors);
-    }
-  };
-
-  return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <form onSubmit={handleSubmit}>
-        <DialogTitle>{labels.editDialog.title}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              label={labels.editDialog.fullName}
-              value={form.fullName}
-              onChange={e => setForm({ ...form, fullName: e.target.value })}
-              error={!!fieldErrors.fullName}
-              helperText={fieldErrors.fullName}
-            />
-            <TextField
-              label={labels.editDialog.phone}
-              value={form.phone}
-              onChange={e => setForm({ ...form, phone: e.target.value })}
-            />
-            <TextField
-              label={labels.editDialog.country}
-              value={form.country}
-              onChange={e => setForm({ ...form, country: e.target.value })}
-            />
-            <FormControl fullWidth>
-              <InputLabel htmlFor={EDIT_GENDER_ID}>{labels.editDialog.gender}</InputLabel>
-              <Select
-                id={EDIT_GENDER_ID}
-                value={form.gender}
-                label={labels.editDialog.gender}
-                onChange={e => setForm({ ...form, gender: e.target.value as "" | "Male" | "Female" | "Other" })}
-              >
-                <MenuItem value="">{labels.genderOptions.unspecified}</MenuItem>
-                <MenuItem value="Male">{labels.genderOptions.male}</MenuItem>
-                <MenuItem value="Female">{labels.genderOptions.female}</MenuItem>
-                <MenuItem value="Other">{labels.genderOptions.other}</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              label={labels.editDialog.dateOfBirth}
-              type="date"
-              value={form.dateOfBirth}
-              onChange={e => setForm({ ...form, dateOfBirth: e.target.value })}
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={onClose} disabled={loading} sx={{ minHeight: 44 }}>
-            {labels.editDialog.cancel}
-          </Button>
-          <Button type="submit" variant="contained" disabled={loading} sx={{ minHeight: 44 }}>
-            {labels.editDialog.submit}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
-  );
-}
-
-interface DeleteDialogProps {
-  readonly labels: AdminUsersLabels;
-  readonly user: AdminUserListItem;
-  readonly loading: boolean;
-  readonly onClose: () => void;
-  readonly onConfirm: () => Promise<void>;
-}
-
-function DeleteConfirmDialog({ labels, user, loading, onClose, onConfirm }: DeleteDialogProps): ReactNode {
-  const isReactivate = user.isDeleted;
-  const [selfDeactivationAlert, setSelfDeactivationAlert] = useState(false);
-
-  const handleConfirm = async () => {
-    setSelfDeactivationAlert(false);
-    try {
-      await onConfirm();
-    } catch (err) {
-      const code = extractErrorCode(err as unknown);
-      if (code === "USER_SELF_DEACTIVATION_FORBIDDEN") {
-        setSelfDeactivationAlert(true);
-      }
-    }
-  };
-
-  return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>{isReactivate ? labels.reactivateConfirm.title : labels.deleteConfirm.title}</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2}>
-          {selfDeactivationAlert && <Alert severity="warning">{labels.selfDeactivationAlert.message}</Alert>}
-          <Typography>{isReactivate ? labels.reactivateConfirm.message : labels.deleteConfirm.message}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {isReactivate ? labels.reactivateConfirm.confirm : labels.deleteConfirm.consequences}
-          </Typography>
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={onClose} disabled={loading} sx={{ minHeight: 44 }}>
-          {isReactivate ? labels.reactivateConfirm.cancel : labels.deleteConfirm.cancel}
-        </Button>
-        <Button
-          onClick={handleConfirm}
-          color={isReactivate ? "success" : "error"}
-          variant="contained"
-          disabled={loading}
-          sx={{ minHeight: 44 }}
-        >
-          {isReactivate ? labels.reactivateConfirm.confirm : labels.deleteConfirm.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
+/* EditUserDialog + DeleteConfirmDialog live in the shared AdminUserDialogs
+ * module (also consumed by AdminUserDetailContainer for its inline header
+ * actions) — see that file for the error-propagation contract. */
