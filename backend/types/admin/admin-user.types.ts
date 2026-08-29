@@ -68,6 +68,39 @@ export interface AdminUserPageReturnType {
 }
 
 /**
+ * `AdminUserStatsReturnType` — directory-wide aggregate counters for the
+ * admin overview strip. Pure read: one aggregate round-trip over `users`
+ * (no per-role JOINs, no pagination). Governance counters follow the SAME
+ * null-safe resolution as the directory governance filter — a legacy
+ * NULL-state column reads as "active" (never deleted/suspended/blocked):
+ *  - `activeCount`   — not deleted AND not suspended AND not blocked
+ *                      (NULL-state columns coalesce to "not set").
+ *  - `suspendedCount`— `suspended = true`.
+ *  - `blockedCount`  — `is_blocked = true`.
+ *  - `deletedCount`  — `is_deleted = true`.
+ *
+ * Role counters partition `totalCount` exactly (each user carries exactly
+ * one role). `newThisWeekCount` counts rows whose `created_at` is within
+ * the trailing 7-day window — the cutoff is computed server-side and
+ * bound as a parameter (never `now() - interval` SQL so the query stays
+ * engine-portable). The governance counters may overlap by design
+ * (a suspended-but-deleted user counts in BOTH buckets) — they are
+ * FILTERED counts, not a partition.
+ */
+export interface AdminUserStatsReturnType {
+  readonly totalCount: number;
+  readonly activeCount: number;
+  readonly suspendedCount: number;
+  readonly blockedCount: number;
+  readonly deletedCount: number;
+  readonly adminsCount: number;
+  readonly teachersCount: number;
+  readonly studentsCount: number;
+  readonly parentsCount: number;
+  readonly newThisWeekCount: number;
+}
+
+/**
  * `AdminTeacherSnapshotReturnType` — read-only projection of the `teacher`
  * child row when one exists for the detail view. Mirrors the certified
  * teacher state only; teacher-applicants (no `teacher` row yet) yield

@@ -89,6 +89,7 @@ import type {
   AdminUserFiltersSubmitInput,
   AdminUserListItemReturnType,
   AdminUserPageReturnType,
+  AdminUserStatsReturnType,
   AdminUserUpdateDbPatch,
   AuditLogWriteContract,
   DBTransaction,
@@ -641,6 +642,41 @@ export namespace AdminUserManagementService {
       totalCount,
       page: resolvedPage,
       pageSize: resolvedPageSize,
+    };
+  }
+
+  /**
+   * Resolves the directory-wide aggregate counters for the admin overview
+   * strip. Pure read: ZERO audit rows (reads never audit — matches
+   * `listDirectory`/`getUserDetail`), zero writes, one aggregate
+   * round-trip via `AdminUserRepository.getStats`. Defense-in-depth BFLA
+   * applies as everywhere else (anonymous → `UnauthorizedError`,
+   * authenticated non-admin → `ForbiddenError`, both BEFORE any DB read
+   * beyond the actor probe).
+   *
+   * Governance counters mirror the directory governance-filter resolution
+   * (null-safe: legacy NULL-state columns read as "active"); role counters
+   * partition `totalCount` exactly; `newThisWeekCount` counts rows created
+   * within the trailing 7 days (cutoff bound as a parameter).
+   */
+  export async function getStats(
+    locale: string,
+    actorId: number,
+    outerTx?: DBTransaction
+  ): Promise<AdminUserStatsReturnType> {
+    await assertActorAdmin(actorId, locale, outerTx);
+    const row = await AdminUserRepository.getStats(outerTx);
+    return {
+      totalCount: row.totalCount,
+      activeCount: row.activeCount,
+      suspendedCount: row.suspendedCount,
+      blockedCount: row.blockedCount,
+      deletedCount: row.deletedCount,
+      adminsCount: row.adminsCount,
+      teachersCount: row.teachersCount,
+      studentsCount: row.studentsCount,
+      parentsCount: row.parentsCount,
+      newThisWeekCount: row.newThisWeekCount,
     };
   }
 

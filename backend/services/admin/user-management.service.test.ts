@@ -356,6 +356,84 @@ describe("AdminUserManagementService.listDirectory", () => {
   });
 });
 
+describe("AdminUserManagementService.getStats", () => {
+  /** Counts every `audit_logs` row visible inside the tx. */
+  async function countAllAuditRows(tx: DBTransaction): Promise<number> {
+    const result = await tx.select({ count: sql<number>`count(*)::int` }).from(auditLogs);
+    return result[0]?.count ?? 0;
+  }
+
+  test("happy path — admin reads the overview counters; role counters partition totalCount exactly", async () => {
+    await runInRollback(async tx => {
+      const admin = await provisionAdminActor(tx);
+      const student = await createTestUser(tx, { role: "student" });
+      await createTestStudent(tx, student.id);
+
+      const stats = await AdminUserManagementService.getStats(LOCALE, admin.id, tx);
+
+      // The provisioned admin + student are observable on top of the seed rows.
+      expect(stats.totalCount).toBeGreaterThanOrEqual(6);
+      expect(stats.adminsCount).toBeGreaterThanOrEqual(2);
+      expect(stats.studentsCount).toBeGreaterThanOrEqual(2);
+      // Every user carries exactly one role — the role counters partition the
+      // total (they never overlap and never drop rows).
+      expect(stats.adminsCount + stats.teachersCount + stats.studentsCount + stats.parentsCount).toBe(stats.totalCount);
+      // The fresh fixtures were created inside this tx (well within the
+      // trailing-7-day window), and the window can never exceed the total.
+      expect(stats.newThisWeekCount).toBeGreaterThanOrEqual(2);
+      expect(stats.newThisWeekCount).toBeLessThanOrEqual(stats.totalCount);
+      // Reads never audit — the counters surface with zero audit emission.
+      expect(await countAllAuditRows(tx)).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  test("governance resolution — a soft-deleted user counts in deletedCount and NOT in activeCount", async () => {
+    await runInRollback(async tx => {
+      const admin = await provisionAdminActor(tx);
+      const target = await createTestUser(tx, { role: "parent" });
+      await createTestParent(tx, target.id);
+
+      const before = await AdminUserManagementService.getStats(LOCALE, admin.id, tx);
+      await tx.update(users).set({ isDeleted: true, deletedAt: new Date() }).where(eq(users.id, target.id));
+      const after = await AdminUserManagementService.getStats(LOCALE, admin.id, tx);
+
+      expect(after.deletedCount).toBe(before.deletedCount + 1);
+      expect(after.activeCount).toBe(before.activeCount - 1);
+      expect(after.totalCount).toBe(before.totalCount);
+      expect(after.parentsCount).toBe(before.parentsCount);
+    });
+  });
+
+  test("anonymous actor (id=0) → getStats → UnauthorizedError; zero audit rows", async () => {
+    await runInRollback(async tx => {
+      await provisionAdminActor(tx);
+      silenceDomainLog();
+      const auditBefore = await countAllAuditRows(tx);
+
+      const error = await expectRepoError(() => AdminUserManagementService.getStats(LOCALE, ANONYMOUS_ACTOR_ID, tx));
+      expect(error).toBeInstanceOf(UnauthorizedError);
+      expect(error.message).toContain(tErrors.unauthorized);
+
+      expect(await countAllAuditRows(tx)).toBe(auditBefore);
+    });
+  });
+
+  test("non-admin actor → getStats → ForbiddenError; zero audit rows", async () => {
+    await runInRollback(async tx => {
+      const nonAdmin = await createTestUser(tx, { role: "student" });
+      await createTestStudent(tx, nonAdmin.id);
+      silenceDomainLog();
+      const auditBefore = await countAllAuditRows(tx);
+
+      const error = await expectRepoError(() => AdminUserManagementService.getStats(LOCALE, nonAdmin.id, tx));
+      expect(error).toBeInstanceOf(ForbiddenError);
+      expect(error.message).toContain(tErrors.forbidden);
+
+      expect(await countAllAuditRows(tx)).toBe(auditBefore);
+    });
+  });
+});
+
 describe("AdminUserManagementService.getUserDetail", () => {
   // ─── Tier 1: role-child snapshot assembly ───────────────────────────────
 

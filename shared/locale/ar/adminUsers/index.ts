@@ -19,6 +19,20 @@ export const adminUsersAr: AdminUsersLabels = {
     blocked: "محظور",
     deleted: "محذوف",
   },
+  stats: {
+    total: "إجمالي المستخدمين",
+    active: "نشط",
+    suspended: "معلّق",
+    blocked: "محظور",
+    deleted: "محذوف",
+    newThisWeek: "جديد هذا الأسبوع",
+    roleDistribution: "الأدوار",
+  },
+  quickActions: {
+    viewProfile: "عرض تفاصيل المستخدم",
+    copyEmail: "نسخ البريد الإلكتروني",
+    emailCopied: "تم نسخ البريد الإلكتروني.",
+  },
   roleLabels: {
     admin: "مسؤول",
     teacher: "معلم",

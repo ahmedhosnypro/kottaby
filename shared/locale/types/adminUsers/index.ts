@@ -62,6 +62,41 @@ export interface AdminUsersLabels {
     readonly deleted: string;
   };
 
+  /**
+   * Overview stat-card labels for the clickable stats strip above the
+   * directory table. Each governance card toggles the matching governance
+   * filter; the total card clears it.
+   */
+  readonly stats: {
+    /** Stat-card label for the total-user counter (click clears the governance filter). */
+    readonly total: string;
+    /** Stat-card label for the active-user counter. */
+    readonly active: string;
+    /** Stat-card label for the suspended-user counter. */
+    readonly suspended: string;
+    /** Stat-card label for the blocked-user counter. */
+    readonly blocked: string;
+    /** Stat-card label for the soft-deleted-user counter. */
+    readonly deleted: string;
+    /** Caption for the trailing-7-day signups badge (composed with the count in the component). */
+    readonly newThisWeek: string;
+    /** Caption prefix for the role-distribution line under the stat cards. */
+    readonly roleDistribution: string;
+  };
+
+  /**
+   * Clipboard + navigation affordances shared by the directory rows and the
+   * detail-page header (view-profile links, copy-email button, feedback).
+   */
+  readonly quickActions: {
+    /** Accessible label for the directory name link pointing at the detail page. */
+    readonly viewProfile: string;
+    /** Tooltip for the copy-email icon button. */
+    readonly copyEmail: string;
+    /** Snackbar shown after the email is copied to the clipboard. */
+    readonly emailCopied: string;
+  };
+
   /** Role labels rendered as chips inside the role column. */
   readonly roleLabels: {
     /** Role chip for a super-admin account. */

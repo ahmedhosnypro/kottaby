@@ -43,6 +43,7 @@ import type {
   AdminUserDetailReturnType,
   AdminUserListItemReturnType,
   AdminUserPageReturnType,
+  AdminUserStatsReturnType,
 } from "@/backend/types";
 
 /**
@@ -131,6 +132,29 @@ export const AdminUserPagePothosObject = gqlSchemaBuilder
       totalCount: t.exposeInt("totalCount"),
       page: t.exposeInt("page"),
       pageSize: t.exposeInt("pageSize"),
+    }),
+  });
+
+/**
+ * `AdminUserStats` — directory-wide aggregate counters for the admin
+ * overview strip. Pure read (no `id` — the shape is a single scalar-only
+ * envelope the Apollo cache never normalizes as an entity list). Backed
+ * by the canonical `AdminUserStatsReturnType`.
+ */
+export const AdminUserStatsPothosObject = gqlSchemaBuilder
+  .objectRef<AdminUserStatsReturnType>("AdminUserStats")
+  .implement({
+    fields: t => ({
+      totalCount: t.exposeInt("totalCount"),
+      activeCount: t.exposeInt("activeCount"),
+      suspendedCount: t.exposeInt("suspendedCount"),
+      blockedCount: t.exposeInt("blockedCount"),
+      deletedCount: t.exposeInt("deletedCount"),
+      adminsCount: t.exposeInt("adminsCount"),
+      teachersCount: t.exposeInt("teachersCount"),
+      studentsCount: t.exposeInt("studentsCount"),
+      parentsCount: t.exposeInt("parentsCount"),
+      newThisWeekCount: t.exposeInt("newThisWeekCount"),
     }),
   });
 

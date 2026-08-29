@@ -32,6 +32,7 @@ import {
   AdminUserDetailPothosObject,
   AdminUserFiltersInput,
   AdminUserPagePothosObject,
+  AdminUserStatsPothosObject,
 } from "@/backend/graphql/pothos/admin";
 import { gqlSchemaBuilder } from "@/backend/graphql/pothos/builder";
 import { UnauthorizedError, ValidationError } from "@/backend/lib/errors";
@@ -106,6 +107,25 @@ gqlSchemaBuilder.queryField("adminUsers", t =>
         ctx.locale,
         ctx.user.id
       );
+    },
+  })
+);
+
+// Side-effect: register the `adminUserStats` overview query field.
+gqlSchemaBuilder.queryField("adminUserStats", t =>
+  t.field({
+    type: AdminUserStatsPothosObject,
+    authScopes: {
+      $all: {
+        authenticated: true,
+        role: [UserRole.Admin],
+      },
+    },
+    resolve: async (_root, _args, ctx) => {
+      if (!ctx.user) {
+        throw new UnauthorizedError("Authentication required.");
+      }
+      return AdminUserManagementService.getStats(ctx.locale, ctx.user.id);
     },
   })
 );

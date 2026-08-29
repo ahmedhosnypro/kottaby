@@ -4,24 +4,33 @@
  * AdminUsersDirectoryContainer — the admin user directory client surface.
  *
  * Composes:
+ *  - clickable stats strip (governance counters toggle the governance
+ *    filter; role-distribution caption; trailing-7-day signups badge)
  *  - filter bar (role, governance, country, debounced search)
- *  - paginated user table with role-child status chips
+ *  - paginated user table with avatar initials, name→detail links, and
+ *    role-child status chips
  *  - create dialog (whitelist input + VALIDATION field-error projection)
  *  - edit dialog (whitelist patch)
  *  - delete/reactivate confirm dialog with self-deactivation conflict alert
+ *  - success snackbars after every completed write (create / update /
+ *    soft-delete / reactivate)
  *
  * All chrome copy comes from the `AdminUsers` locale namespace (passed from
  * the server as `labels`). MUI v9 `sx`-only discipline; colors via
  * `theme.palette.*` callbacks; `*Outlined` icons; ≥44px touch targets;
- * responsive (table ≥768px, stacked cards at 375px).
+ * responsive (stat cards + table ≥768px, stacked cards at 375px).
  */
 
 import { useMutation, useQuery } from "@apollo/client/react";
 import {
   AddOutlined as AddIcon,
+  BlockOutlined as BlockIcon,
+  CheckCircleOutlineOutlined as CheckCircleIcon,
   ClearOutlined as ClearIcon,
   DeleteOutlineOutlined as DeleteIcon,
   EditOutlined as EditIcon,
+  PauseCircleOutlineOutlined as PauseCircleIcon,
+  PeopleOutlineOutlined as PeopleIcon,
   PersonOutlineOutlined as PersonIcon,
   RefreshOutlined as RefreshIcon,
   SearchOutlined as SearchIcon,
@@ -31,6 +40,7 @@ import {
   Box,
   Button,
   Card,
+  CardActionArea,
   CardContent,
   Chip,
   Dialog,
@@ -40,8 +50,10 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
+  Link as MuiLink,
   Select,
   Skeleton,
+  Snackbar,
   Stack,
   Table,
   TableBody,
@@ -53,12 +65,14 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import Link from "next/link";
 import { type ReactNode, type SubmitEventHandler, useState } from "react";
 import type {
   AdminCreateUserMutation,
   AdminSetUserDeletedMutation,
   AdminUpdateUserMutation,
   AdminUserGovernanceFilter,
+  AdminUserStatsQuery,
   AdminUsersQuery,
   AdminUsersQueryVariables,
   UserRole,
@@ -67,9 +81,11 @@ import {
   adminCreateUserMutationDocument,
   adminSetUserDeletedMutationDocument,
   adminUpdateUserMutationDocument,
+  adminUserStatsQueryDocument,
   adminUsersQueryDocument,
 } from "@/frontend/graphql/sharedDocuments/admin";
 import { extractErrorCode, extractFieldErrors } from "@/frontend/lib/graphql-error-utils";
+import { UserAvatar } from "@/frontend/views/admin/users/AdminUserAvatar";
 import { DeleteConfirmDialog, EditUserDialog } from "@/frontend/views/admin/users/AdminUserDialogs";
 import type { AdminUsersLabels } from "@/shared/locale/types/adminUsers";
 
@@ -112,6 +128,7 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<AdminUserListItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminUserListItem | null>(null);
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
 
   // Debounce search input (300ms).
   if (searchInput !== searchDebounced) {
@@ -134,17 +151,27 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
     fetchPolicy: "cache-and-network",
   });
 
+  // Overview-stats strip — refreshed alongside the directory after every
+  // write (all three mutations list the stats document in `refetchQueries`).
+  const { data: statsData, loading: statsLoading } = useQuery<AdminUserStatsQuery>(adminUserStatsQueryDocument, {
+    fetchPolicy: "cache-and-network",
+  });
+
+  // Every completed write re-fetches BOTH the directory page and the stats
+  // strip so the counters stay honest without a manual reload.
+  const refetchAfterWrite = [{ query: adminUsersQueryDocument, variables }, { query: adminUserStatsQueryDocument }];
+
   const [createUser, { loading: createLoading }] = useMutation<AdminCreateUserMutation>(
     adminCreateUserMutationDocument,
-    { refetchQueries: [{ query: adminUsersQueryDocument, variables }], awaitRefetchQueries: true }
+    { refetchQueries: refetchAfterWrite, awaitRefetchQueries: true }
   );
   const [updateUser, { loading: updateLoading }] = useMutation<AdminUpdateUserMutation>(
     adminUpdateUserMutationDocument,
-    { refetchQueries: [{ query: adminUsersQueryDocument, variables }], awaitRefetchQueries: true }
+    { refetchQueries: refetchAfterWrite, awaitRefetchQueries: true }
   );
   const [setDeleted, { loading: deleteLoading }] = useMutation<AdminSetUserDeletedMutation>(
     adminSetUserDeletedMutationDocument,
-    { refetchQueries: [{ query: adminUsersQueryDocument, variables }], awaitRefetchQueries: true }
+    { refetchQueries: refetchAfterWrite, awaitRefetchQueries: true }
   );
 
   const items = data?.adminUsers.items ?? [];
@@ -161,6 +188,17 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
           {labels.createDialog.title}
         </Button>
       </Box>
+
+      <StatsBar
+        labels={labels}
+        stats={statsData?.adminUserStats}
+        loading={statsLoading}
+        selectedGovernance={governanceFilter}
+        onSelectGovernance={governance => {
+          setGovernanceFilter(governance);
+          setPage(0);
+        }}
+      />
 
       <FilterBar
         labels={labels}
@@ -216,6 +254,7 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
             // only on success (this line runs after the mutation resolves).
             await createUser({ variables: { input } });
             setCreateOpen(false);
+            setSnackbarMessage(labels.snackbars.created);
           }}
         />
       )}
@@ -232,6 +271,7 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
             // handler for inline field-error projection (see AdminUserDialogs).
             await updateUser({ variables: { id: editTarget.id, input } });
             setEditTarget(null);
+            setSnackbarMessage(labels.snackbars.updated);
           }}
         />
       )}
@@ -246,10 +286,201 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
             // NO try/catch — rejections propagate into the dialog's confirm
             // handler: USER_SELF_DEACTIVATION_FORBIDDEN keeps the dialog open
             // with the warning alert; other codes leave it open for retry.
-            await setDeleted({ variables: { id: deleteTarget.id, deleted: !deleteTarget.isDeleted } });
+            const wasDeleted = deleteTarget.isDeleted;
+            await setDeleted({ variables: { id: deleteTarget.id, deleted: !wasDeleted } });
             setDeleteTarget(null);
+            setSnackbarMessage(wasDeleted ? labels.snackbars.reactivated : labels.snackbars.deleted);
           }}
         />
+      )}
+
+      <Snackbar
+        open={snackbarMessage !== null}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarMessage(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity="success" variant="filled" onClose={() => setSnackbarMessage(null)}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </Stack>
+  );
+}
+
+type StatsData = NonNullable<AdminUserStatsQuery["adminUserStats"]>;
+
+interface StatsBarProps {
+  readonly labels: AdminUsersLabels;
+  readonly stats: StatsData | undefined;
+  readonly loading: boolean;
+  readonly selectedGovernance: Governance | "";
+  readonly onSelectGovernance: (governance: Governance | "") => void;
+}
+
+/**
+ * Clickable overview strip above the directory table. Each governance card
+ * toggles the matching governance filter (the total card clears it); the
+ * selected card is visually anchored (primary border + selected surface).
+ * `CardActionArea` is a `ButtonBase` — the whole card is one ≥44px touch
+ * target that is focusable and keyboard-operable out of the box.
+ *
+ * Under the cards, a role-distribution caption line renders four outlined
+ * chips (`<role label>: <count>`) — the caption reuses the singular
+ * `roleLabels` (composed with the count in the component) so no new
+ * pluralized copy is needed for either locale.
+ */
+function StatsBar(props: StatsBarProps): ReactNode {
+  const { labels, stats, loading } = props;
+
+  interface StatCardConfig {
+    readonly key: string;
+    readonly label: string;
+    readonly value: number | undefined;
+    readonly governance: Governance | "";
+    readonly icon: ReactNode;
+    readonly iconColor: "primary" | "success" | "warning" | "error";
+  }
+
+  const cards: readonly StatCardConfig[] = [
+    {
+      key: "stat-total",
+      label: labels.stats.total,
+      value: stats?.totalCount,
+      governance: "",
+      icon: <PeopleIcon />,
+      iconColor: "primary",
+    },
+    {
+      key: "stat-active",
+      label: labels.stats.active,
+      value: stats?.activeCount,
+      governance: "Active",
+      icon: <CheckCircleIcon />,
+      iconColor: "success",
+    },
+    {
+      key: "stat-suspended",
+      label: labels.stats.suspended,
+      value: stats?.suspendedCount,
+      governance: "Suspended",
+      icon: <PauseCircleIcon />,
+      iconColor: "warning",
+    },
+    {
+      key: "stat-blocked",
+      label: labels.stats.blocked,
+      value: stats?.blockedCount,
+      governance: "Blocked",
+      icon: <BlockIcon />,
+      iconColor: "error",
+    },
+    {
+      key: "stat-deleted",
+      label: labels.stats.deleted,
+      value: stats?.deletedCount,
+      governance: "Deleted",
+      icon: <DeleteIcon />,
+      iconColor: "error",
+    },
+  ];
+
+  const roleDistribution = stats
+    ? [
+        { key: "role-admins", label: labels.roleLabels.admin, count: stats.adminsCount },
+        { key: "role-teachers", label: labels.roleLabels.teacher, count: stats.teachersCount },
+        { key: "role-students", label: labels.roleLabels.student, count: stats.studentsCount },
+        { key: "role-parents", label: labels.roleLabels.parent, count: stats.parentsCount },
+      ]
+    : [];
+
+  return (
+    <Stack spacing={1.5}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(5, 1fr)" },
+          gap: 1.5,
+        }}
+      >
+        {cards.map(card => {
+          const selected = props.selectedGovernance === card.governance;
+          return (
+            <Card
+              key={card.key}
+              variant="outlined"
+              sx={theme => ({
+                ...(selected && {
+                  borderColor: theme.palette.primary.main,
+                  bgcolor: theme.palette.action.selected,
+                }),
+                transition: "border-color 150ms ease, background-color 150ms ease",
+              })}
+            >
+              <CardActionArea
+                onClick={() => props.onSelectGovernance(selected ? "" : card.governance)}
+                sx={{ p: 2, minHeight: 44 }}
+              >
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+                  <Box
+                    component="span"
+                    aria-hidden
+                    sx={theme => ({ display: "inline-flex", color: theme.palette[card.iconColor].main })}
+                  >
+                    {card.icon}
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="h5" component="span" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                      {loading ? (
+                        <Skeleton variant="text" width={28} sx={{ display: "inline-block" }} />
+                      ) : stats ? (
+                        card.value
+                      ) : (
+                        "—"
+                      )}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={theme => ({
+                        color: theme.palette.text.secondary,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      })}
+                    >
+                      {card.label}
+                    </Typography>
+                  </Box>
+                  {card.key === "stat-total" && stats !== undefined && stats.newThisWeekCount > 0 && (
+                    <Chip
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                      label={`+${stats.newThisWeekCount} ${labels.stats.newThisWeek}`}
+                      sx={{ mr: 0.5 }}
+                    />
+                  )}
+                </Stack>
+              </CardActionArea>
+            </Card>
+          );
+        })}
+      </Box>
+      {stats !== undefined && (
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+          <Typography variant="caption" sx={theme => ({ color: theme.palette.text.secondary })}>
+            {labels.stats.roleDistribution}:
+          </Typography>
+          {roleDistribution.map(entry => (
+            <Chip
+              key={entry.key}
+              size="small"
+              variant="outlined"
+              label={`${entry.label}: ${entry.count}`}
+              sx={theme => ({ color: theme.palette.text.secondary })}
+            />
+          ))}
+        </Stack>
       )}
     </Stack>
   );
@@ -387,7 +618,19 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
               ))
             : items.map(u => (
                 <TableRow key={u.id} hover>
-                  <TableCell>{u.fullName}</TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+                      <UserAvatar fullName={u.fullName} role={u.role as unknown as Role} />
+                      <MuiLink
+                        component={Link}
+                        href={`/admin/users/${u.id}`}
+                        underline="hover"
+                        aria-label={`${labels.quickActions.viewProfile}: ${u.fullName}`}
+                      >
+                        {u.fullName}
+                      </MuiLink>
+                    </Stack>
+                  </TableCell>
                   <TableCell>{u.email}</TableCell>
                   <TableCell>
                     <RoleChip role={u.role as unknown as Role} labels={labels} />
@@ -437,7 +680,19 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
             <CardContent>
               <Stack spacing={1}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <Typography variant="subtitle2">{u.fullName}</Typography>
+                  <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", minWidth: 0 }}>
+                    <UserAvatar fullName={u.fullName} role={u.role as unknown as Role} size={32} />
+                    <MuiLink
+                      component={Link}
+                      href={`/admin/users/${u.id}`}
+                      underline="hover"
+                      noWrap
+                      sx={{ minWidth: 0 }}
+                      aria-label={`${labels.quickActions.viewProfile}: ${u.fullName}`}
+                    >
+                      {u.fullName}
+                    </MuiLink>
+                  </Stack>
                   <StatusChip user={u} labels={labels} />
                 </Box>
                 <Typography variant="body2" color="text.secondary">

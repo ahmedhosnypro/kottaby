@@ -16,6 +16,7 @@ import type {
   AdminSetUserDeletedMutation,
   AdminUpdateUserMutation,
   AdminUserDetailQuery,
+  AdminUserStatsQuery,
   AdminUsersQuery,
 } from "@/frontend/graphql/generated/gql/graphql";
 
@@ -110,6 +111,29 @@ export const adminUsersQueryDocument: TypedDocumentNode<AdminUsersQuery> = gql`
       totalCount
       page
       pageSize
+    }
+  }
+`;
+
+/**
+ * Overview-stats query — directory-wide aggregate counters (governance +
+ * role + trailing-7-day signups) powering the clickable stat cards above
+ * the directory table. Scalar-only envelope: no object selections, so no
+ * `id` normalization requirement applies.
+ */
+export const adminUserStatsQueryDocument: TypedDocumentNode<AdminUserStatsQuery> = gql`
+  query AdminUserStats {
+    adminUserStats {
+      totalCount
+      activeCount
+      suspendedCount
+      blockedCount
+      deletedCount
+      adminsCount
+      teachersCount
+      studentsCount
+      parentsCount
+      newThisWeekCount
     }
   }
 `;

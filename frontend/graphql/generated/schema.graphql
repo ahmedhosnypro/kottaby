@@ -109,6 +109,19 @@ type AdminUserPage {
   totalCount: Int!
 }
 
+type AdminUserStats {
+  activeCount: Int!
+  adminsCount: Int!
+  blockedCount: Int!
+  deletedCount: Int!
+  newThisWeekCount: Int!
+  parentsCount: Int!
+  studentsCount: Int!
+  suspendedCount: Int!
+  teachersCount: Int!
+  totalCount: Int!
+}
+
 type ApplicantProfile {
   canPurchaseVerification: Boolean!
   cooldownActive: Boolean!
@@ -184,6 +197,7 @@ type Mutation {
 type Query {
   _health: HealthCheck!
   adminUserDetail(id: Int!): AdminUserDetail!
+  adminUserStats: AdminUserStats!
   adminUsers(filters: AdminUserFiltersInput, page: Int, pageSize: Int): AdminUserPage!
 
   """

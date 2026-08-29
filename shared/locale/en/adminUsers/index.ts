@@ -19,6 +19,20 @@ export const adminUsersEn: AdminUsersLabels = {
     blocked: "Blocked",
     deleted: "Deleted",
   },
+  stats: {
+    total: "Total users",
+    active: "Active",
+    suspended: "Suspended",
+    blocked: "Blocked",
+    deleted: "Deleted",
+    newThisWeek: "new this week",
+    roleDistribution: "Roles",
+  },
+  quickActions: {
+    viewProfile: "View user details",
+    copyEmail: "Copy email address",
+    emailCopied: "Email address copied to clipboard.",
+  },
   roleLabels: {
     admin: "Admin",
     teacher: "Teacher",

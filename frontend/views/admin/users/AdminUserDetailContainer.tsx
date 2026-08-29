@@ -3,11 +3,13 @@
 /**
  * AdminUserDetailContainer — the admin user detail client surface.
  *
- * Renders the user profile card (safe `users` columns incl. governance
- * timestamps) plus the role-child snapshot cards (applicant / teacher /
- * student / parent). The header carries INLINE mutations: Edit opens the
- * shared `EditUserDialog` (adminUpdateUser) and Delete/Reactivate opens the
- * shared `DeleteConfirmDialog` (adminSetUserDeleted) — both from
+ * Renders an identity header card (role-tinted initials avatar, name,
+ * copy-to-clipboard email, role + governance chips), then the user profile
+ * card and the governance card side-by-side on ≥md viewports (stacked on
+ * mobile), then the role-child snapshot cards (applicant / teacher /
+ * student / parent). The header band carries INLINE mutations: Edit opens
+ * the shared `EditUserDialog` (adminUpdateUser) and Delete/Reactivate opens
+ * the shared `DeleteConfirmDialog` (adminSetUserDeleted) — both from
  * AdminUserDialogs, the same dialogs the directory uses. Post-write detail
  * fragments merge into the Apollo cache (`AdminUserDetail:<id>`, id-first)
  * so this query re-renders without an explicit refetch.
@@ -19,6 +21,7 @@
 import { useMutation, useQuery } from "@apollo/client/react";
 import {
   ArrowBackOutlined as BackIcon,
+  ContentCopyOutlined as CopyIcon,
   DeleteOutlineOutlined as DeleteIcon,
   EditOutlined as EditIcon,
   RefreshOutlined as RefreshIcon,
@@ -31,11 +34,14 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  IconButton,
   Link as MuiLink,
+  Snackbar,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import {
   type AdminSetUserDeletedMutation,
   type AdminUpdateUserMutation,
@@ -51,6 +57,7 @@ import {
 } from "@/frontend/graphql/sharedDocuments/admin";
 import { useAppLocale } from "@/frontend/hooks/useAppLocale";
 import { extractErrorCode } from "@/frontend/lib/graphql-error-utils";
+import { UserAvatar } from "@/frontend/views/admin/users/AdminUserAvatar";
 import { DeleteConfirmDialog, EditUserDialog } from "@/frontend/views/admin/users/AdminUserDialogs";
 import type { AdminUsersLabels } from "@/shared/locale/types/adminUsers";
 
@@ -136,6 +143,41 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
   );
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
+
+  /**
+   * Copy-to-clipboard with a graceful fallback: the async Clipboard API is
+   * preferred (secure contexts); when unavailable (older engines / insecure
+   * origins) a transient off-screen textarea + `execCommand("copy")` keeps
+   * the affordance working. Feedback is the localized snackbar either way.
+   */
+  const copyEmail = useCallback(
+    async (email: string) => {
+      try {
+        await navigator.clipboard.writeText(email);
+        setSnackbarMessage(labels.quickActions.emailCopied);
+        return;
+      } catch {
+        // Fall through to the legacy path — the Clipboard API either is
+        // unavailable or rejected the write.
+      }
+      try {
+        const textarea = document.createElement("textarea");
+        textarea.value = email;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+        setSnackbarMessage(labels.quickActions.emailCopied);
+      } catch {
+        // Best-effort only — a clipboard failure is never an error state.
+      }
+    },
+    [labels.quickActions.emailCopied]
+  );
 
   if (loading && !data) {
     return (
@@ -197,39 +239,87 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
         </Stack>
       </Box>
 
+      {/* Identity header — avatar + name + copyable email + role/status
+          chips. The avatar is decorative (aria-hidden); the adjacent name
+          text carries the accessible identity. */}
       <Card variant="outlined">
         <CardContent>
-          <Typography variant="h6" component="h2" gutterBottom>
-            {labels.detail.profile}
-          </Typography>
-          <Stack spacing={2}>
-            <Field label={labels.headers.name} value={user.fullName} />
-            <Field label={labels.headers.email} value={user.email} />
-            <Field label={labels.headers.role} value={<RoleChip role={role} labels={labels} />} />
-            <Field label={labels.headers.country} value={user.country ?? "—"} />
-            <Field label={labels.headers.status} value={<StatusChip governance={governance} labels={labels} />} />
-            {user.dateOfBirth && <Field label={labels.editDialog.dateOfBirth} value={fmtDate(user.dateOfBirth)} />}
-            {user.gender && <Field label={labels.createDialog.gender} value={fmtGender(user.gender)} />}
-            {user.phone && <Field label={labels.createDialog.phone} value={user.phone} />}
-            {user.lastActiveAt && <Field label={labels.headers.lastActive} value={fmtTimestamp(user.lastActiveAt)} />}
-            <Field label={labels.headers.createdAt} value={fmtTimestamp(user.createdAt)} />
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ alignItems: { sm: "center" } }}>
+            <UserAvatar fullName={user.fullName} role={role} size={64} />
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 700, wordBreak: "break-word" }}>
+                {user.fullName}
+              </Typography>
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  sx={theme => ({ color: theme.palette.text.secondary, wordBreak: "break-all", minWidth: 0 })}
+                >
+                  {user.email}
+                </Typography>
+                <Tooltip title={labels.quickActions.copyEmail}>
+                  <IconButton
+                    size="small"
+                    aria-label={labels.quickActions.copyEmail}
+                    onClick={() => void copyEmail(user.email)}
+                    sx={{ minHeight: 44, minWidth: 44 }}
+                  >
+                    <CopyIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+              <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap" }}>
+                <RoleChip role={role} labels={labels} />
+                <StatusChip governance={governance} labels={labels} />
+              </Stack>
+            </Box>
           </Stack>
         </CardContent>
       </Card>
 
-      <Card variant="outlined">
-        <CardContent>
-          <Typography variant="h6" component="h2" gutterBottom>
-            {labels.detail.governance}
-          </Typography>
-          <Stack spacing={2}>
-            <Field label={labels.headers.status} value={<StatusChip governance={governance} labels={labels} />} />
-            {user.deletedAt && <Field label={labels.detail.deletedAt} value={fmtTimestamp(user.deletedAt)} />}
-            {user.suspendedAt && <Field label={labels.detail.suspendedAt} value={fmtTimestamp(user.suspendedAt)} />}
-            {user.blockedAt && <Field label={labels.detail.blockedAt} value={fmtTimestamp(user.blockedAt)} />}
-          </Stack>
-        </CardContent>
-      </Card>
+      {/* Profile + governance side-by-side on ≥md, stacked on mobile. */}
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) minmax(0, 1fr)" },
+          gap: 3,
+          alignItems: "start",
+        }}
+      >
+        <Card variant="outlined" sx={{ minWidth: 0 }}>
+          <CardContent>
+            <Typography variant="h6" component="h2" gutterBottom>
+              {labels.detail.profile}
+            </Typography>
+            <Stack spacing={2}>
+              <Field label={labels.headers.name} value={user.fullName} />
+              <Field label={labels.headers.email} value={user.email} />
+              <Field label={labels.headers.role} value={<RoleChip role={role} labels={labels} />} />
+              <Field label={labels.headers.country} value={user.country ?? "—"} />
+              <Field label={labels.headers.status} value={<StatusChip governance={governance} labels={labels} />} />
+              {user.dateOfBirth && <Field label={labels.editDialog.dateOfBirth} value={fmtDate(user.dateOfBirth)} />}
+              {user.gender && <Field label={labels.createDialog.gender} value={fmtGender(user.gender)} />}
+              {user.phone && <Field label={labels.createDialog.phone} value={user.phone} />}
+              {user.lastActiveAt && <Field label={labels.headers.lastActive} value={fmtTimestamp(user.lastActiveAt)} />}
+              <Field label={labels.headers.createdAt} value={fmtTimestamp(user.createdAt)} />
+            </Stack>
+          </CardContent>
+        </Card>
+
+        <Card variant="outlined" sx={{ minWidth: 0 }}>
+          <CardContent>
+            <Typography variant="h6" component="h2" gutterBottom>
+              {labels.detail.governance}
+            </Typography>
+            <Stack spacing={2}>
+              <Field label={labels.headers.status} value={<StatusChip governance={governance} labels={labels} />} />
+              {user.deletedAt && <Field label={labels.detail.deletedAt} value={fmtTimestamp(user.deletedAt)} />}
+              {user.suspendedAt && <Field label={labels.detail.suspendedAt} value={fmtTimestamp(user.suspendedAt)} />}
+              {user.blockedAt && <Field label={labels.detail.blockedAt} value={fmtTimestamp(user.blockedAt)} />}
+            </Stack>
+          </CardContent>
+        </Card>
+      </Box>
 
       {user.applicant && (
         <Card variant="outlined">
@@ -356,6 +446,7 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
             // handler for inline field-error projection (see AdminUserDialogs).
             await updateUser({ variables: { id: user.id, input } });
             setEditOpen(false);
+            setSnackbarMessage(labels.snackbars.updated);
           }}
         />
       )}
@@ -372,9 +463,21 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
             // with the warning alert; other codes leave it open for retry.
             await setDeleted({ variables: { id: user.id, deleted: !isReactivate } });
             setDeleteOpen(false);
+            setSnackbarMessage(isReactivate ? labels.snackbars.reactivated : labels.snackbars.deleted);
           }}
         />
       )}
+
+      <Snackbar
+        open={snackbarMessage !== null}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarMessage(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity="success" variant="filled" onClose={() => setSnackbarMessage(null)}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 }

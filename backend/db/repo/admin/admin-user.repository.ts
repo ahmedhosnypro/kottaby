@@ -208,6 +208,27 @@ export interface AdminUserDetailRow {
 }
 
 /**
+ * `AdminUserStatsRow` — raw aggregate row shape returned by `getStats`.
+ * Every member is a filtered count produced by a single aggregate query
+ * over `users` (no JOINs, no scalar subselects). The service layer maps
+ * this row to `AdminUserStatsReturnType` verbatim (all members are
+ * already plain numbers — null-coalescing to `0` guards the impossible
+ * empty-aggregate case).
+ */
+export interface AdminUserStatsRow {
+  readonly totalCount: number;
+  readonly activeCount: number;
+  readonly suspendedCount: number;
+  readonly blockedCount: number;
+  readonly deletedCount: number;
+  readonly adminsCount: number;
+  readonly teachersCount: number;
+  readonly studentsCount: number;
+  readonly parentsCount: number;
+  readonly newThisWeekCount: number;
+}
+
+/**
  * Builds the ANDed WHERE chain from normalized filters.
  *
  * Filters are independent ANDed predicates; absent or null members are
@@ -381,6 +402,65 @@ export namespace AdminUserRepository {
       .from(users)
       .where(where);
     return rows[0]?.count ?? 0;
+  }
+
+  /**
+   * Resolves the directory-wide aggregate counters for the admin overview
+   * strip in a SINGLE round-trip — one `SELECT count(*) + FILTERED count(*)`
+   * aggregate over `users` (no JOINs, no GROUP BY, no pagination).
+   *
+   * Governance resolution mirrors `buildFilterChain` exactly (null-safe
+   * under three-valued SQL logic — a legacy NULL-state column reads as
+   * "active"): `activeCount` requires NOT deleted AND NOT suspended AND
+   * NOT blocked with NULL-coalescing; the three negative counters are
+   * plain `= true` filtered counts. The governance counters are FILTERED
+   * counts and MAY overlap (a suspended-and-deleted user increments both
+   * buckets); the role counters partition `totalCount` exactly.
+   *
+   * `newThisWeekCount` filters on `created_at > cutoff` where the cutoff
+   * (now minus 7 days) is computed in JS and bound as a Drizzle parameter —
+   * never SQL `now() - interval` so the statement stays engine-portable
+   * (PostgreSQL + SQLite both bind the parameterized timestamp natively).
+   *
+   * @returns The aggregate row (members are `::int`-cast counts; the
+   *          empty-table edge case still yields one row of zeros because
+   *          bare aggregates always return exactly one row).
+   */
+  export async function getStats(tx?: DBTransaction): Promise<AdminUserStatsRow> {
+    const newThisWeekCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const rows = await (tx ?? db)
+      .select({
+        totalCount: sql<number>`count(*)::int`.as("total_count"),
+        activeCount: sql<number>`count(*) filter (
+          where coalesce(${users.isDeleted}, false) = false
+            and coalesce(${users.suspended}, false) = false
+            and coalesce(${users.isBlocked}, false) = false
+        )::int`.as("active_count"),
+        suspendedCount: sql<number>`count(*) filter (where ${users.suspended} = true)::int`.as("suspended_count"),
+        blockedCount: sql<number>`count(*) filter (where ${users.isBlocked} = true)::int`.as("blocked_count"),
+        deletedCount: sql<number>`count(*) filter (where ${users.isDeleted} = true)::int`.as("deleted_count"),
+        adminsCount: sql<number>`count(*) filter (where ${users.role} = 'admin')::int`.as("admins_count"),
+        teachersCount: sql<number>`count(*) filter (where ${users.role} = 'teacher')::int`.as("teachers_count"),
+        studentsCount: sql<number>`count(*) filter (where ${users.role} = 'student')::int`.as("students_count"),
+        parentsCount: sql<number>`count(*) filter (where ${users.role} = 'parent')::int`.as("parents_count"),
+        newThisWeekCount: sql<number>`count(*) filter (where ${users.createdAt} > ${newThisWeekCutoff})::int`.as(
+          "new_this_week_count"
+        ),
+      })
+      .from(users);
+    const row = rows[0];
+    return {
+      totalCount: row?.totalCount ?? 0,
+      activeCount: row?.activeCount ?? 0,
+      suspendedCount: row?.suspendedCount ?? 0,
+      blockedCount: row?.blockedCount ?? 0,
+      deletedCount: row?.deletedCount ?? 0,
+      adminsCount: row?.adminsCount ?? 0,
+      teachersCount: row?.teachersCount ?? 0,
+      studentsCount: row?.studentsCount ?? 0,
+      parentsCount: row?.parentsCount ?? 0,
+      newThisWeekCount: row?.newThisWeekCount ?? 0,
+    };
   }
 
   /**

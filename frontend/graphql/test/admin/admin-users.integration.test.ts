@@ -2,17 +2,17 @@
  * Admin user-management GraphQL permission-matrix integration suite.
  *
  * DEV3-016 Phase 5.1 — full §3.4 permission matrix proven over the LIVE
- * Next.js dev server + real PostgreSQL rows, exercising all five admin
+ * Next.js dev server + real PostgreSQL rows, exercising all six admin
  * operations through the shared TypedDocumentNodes the production UI
  * consumes.
  *
  * Tiers (per plan.md §3.4 + tasks.md 5.1):
- *  - Tier 1 anonymous → each of the five operations → UNAUTHORIZED.
+ *  - Tier 1 anonymous → each of the six operations → UNAUTHORIZED.
  *  - Tier 2 student / parent / teacher(applicant+certified) → each of the
- *    five operations → FORBIDDEN (defense-in-depth at the service seam,
+ *    six operations → FORBIDDEN (defense-in-depth at the service seam,
  *    beyond authScope).
- *  - Tier 3 admin happy paths on all five operations (directory list,
- *    detail fetch, create, update, soft-delete + reactivate).
+ *  - Tier 3 admin happy paths on all six operations (directory list,
+ *    detail fetch, overview stats, create, update, soft-delete + reactivate).
  *  - Tier 4 transport-tamper probes:
  *      (a) admin createUser(role=admin) → ADMIN_ROLE_CREATION_FORBIDDEN
  *          (runtime role-pre-guard; RegisterPublicRole type union can't
@@ -69,6 +69,7 @@ import {
   adminSetUserDeletedMutationDocument,
   adminUpdateUserMutationDocument,
   adminUserDetailQueryDocument,
+  adminUserStatsQueryDocument,
   adminUsersQueryDocument,
 } from "@/frontend/graphql/sharedDocuments/admin/admin-users.documents";
 import {
@@ -248,11 +249,12 @@ function readErrorCode(body: unknown): string | undefined {
   return body.errors?.[0]?.extensions?.code;
 }
 
-/** The five admin operations covered by the matrix — sanity-checked
+/** The six admin operations covered by the matrix — sanity-checked
  * against future drift if the operation set changes. */
-const FIVE_OPERATIONS = [
+const ADMIN_OPERATIONS = [
   "adminUsers",
   "adminUserDetail",
+  "adminUserStats",
   "adminCreateUser",
   "adminUpdateUser",
   "adminSetUserDeleted",
@@ -281,10 +283,17 @@ describe("Admin user-management GraphQL permission matrix", () => {
   });
 
   // ─── Tier 1: anonymous → each operation → UNAUTHORIZED ─────────────
-  describe("Tier 1 — anonymous caller denied across all five operations", () => {
+  describe("Tier 1 — anonymous caller denied across all six operations", () => {
     test("adminUsers (list) → UNAUTHORIZED; zero audit writes", async () => {
       const auditBefore = await countAllAuditRows();
       const result = await testClient.query({ query: adminUsersQueryDocument });
+      expectMutationError(result.error, "UNAUTHORIZED");
+      expect(await countAllAuditRows()).toBe(auditBefore);
+    });
+
+    test("adminUserStats (overview) → UNAUTHORIZED; zero audit writes", async () => {
+      const auditBefore = await countAllAuditRows();
+      const result = await testClient.query({ query: adminUserStatsQueryDocument });
       expectMutationError(result.error, "UNAUTHORIZED");
       expect(await countAllAuditRows()).toBe(auditBefore);
     });
@@ -342,13 +351,13 @@ describe("Admin user-management GraphQL permission matrix", () => {
       expect(await countAllAuditRows()).toBe(auditBefore);
     });
 
-    test("the five operations enumerated (drift guard)", () => {
-      expect(FIVE_OPERATIONS).toHaveLength(5);
+    test("the six operations enumerated (drift guard)", () => {
+      expect(ADMIN_OPERATIONS).toHaveLength(6);
     });
   });
 
   // ─── Tier 2: non-admin roles → each operation → FORBIDDEN ─────────
-  describe("Tier 2 — non-admin roles denied across all five operations", () => {
+  describe("Tier 2 — non-admin roles denied across all six operations", () => {
     const nonAdminRoles: ReadonlyArray<RegisterPublicRole> = [
       RegisterPublicRole.Student,
       RegisterPublicRole.Parent,
@@ -373,6 +382,17 @@ describe("Admin user-management GraphQL permission matrix", () => {
         const result = await testClient.query({
           query: adminUserDetailQueryDocument,
           variables: { id: 1 },
+          context: bearer(accessToken),
+        });
+        expectMutationError(result.error, "FORBIDDEN");
+        expect(await countAllAuditRows()).toBe(auditBefore);
+      });
+
+      test(`${role} actor → adminUserStats → FORBIDDEN; zero audit writes`, async () => {
+        const { accessToken } = await registerAndLogin(role);
+        const auditBefore = await countAllAuditRows();
+        const result = await testClient.query({
+          query: adminUserStatsQueryDocument,
           context: bearer(accessToken),
         });
         expectMutationError(result.error, "FORBIDDEN");
@@ -431,7 +451,7 @@ describe("Admin user-management GraphQL permission matrix", () => {
   });
 
   // ─── Tier 3: admin happy paths + zero-leak gates ───────────────────
-  describe("Tier 3 — admin happy paths across all five operations + zero-leak gates", () => {
+  describe("Tier 3 — admin happy paths across all six operations + zero-leak gates", () => {
     let adminActor: ActorBundle;
     let createdUserId: number;
 
@@ -467,6 +487,47 @@ describe("Admin user-management GraphQL permission matrix", () => {
       expect(Object.keys(detail)[0]).toBe("id");
       expect(detail.id).toBe(adminActor.userId);
       expect(detail.role).toBe(UserRole.Admin);
+      expect(deepFindKey(result.data, "passwordHash")).toBe(false);
+    });
+
+    test("admin → adminUserStats returns coherent counters; zero audit writes; no `passwordHash` leak", async () => {
+      const auditBefore = await countAllAuditRows();
+      const result = await testClient.query({
+        query: adminUserStatsQueryDocument,
+        context: bearer(adminActor.accessToken),
+      });
+      expect(result.error).toBeUndefined();
+      const stats = result.data?.adminUserStats;
+      if (!stats) throw new Error("adminUserStats returned no data");
+      // Every counter is a non-negative integer.
+      for (const value of [
+        stats.totalCount,
+        stats.activeCount,
+        stats.suspendedCount,
+        stats.blockedCount,
+        stats.deletedCount,
+        stats.adminsCount,
+        stats.teachersCount,
+        stats.studentsCount,
+        stats.parentsCount,
+        stats.newThisWeekCount,
+      ]) {
+        expect(Number.isInteger(value)).toBe(true);
+        expect(value).toBeGreaterThanOrEqual(0);
+      }
+      // Role counters partition the total exactly (one role per user).
+      expect(stats.adminsCount + stats.teachersCount + stats.studentsCount + stats.parentsCount).toBe(stats.totalCount);
+      // Governance counters are filtered counts bounded by the total.
+      expect(stats.activeCount).toBeLessThanOrEqual(stats.totalCount);
+      expect(stats.deletedCount).toBeLessThanOrEqual(stats.totalCount);
+      expect(stats.newThisWeekCount).toBeLessThanOrEqual(stats.totalCount);
+      // The provisioned admin fixture is observable in both counters.
+      expect(stats.totalCount).toBeGreaterThanOrEqual(5);
+      expect(stats.adminsCount).toBeGreaterThanOrEqual(2);
+      expect(stats.newThisWeekCount).toBeGreaterThanOrEqual(1);
+      // Reads never audit — the stats read emits zero audit rows.
+      expect(await countAllAuditRows()).toBe(auditBefore);
+      // Zero-leak: the scalar envelope carries no `passwordHash`.
       expect(deepFindKey(result.data, "passwordHash")).toBe(false);
     });
 
