@@ -289,22 +289,22 @@
 
 ### 4.1 GraphQL Documents
 
-- [ ] **4.1 Author `admin-users.documents.ts`**
+- [x] **4.1 Author `admin-users.documents.ts`**
   - Create `frontend/graphql/sharedDocuments/admin/admin-users.documents.ts` + `frontend/graphql/sharedDocuments/admin/index.ts` + one line in the top-level barrel
   - Documents (all `gql` + `TypedDocumentNode`, codegen types only): `adminUsersQueryDocument`, `adminUserDetailQueryDocument`, `adminCreateUserMutationDocument`, `adminUpdateUserMutationDocument`, `adminSetUserDeletedMutationDocument`; `id` in EVERY object selection
   - Hooks consumed from `@apollo/client/react` in views; `useQuery`/`useMutation` ONLY — NO `useLazyQuery`
   - Run `bun run generate:gqlSchema && bun codegen`; commit artifacts
   - _Requirements: REQ-063_
-  - [ ] 4.1.QL **Quality Loop**: sub-loop on the documents file (exit 0)
-  - [ ] 4.1.TE **Test Engineering**: consumed by 4.2/4.3 component tests via Apollo `MockedProvider`; this task's gate = codegen artifacts compile (`bun tsgo`).
-  - [ ] 4.1.SEC **Security & Tenancy Audit**: selections request no sensitive field; variables are typed, never string-interpolated.
-  - [ ] 4.1.SR **Semantic Review**: no inline operation strings, no mapping layers, no indexed-access type workarounds; named operations match REQ-063 exactly.
-  - [ ] 4.1.IV **Instruction Verification**: `frontend/graphql/**/AGENTS.md` + codegen workflow docs.
-  - [ ] 4.1.OUT **Outcome**: `outcome/4.1-outcome.md`.
+  - [x] 4.1.QL **Quality Loop**: sub-loop on the documents file (exit 0)
+  - [x] 4.1.TE **Test Engineering**: consumed by 4.2/4.3 component tests via Apollo `MockedProvider`; this task's gate = codegen artifacts compile (`bun tsgo`).
+  - [x] 4.1.SEC **Security & Tenancy Audit**: selections request no sensitive field; variables are typed, never string-interpolated.
+  - [x] 4.1.SR **Semantic Review**: no inline operation strings, no mapping layers, no indexed-access type workarounds; named operations match REQ-063 exactly.
+  - [x] 4.1.IV **Instruction Verification**: `frontend/graphql/**/AGENTS.md` + codegen workflow docs.
+  - [x] 4.1.OUT **Outcome**: `outcome/4.1-outcome.md`.
 
 ### 4.2 Directory Page (`/admin/users`) — Route, Container, Filters, Table, Dialogs
 
-- [ ] **4.2 Implement Admin Users Directory UI**
+- [x] **4.2 Implement Admin Users Directory UI**
   - Files:
     - `app/(dashboard)/admin/users/page.tsx` — Server Component: `withPageAuth({ roles: [UserRole.Admin], redirectTo: "/admin/users" })` + `await getTranslations(locale)` → render container with labels
     - `frontend/views/admin/users/AdminUsersDirectoryContainer.tsx` — client: `useAppTranslation(Translation.AdminUsers)` (enum + property access ONLY), `useQuery(adminUsersQueryDocument, {variables})`
@@ -317,25 +317,25 @@
   - MUI v9/React 19: ALL styling via `sx`; colors ONLY via `theme.palette.*` callback pattern; `*Outlined` icons; submit handlers use `React.SubmitEvent`/`React.SyntheticEvent<HTMLFormElement>`; NO direct style props; `FORBIDDEN` defensive slip-through → `PermissionDeniedFallback` (never bare `null`); responsive per plan §5.5 (table ≥768px, stacked cards at 375px, ≥44px touch targets)
   - Applicable AGENTS.md: `frontend/AGENTS.md`, `frontend/views/AGENTS.md`, `frontend/components/ui/AGENTS.md`, `docs/app/with-page-auth.md`
   - _Requirements: REQ-002, REQ-064, REQ-065, REQ-066_
-  - [ ] 4.2.QL **Quality Loop**: sub-loop on every new file (exit 0)
-  - [ ] 4.2.TE **Unit / Component Tests**: Happy DOM + Apollo `MockedProvider` + `translation-preload.ts` + `readTranslation(handle, locale)` + `TestWrapper locale`: directory renders rows from mocked query; filter state → variable changes; role-child chips render per role branch; create dialog validation-error projection from mocked `VALIDATION` `extensions.fields[]`; delete-confirm dialog copy is translation-driven; submit disabled while mutation in flight; self-deactivation conflict alert renders localized message. React.SubmitEvent submit tests. ZERO hardcoded UI strings asserted.
-  - [ ] 4.2.BF **Agent-Browser Functional Self-Loop**:
+  - [x] 4.2.QL **Quality Loop**: sub-loop on every new file (exit 0)
+  - [x] 4.2.TE **Unit / Component Tests**: Happy DOM + Apollo `MockedProvider` + `translation-preload.ts` + `readTranslation(handle, locale)` + `TestWrapper locale`: directory renders rows from mocked query; filter state → variable changes; role-child chips render per role branch; create dialog validation-error projection from mocked `VALIDATION` `extensions.fields[]`; delete-confirm dialog copy is translation-driven; submit disabled while mutation in flight; self-deactivation conflict alert renders localized message. React.SubmitEvent submit tests. ZERO hardcoded UI strings asserted.
+  - [x] 4.2.BF **Agent-Browser Functional Self-Loop**:
     • Launch dev server / connect via agent-browser (Playwright)
     • Navigate `/admin/users` as admin fixture: directory loads; exercise filters (role ×4, governance ×4, country, search incl. `%`/`_` input → literal results), pagination (next/prev, out-of-range page empty state), open create dialog → create student → row appears with correct chips WITHOUT manual refetch (Apollo cache via `id`)
     • Duplicate email submit → localized conflict alert; empty-form submit → per-field localized errors; soft-delete via confirm dialog → Deleted chip appears; reactivate → chip clears; attempt self-delete on own admin row → typed conflict alert + NO row change
     • Assert network requests carry expected GraphQL payloads (variables inspection) and error toasts/inline states render
     • Iterative self-loop: on any failed interaction/validation, patch code and re-test until clean
-  - [ ] 4.2.BS **Agent-Browser Visual & Styling Self-Loop (Screenshot Analysis)**:
+  - [x] 4.2.BS **Agent-Browser Visual & Styling Self-Loop (Screenshot Analysis)**:
     • Capture high-resolution screenshots across Viewports (Desktop 1440x900, Tablet 768x1024, Mobile 375x812) × Locales (English LTR, Arabic RTL) for: directory loaded, filters active, each dialog open, error states, deleted-row state
     • Visually inspect: MUI v9 theme palette compliance (no hardcoded hex/rgb), typography hierarchy, padding/margin rhythm, text truncation/overflows (long Arabic strings in dialogs never clip), RTL mirroring (filter bar, action column at inline-end, chips alignment), dark/light contrast
     • Iterative self-loop: inspect screenshot → identify UI defect → patch MUI `sx` tokens → re-capture → repeat until visually polished
-  - [ ] 4.2.SR **Semantic Review**: zero direct style props (`sx` only); zero hardcoded strings/colors; `useAppTranslation(Translation.AdminUsers)` property access everywhere; `*Outlined` icons; `React.SubmitEvent` handlers; no `useLazyQuery`.
-  - [ ] 4.2.IV **Instruction Verification**: validate against `frontend.instructions.md`, `mobile-desktop.instructions.md`, and layer AGENTS.md files listed above.
-  - [ ] 4.2.OUT **Outcome**: `outcome/4.2-outcome.md` with BF run log + BS screenshot evidence references.
+  - [x] 4.2.SR **Semantic Review**: zero direct style props (`sx` only); zero hardcoded strings/colors; `useAppTranslation(Translation.AdminUsers)` property access everywhere; `*Outlined` icons; `React.SubmitEvent` handlers; no `useLazyQuery`.
+  - [x] 4.2.IV **Instruction Verification**: validate against `frontend.instructions.md`, `mobile-desktop.instructions.md`, and layer AGENTS.md files listed above.
+  - [x] 4.2.OUT **Outcome**: `outcome/4.2-outcome.md` with BF run log + BS screenshot evidence references.
 
 ### 4.3 Detail Page (`/admin/users/[id]`) — Profile, Governance & Role-Child Snapshots
 
-- [ ] **4.3 Implement Admin User Detail UI**
+- [x] **4.3 Implement Admin User Detail UI**
   - Files:
     - `app/(dashboard)/admin/users/[id]/page.tsx` — Server Component: `withPageAuth({ roles: [UserRole.Admin], redirectTo: "/admin/users/<id>" })` + `getTranslations(locale)`
     - `frontend/views/admin/users/detail/AdminUserDetailContainer.tsx` — client: `useQuery(adminUserDetailQueryDocument)`
@@ -344,17 +344,17 @@
     - Detail page reuses the 4.2 edit + delete/reactivate dialogs; `USER_NOT_FOUND` (stale link) → localized not-found section + back-to-directory CTA
   - Same MUI v9/React 19/i18n/RTL discipline as 4.2; detail sections stack vertically at mobile
   - _Requirements: REQ-013, REQ-021, REQ-064, REQ-065, REQ-066_
-  - [ ] 4.3.QL **Quality Loop**: sub-loop on every new file (exit 0)
-  - [ ] 4.3.TE **Unit / Component Tests**: Happy DOM + MockedProvider + translation preload: detail renders per role branch (teacher=applicant-only vs certified; student with/without subscription headline; parent child-count); `USER_NOT_FOUND` state; edit dialog submit → Apollo cache updates the detail view in place; governance fields render as read-only with no mutation affordance (assert NO suspend/block action exists in the DOM).
-  - [ ] 4.3.BF **Agent-Browser Functional Self-Loop**:
+  - [x] 4.3.QL **Quality Loop**: sub-loop on every new file (exit 0)
+  - [x] 4.3.TE **Unit / Component Tests**: Happy DOM + MockedProvider + translation preload: detail renders per role branch (teacher=applicant-only vs certified; student with/without subscription headline; parent child-count); `USER_NOT_FOUND` state; edit dialog submit → Apollo cache updates the detail view in place; governance fields render as read-only with no mutation affordance (assert NO suspend/block action exists in the DOM).
+  - [x] 4.3.BF **Agent-Browser Functional Self-Loop**:
     • Dev server + agent-browser: per role, open seeded fixture detail pages; verify applicant pending snapshot after teacher-role creation (from 4.2 flow); run edit dialog from detail page (name change → optimistic/returning update visible instantly); delete/reactivate from detail page with confirm dialog; navigate from a deleted user's detail back to directory
     • Assert GraphQL payloads + error surfaces (VALIDATION fields, NOT_FOUND state) end-to-end; iterate until clean
-  - [ ] 4.3.BS **Agent-Browser Visual & Styling Self-Loop (Screenshot Analysis)**:
+  - [x] 4.3.BS **Agent-Browser Visual & Styling Self-Loop (Screenshot Analysis)**:
     • Screenshots 1440x900 / 768x1024 / 375x812 × en/ar for: each role-branch detail, not-found state, dialogs from detail context
     • Inspect palette compliance, snapshot-card rhythm, governance timestamp formatting, RTL mirroring of card layouts, mobile stacking order; iterate `sx` patches until polished
-  - [ ] 4.3.SR **Semantic Review**: same checklist as 4.2.SR; PLUS assert zero mutation affordance for suspend/block anywhere in the view layer (REQ-021).
-  - [ ] 4.3.IV **Instruction Verification**: `frontend.instructions.md`, `mobile-desktop.instructions.md`, layer AGENTS.md.
-  - [ ] 4.3.OUT **Outcome**: `outcome/4.3-outcome.md` with BF/BS evidence.
+  - [x] 4.3.SR **Semantic Review**: same checklist as 4.2.SR; PLUS assert zero mutation affordance for suspend/block anywhere in the view layer (REQ-021).
+  - [x] 4.3.IV **Instruction Verification**: `frontend.instructions.md`, `mobile-desktop.instructions.md`, layer AGENTS.md.
+  - [x] 4.3.OUT **Outcome**: `outcome/4.3-outcome.md` with BF/BS evidence.
 
 ---
 

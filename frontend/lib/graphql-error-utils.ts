@@ -78,3 +78,60 @@ function extractCodeFromErrorsArray(obj: object): string | null {
   if (!firstErr || typeof firstErr !== "object") return null;
   return extractCodeFromExtensions(firstErr);
 }
+
+/**
+ * Extracts the per-field error payload from an Apollo GraphQL error.
+ *
+ * The backend `ValidationError` constructor can carry an `ApiFieldErrorType[]`
+ * in `extensions.fields` (each entry: `{ field, code, message }`). This helper
+ * traverses the cause chain, finds the first error carrying a `fields`
+ * array, and reduces it to a `{ [fieldName]: message }` map so the form can
+ * surface per-field inline errors via `aria-invalid` + `helperText`.
+ *
+ * Returns an empty object when no `fields` payload is present (the caller
+ * should fall back to a top-level error alert).
+ */
+export function extractFieldErrors(error: unknown): Record<string, string> {
+  let current: unknown = error;
+  const seen = new Set<unknown>();
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    const fields = extractFieldsArray(current);
+    if (fields) {
+      const map: Record<string, string> = {};
+      for (const entry of fields) {
+        if (entry && typeof entry === "object") {
+          const field = (entry as { field?: unknown }).field;
+          const message = (entry as { message?: unknown }).message;
+          if (typeof field === "string" && typeof message === "string") {
+            map[field] = message;
+          }
+        }
+      }
+      if (Object.keys(map).length > 0) return map;
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return {};
+}
+
+/** Reads `errors[0].extensions.fields` or `extensions.fields` from an error. */
+function extractFieldsArray(obj: object): unknown[] | null {
+  // Direct extensions.fields
+  const extensions = (obj as { extensions?: unknown }).extensions;
+  if (extensions && typeof extensions === "object") {
+    const directFields = (extensions as { fields?: unknown }).fields;
+    if (Array.isArray(directFields) && directFields.length > 0) return directFields;
+  }
+  // errors[0].extensions.fields (Apollo CombinedGraphQLErrors shape)
+  const errors = (obj as { errors?: unknown[] }).errors;
+  if (!Array.isArray(errors) || errors.length === 0) return null;
+  const firstErr = errors[0];
+  if (!firstErr || typeof firstErr !== "object") return null;
+  const firstExt = (firstErr as { extensions?: unknown }).extensions;
+  if (firstExt && typeof firstExt === "object") {
+    const arrFields = (firstExt as { fields?: unknown }).fields;
+    if (Array.isArray(arrFields) && arrFields.length > 0) return arrFields;
+  }
+  return null;
+}
