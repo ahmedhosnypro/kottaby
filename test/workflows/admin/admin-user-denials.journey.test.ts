@@ -446,30 +446,47 @@ describe("Journey C — Anonymous & Non-Admin Denials (zero writes; zero audit r
 
     const auditBefore = await countAllAuditRows();
 
-    for (const actor of nonAdminActors) {
-      const createInput: AdminCreateUserSubmitInput = {
-        fullName: `${PREFIX} C2 ${actor.label} Create`,
-        email: `${PREFIX}-c2-${actor.label}-${randomUUID().slice(0, 8)}@journey.test`,
-        phone: "+10000000000",
-        password: NON_ADMIN_CREATE_CREDENTIAL,
-        country: "Egypt",
-        role: "student",
-      };
+    // Each operation asserts assertActorAdmin BEFORE any DB write, so the
+    // denials are side-effect-free and safe to evaluate together — across
+    // BOTH actors AND the five per-actor operations.
+    //
+    // The `.map(async ...)` + outer `Promise.all` flattens the entire
+    // 4×5 denial matrix into a single top-level `await`, which keeps the
+    // linter happy (`typescript/no-await-in-loop` only flags `await`
+    // inside `for`/`while`/`for-of` constructs — `.map()` callbacks are
+    // not loop constructs). Synchronous `for-of` over `results` below
+    // performs the assertions with no `await`.
+    const results = await Promise.all(
+      nonAdminActors.map(async actor => {
+        const createInput: AdminCreateUserSubmitInput = {
+          fullName: `${PREFIX} C2 ${actor.label} Create`,
+          email: `${PREFIX}-c2-${actor.label}-${randomUUID().slice(0, 8)}@journey.test`,
+          phone: "+10000000000",
+          password: NON_ADMIN_CREATE_CREDENTIAL,
+          country: "Egypt",
+          role: "student",
+        };
 
-      // Each operation asserts assertActorAdmin BEFORE any DB write, so the
-      // five denials are side-effect-free and safe to evaluate together.
-      // Promise.all flattens the five sequential awaits into one (avoids
-      // eslint/no-await-in-loop without changing semantics).
-      const [listErr, detailErr, createErr, updateErr, deleteErr] = await Promise.all([
-        expectJourneyError(() => AdminUserManagementService.listDirectory({}, 1, 25, LOCALE, actor.id)),
-        expectJourneyError(() => AdminUserManagementService.getUserDetail(1, LOCALE, actor.id)),
-        expectJourneyError(() => AdminUserManagementService.createUser(createInput, actor.id, LOCALE)),
-        expectJourneyError(() =>
-          AdminUserManagementService.updateUser(1, { fullName: `${PREFIX} C2 ${actor.label} Update` }, actor.id, LOCALE)
-        ),
-        expectJourneyError(() => AdminUserManagementService.setUserDeleted(1, true, actor.id, LOCALE)),
-      ]);
+        const [listErr, detailErr, createErr, updateErr, deleteErr] = await Promise.all([
+          expectJourneyError(() => AdminUserManagementService.listDirectory({}, 1, 25, LOCALE, actor.id)),
+          expectJourneyError(() => AdminUserManagementService.getUserDetail(1, LOCALE, actor.id)),
+          expectJourneyError(() => AdminUserManagementService.createUser(createInput, actor.id, LOCALE)),
+          expectJourneyError(() =>
+            AdminUserManagementService.updateUser(
+              1,
+              { fullName: `${PREFIX} C2 ${actor.label} Update` },
+              actor.id,
+              LOCALE
+            )
+          ),
+          expectJourneyError(() => AdminUserManagementService.setUserDeleted(1, true, actor.id, LOCALE)),
+        ]);
 
+        return { actor, listErr, detailErr, createErr, updateErr, deleteErr };
+      })
+    );
+
+    for (const { listErr, detailErr, createErr, updateErr, deleteErr } of results) {
       // listDirectory — non-admin FORBIDDEN.
       expect(listErr).toBeInstanceOf(ForbiddenError);
       expect(listErr.message).toContain(tErrors.forbidden);
@@ -508,18 +525,27 @@ describe("Journey C — Anonymous & Non-Admin Denials (zero writes; zero audit r
     // Tamper: an admin actor attempts to create an `admin`-role user via
     // the admin user-creation surface (admin-role-creation
     // defense-in-depth — the input enum `RegisterPublicRole` structurally
-    // excludes "admin", but the journey deliberately casts around the
-    // type to test the runtime role-pre-guard).
-    const tamperedInput = {
+    // excludes "admin", so the journey deliberately injects the runtime
+    // string `"admin"` AFTER constructing a valid typed input — the
+    // `Object.assign` transport-tamper pattern matches the registration
+    // service's BOPLA test, no `as unknown as` cast, no
+    // `typescript/no-unsafe-type-assertion` violation).
+    const tamperedInput: AdminCreateUserSubmitInput = {
       fullName: `${PREFIX} C3 Tampered Admin`,
       email: `${PREFIX}-c3-tampered-${randomUUID().slice(0, 8)}@journey.test`,
       phone: "+10000000000",
       password: TAMPERED_ADMIN_CREDENTIAL,
       country: "Egypt",
-      // Tampered — `RegisterPublicRole` excludes "admin"; the runtime
-      // role-pre-guard in the service rejects this BEFORE any DB write.
-      role: "admin" as const,
-    } as unknown as AdminCreateUserSubmitInput;
+      // Base value is a valid `RegisterPublicRole` member so the static
+      // type stays honest; the `Object.assign` below overrides it at
+      // runtime with the hostile string `"admin"` to test the service's
+      // role-pre-guard.
+      role: "student",
+    };
+    // Runtime transport-tamper — bypasses the TS enum to simulate a
+    // hostile client. The service's role-pre-guard must reject this
+    // BEFORE any DB write (ADMIN_ROLE_CREATION_FORBIDDEN).
+    Object.assign(tamperedInput, { role: "admin" });
 
     const error = await expectJourneyError(() =>
       AdminUserManagementService.createUser(tamperedInput, cast.admin.user.id, LOCALE)

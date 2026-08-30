@@ -108,6 +108,7 @@ export default function AuthLayout({ children }: { readonly children: ReactNode 
           min-height: 100vh;
           background-color: var(--mui-palette-background-default);
           color: var(--mui-palette-text-primary);
+          padding-bottom: env(safe-area-inset-bottom, 0px);
         }
         .auth-mobile-banner {
           display: flex;
@@ -115,6 +116,7 @@ export default function AuthLayout({ children }: { readonly children: ReactNode 
           justify-content: center;
           gap: 10px;
           padding: 14px 16px;
+          padding-top: max(14px, env(safe-area-inset-top, 0px));
           background: linear-gradient(90deg,
             var(--mui-palette-primary-dark),
             var(--mui-palette-primary-main));
@@ -137,7 +139,7 @@ export default function AuthLayout({ children }: { readonly children: ReactNode 
           style={{
             position: "absolute",
             inset: 0,
-            opacity: 0.08,
+            opacity: 0.12,
             pointerEvents: "none",
             backgroundImage:
               "repeating-linear-gradient(45deg, transparent, transparent 28px, var(--mui-palette-secondary-light) 28px, var(--mui-palette-secondary-light) 30px), repeating-linear-gradient(-45deg, transparent, transparent 28px, var(--mui-palette-secondary-light) 28px, var(--mui-palette-secondary-light) 30px)",

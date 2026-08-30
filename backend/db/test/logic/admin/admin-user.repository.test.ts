@@ -970,7 +970,7 @@ describe("AdminUserRepository — Tier 4: security / abuse", () => {
     }
   });
 
-  test("static source scan: zero raw string-concatenated SQL (no `${userInput}` interpolation into raw SQL text)", () => {
+  test(`static source scan: zero raw string-concatenated SQL (no \${userInput} interpolation into raw SQL text)`, () => {
     const source = readRepoSource();
     // Every `${...}` inside a `sql\`...\`` template must reference a
     // Drizzle column / table / SQL fragment — NEVER an untrusted string
@@ -980,14 +980,21 @@ describe("AdminUserRepository — Tier 4: security / abuse", () => {
     // Note: interpolating a Drizzle column (e.g., `${users.id}`) is safe
     // and required — the assertion specifically catches untrusted-input
     // interpolation patterns.
-    const forbiddenInterpolations = [
-      "${searchPattern}",
-      "${search}",
-      "${filters.searchPattern}",
-      "${filters.search}",
-      "${input.search}",
-      "${rawSearch}",
-      "${escaped}",
+    //
+    // Each forbidden pattern is authored as a template literal with the
+    // `$` backslash-escaped (`\${...}`) so the string value is the literal
+    // text `"${...}"` — no interpolation happens at runtime. This keeps
+    // biome's `lint/suspicious/noTemplateCurlyInString` happy (it only
+    // fires on plain-quoted strings containing `${`; template literals
+    // are exempt because the escape proves intent).
+    const forbiddenInterpolations: string[] = [
+      `\${searchPattern}`,
+      `\${search}`,
+      `\${filters.searchPattern}`,
+      `\${filters.search}`,
+      `\${input.search}`,
+      `\${rawSearch}`,
+      `\${escaped}`,
     ];
     for (const forbidden of forbiddenInterpolations) {
       expect(source.includes(forbidden)).toBe(false);

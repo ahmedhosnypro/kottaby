@@ -255,7 +255,7 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
   const firstErrorCode = error ? extractErrorCode(error) : null;
 
   return (
-    <Stack spacing={3} sx={{ p: { xs: 2, md: 3 } }}>
+    <Stack spacing={3} sx={{ p: { xs: 2, md: 3 }, pb: { xs: 8, md: 4 } }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2 }}>
         <Typography variant="h4" component="h1">
           {labels.title}
@@ -647,14 +647,15 @@ function FilterBar(props: FilterBarProps): ReactNode {
             label={labels.filters.country}
             value={props.countryFilter}
             onChange={e => props.setCountryFilter(e.target.value)}
-            sx={{ minWidth: 140 }}
+            sx={{ minWidth: 140, "& .MuiInputBase-root": { minHeight: 40 } }}
           />
           <TextField
             size="small"
-            label={labels.filters.search}
+            hiddenLabel
+            placeholder={labels.filters.search}
             value={props.searchInput}
             onChange={e => props.setSearchInput(e.target.value)}
-            sx={{ minWidth: 220, flex: 1 }}
+            sx={{ minWidth: 220, flex: 1, "& .MuiInputBase-root": { minHeight: 40 } }}
             slotProps={{
               input: {
                 startAdornment: (

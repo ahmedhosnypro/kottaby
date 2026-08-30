@@ -260,7 +260,17 @@ describe("RegistrationService.registerUser", () => {
       expect(userRow.blockedAt).toBeNull();
       expect(userRow.lastActiveAt).not.toBeNull();
       if (!userRow.lastActiveAt) throw new Error("expected lastActiveAt");
-      expect(userRow.lastActiveAt.getTime()).toBeGreaterThanOrEqual(before);
+      // `lastActiveAt` is stamped server-side via `new Date()` at
+      // registration.service.ts:312. A strict wall-clock lower bound
+      // (`>= before`) is off-by-milliseconds nondeterministic — same root
+      // cause as the database-defaults NOTE below (PostgreSQL resolves
+      // `defaultNow()` to transaction-start time, AND the PGlite WASM
+      // backend round-trips `timestamp` columns at second precision, so
+      // the persisted value can land up to 999 ms below `before`).
+      // Assert freshness with a 1-second tolerance instead; the contract
+      // under test is "the column is SET, to roughly now" — not bit-exact
+      // epoch equality.
+      expect(userRow.lastActiveAt.getTime()).toBeGreaterThanOrEqual(before - 1000);
     });
   });
 
@@ -351,7 +361,16 @@ describe("RegistrationService.registerUser", () => {
     await runInRollback(async tx => {
       // Transport-tamper shape: the GraphQL enum layer rejects this before
       // the resolver, but the service guard defends in depth.
-      const input = { ...makeValidInput({}), gender: "unknown" as unknown as undefined };
+      //
+      // Pattern matches the BOPLA test below: construct a base
+      // `RegistrationSubmitInput` (so the static type stays honest —
+      // `gender` is `Gender | undefined`), then `Object.assign` a runtime
+      // string value to simulate a hostile client bypassing the GraphQL
+      // enum layer. The runtime field read inside the service sees the
+      // string "unknown" and emits `GENDER_INVALID`. No `as unknown as`
+      // cast (avoids `typescript/no-unsafe-type-assertion`).
+      const input: RegistrationSubmitInput = { ...makeValidInput({}) };
+      Object.assign(input, { gender: "unknown" });
       const error = await expectRepoError(() => RegistrationService.registerUser(input, LOCALE, tx));
       expect(error).toBeInstanceOf(ValidationError);
       if (!(error instanceof ValidationError)) throw new Error("expected a ValidationError instance");

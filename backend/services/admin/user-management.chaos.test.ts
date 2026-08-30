@@ -224,192 +224,207 @@ describe("AdminUserManagementService — chaos & concurrency", () => {
   const concurrencyTest = IS_PGLITE ? test.skip : test;
 
   // ─── (a) Concurrent double soft-delete ──────────────────────────────
-  concurrencyTest("concurrent setUserDeleted(true) ×2 on the same active user → exactly one success + one USER_ALREADY_DELETED", async () => {
-    silenceDomainLog();
-    const target = await provisionStudentTarget();
-    const adminId = fixtures.adminActor.id;
+  concurrencyTest(
+    "concurrent setUserDeleted(true) ×2 on the same active user → exactly one success + one USER_ALREADY_DELETED",
+    async () => {
+      silenceDomainLog();
+      const target = await provisionStudentTarget();
+      const adminId = fixtures.adminActor.id;
 
-    const results = await Promise.allSettled([
-      AdminUserManagementService.setUserDeleted(target.id, true, adminId, LOCALE),
-      AdminUserManagementService.setUserDeleted(target.id, true, adminId, LOCALE),
-    ]);
-    const { fulfilled, rejected } = partitionOutcomes(results);
-    expect(fulfilled).toHaveLength(1);
-    expect(rejected).toHaveLength(1);
+      const results = await Promise.allSettled([
+        AdminUserManagementService.setUserDeleted(target.id, true, adminId, LOCALE),
+        AdminUserManagementService.setUserDeleted(target.id, true, adminId, LOCALE),
+      ]);
+      const { fulfilled, rejected } = partitionOutcomes(results);
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
 
-    const winner = fulfilled[0];
-    if (!winner) throw new Error("Expected a winner");
-    expect(winner.isDeleted).toBe(true);
-    expect(winner.deletedAt).not.toBeNull();
+      const winner = fulfilled[0];
+      if (!winner) throw new Error("Expected a winner");
+      expect(winner.isDeleted).toBe(true);
+      expect(winner.deletedAt).not.toBeNull();
 
-    const loser = rejected[0];
-    if (!(loser instanceof Error)) throw new Error("Expected the loser to be an Error");
-    assertErrorCode(loser, "USER_ALREADY_DELETED");
-    expect(loser.message).toContain(tErrors.adminUsers.userAlreadyDeleted);
+      const loser = rejected[0];
+      if (!(loser instanceof Error)) throw new Error("Expected the loser to be an Error");
+      assertErrorCode(loser, "USER_ALREADY_DELETED");
+      expect(loser.message).toContain(tErrors.adminUsers.userAlreadyDeleted);
 
-    // Final row state consistent with the winner.
-    const finalRow = await readUserRow(target.id);
-    expect(finalRow?.isDeleted).toBe(true);
-    expect(finalRow?.deletedAt).not.toBeNull();
-
-    // Exactly one audit(Delete) row — the loser emitted zero.
-    const auditCount = await countAuditForEntity(adminId, AuditActionType.Delete, target.id);
-    expect(auditCount).toBe(1);
-  });
-
-  // ─── (b) Concurrent delete ⚡ reactivate ────────────────────────────
-  concurrencyTest("concurrent setUserDeleted(true) ⚡ setUserDeleted(false) → exactly one winner; final state consistent with the winner", async () => {
-    silenceDomainLog();
-    const target = await provisionStudentTarget();
-    const adminId = fixtures.adminActor.id;
-
-    const results = await Promise.allSettled([
-      AdminUserManagementService.setUserDeleted(target.id, true, adminId, LOCALE),
-      AdminUserManagementService.setUserDeleted(target.id, false, adminId, LOCALE),
-    ]);
-    const { fulfilled, rejected } = partitionOutcomes(results);
-    expect(fulfilled).toHaveLength(1);
-    expect(rejected).toHaveLength(1);
-
-    // The winner's intent decides the final state. Both calls read the
-    // same active row; the guarded UPDATE's null-safe predicate
-    // matches for exactly one. The loser's predicate either matches
-    // nothing (returning zero rows → USER_ALREADY_DELETED /
-    // USER_NOT_DELETED) OR the loser's UPDATE races on the row lock
-    // (returning the post-winner state, which then fails the
-    // predicate). Either way, the final state is consistent with the
-    // winner's intent, never corrupted.
-    const winner = fulfilled[0];
-    if (!winner) throw new Error("Expected a winner");
-    const finalRow = await readUserRow(target.id);
-    if (winner.isDeleted) {
+      // Final row state consistent with the winner.
+      const finalRow = await readUserRow(target.id);
       expect(finalRow?.isDeleted).toBe(true);
       expect(finalRow?.deletedAt).not.toBeNull();
-    } else {
-      expect(finalRow?.isDeleted).toBe(false);
-      expect(finalRow?.deletedAt).toBeNull();
-    }
 
-    // Exactly one audit row emitted (winner's audit; loser's denial
-    // emits zero per the denial-no-audit rule).
-    const deleteAudits = await countAuditForEntity(adminId, AuditActionType.Delete, target.id);
-    const reactivateAudits = await countAuditForEntity(adminId, AuditActionType.Reactivate, target.id);
-    expect(deleteAudits + reactivateAudits).toBe(1);
-  });
+      // Exactly one audit(Delete) row — the loser emitted zero.
+      const auditCount = await countAuditForEntity(adminId, AuditActionType.Delete, target.id);
+      expect(auditCount).toBe(1);
+    }
+  );
+
+  // ─── (b) Concurrent delete ⚡ reactivate ────────────────────────────
+  concurrencyTest(
+    "concurrent setUserDeleted(true) ⚡ setUserDeleted(false) → exactly one winner; final state consistent with the winner",
+    async () => {
+      silenceDomainLog();
+      const target = await provisionStudentTarget();
+      const adminId = fixtures.adminActor.id;
+
+      const results = await Promise.allSettled([
+        AdminUserManagementService.setUserDeleted(target.id, true, adminId, LOCALE),
+        AdminUserManagementService.setUserDeleted(target.id, false, adminId, LOCALE),
+      ]);
+      const { fulfilled, rejected } = partitionOutcomes(results);
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+
+      // The winner's intent decides the final state. Both calls read the
+      // same active row; the guarded UPDATE's null-safe predicate
+      // matches for exactly one. The loser's predicate either matches
+      // nothing (returning zero rows → USER_ALREADY_DELETED /
+      // USER_NOT_DELETED) OR the loser's UPDATE races on the row lock
+      // (returning the post-winner state, which then fails the
+      // predicate). Either way, the final state is consistent with the
+      // winner's intent, never corrupted.
+      const winner = fulfilled[0];
+      if (!winner) throw new Error("Expected a winner");
+      const finalRow = await readUserRow(target.id);
+      if (winner.isDeleted) {
+        expect(finalRow?.isDeleted).toBe(true);
+        expect(finalRow?.deletedAt).not.toBeNull();
+      } else {
+        expect(finalRow?.isDeleted).toBe(false);
+        expect(finalRow?.deletedAt).toBeNull();
+      }
+
+      // Exactly one audit row emitted (winner's audit; loser's denial
+      // emits zero per the denial-no-audit rule).
+      const deleteAudits = await countAuditForEntity(adminId, AuditActionType.Delete, target.id);
+      const reactivateAudits = await countAuditForEntity(adminId, AuditActionType.Reactivate, target.id);
+      expect(deleteAudits + reactivateAudits).toBe(1);
+    }
+  );
 
   // ─── (c) Concurrent patches — last-write-wins ──────────────────────
-  concurrencyTest("concurrent updateUser ×2 on the same user — both succeed; final state reflects the later-committed write", async () => {
-    silenceDomainLog();
-    const target = await provisionStudentTarget();
-    const adminId = fixtures.adminActor.id;
+  concurrencyTest(
+    "concurrent updateUser ×2 on the same user — both succeed; final state reflects the later-committed write",
+    async () => {
+      silenceDomainLog();
+      const target = await provisionStudentTarget();
+      const adminId = fixtures.adminActor.id;
 
-    const firstName = `Concurrent A ${randomUUID().slice(0, 8)}`;
-    const secondName = `Concurrent B ${randomUUID().slice(0, 8)}`;
+      const firstName = `Concurrent A ${randomUUID().slice(0, 8)}`;
+      const secondName = `Concurrent B ${randomUUID().slice(0, 8)}`;
 
-    const results = await Promise.allSettled([
-      AdminUserManagementService.updateUser(target.id, { fullName: firstName }, adminId, LOCALE),
-      AdminUserManagementService.updateUser(target.id, { fullName: secondName }, adminId, LOCALE),
-    ]);
-    const { fulfilled, rejected } = partitionOutcomes(results);
-    // Both succeed — updateUser's guarded UPDATE predicate matches
-    // any existing row (active OR deleted); row locks serialize the
-    // writes but neither is denied. Last-write-wins on `fullName`.
-    expect(fulfilled).toHaveLength(2);
-    expect(rejected).toHaveLength(0);
+      const results = await Promise.allSettled([
+        AdminUserManagementService.updateUser(target.id, { fullName: firstName }, adminId, LOCALE),
+        AdminUserManagementService.updateUser(target.id, { fullName: secondName }, adminId, LOCALE),
+      ]);
+      const { fulfilled, rejected } = partitionOutcomes(results);
+      // Both succeed — updateUser's guarded UPDATE predicate matches
+      // any existing row (active OR deleted); row locks serialize the
+      // writes but neither is denied. Last-write-wins on `fullName`.
+      expect(fulfilled).toHaveLength(2);
+      expect(rejected).toHaveLength(0);
 
-    const finalRow = await readUserRow(target.id);
-    expect([firstName, secondName]).toContain(finalRow?.fullName);
+      const finalRow = await readUserRow(target.id);
+      expect([firstName, secondName]).toContain(finalRow?.fullName);
 
-    // Both audit(update) rows emitted — each successful mutation
-    // emits exactly one (audit-shares-fate with the mutation).
-    const updateAudits = await countAuditForEntity(adminId, AuditActionType.Update, target.id);
-    expect(updateAudits).toBe(2);
-  });
+      // Both audit(update) rows emitted — each successful mutation
+      // emits exactly one (audit-shares-fate with the mutation).
+      const updateAudits = await countAuditForEntity(adminId, AuditActionType.Update, target.id);
+      expect(updateAudits).toBe(2);
+    }
+  );
 
   // ─── (d) Concurrent double-create same email ───────────────────────
-  concurrencyTest("concurrent createUser ×2 with the same email → exactly one success + one CONFLICT (23505 rollback)", async () => {
-    silenceDomainLog();
-    const adminId = fixtures.adminActor.id;
+  concurrencyTest(
+    "concurrent createUser ×2 with the same email → exactly one success + one CONFLICT (23505 rollback)",
+    async () => {
+      silenceDomainLog();
+      const adminId = fixtures.adminActor.id;
 
-    const sharedEmail = `race-${randomUUID()}@test.local`;
-    const input: AdminCreateUserSubmitInput = {
-      fullName: "Race Create",
-      email: sharedEmail,
-      phone: "+10000000000",
-      password: TEST_DEFAULT_CREDENTIAL,
-      country: "Egypt",
-      role: "student",
-    };
+      const sharedEmail = `race-${randomUUID()}@test.local`;
+      const input: AdminCreateUserSubmitInput = {
+        fullName: "Race Create",
+        email: sharedEmail,
+        phone: "+10000000000",
+        password: TEST_DEFAULT_CREDENTIAL,
+        country: "Egypt",
+        role: "student",
+      };
 
-    const results = await Promise.allSettled([
-      AdminUserManagementService.createUser(input, adminId, LOCALE),
-      AdminUserManagementService.createUser(input, adminId, LOCALE),
-    ]);
-    const { fulfilled, rejected } = partitionOutcomes(results);
-    expect(fulfilled).toHaveLength(1);
-    expect(rejected).toHaveLength(1);
+      const results = await Promise.allSettled([
+        AdminUserManagementService.createUser(input, adminId, LOCALE),
+        AdminUserManagementService.createUser(input, adminId, LOCALE),
+      ]);
+      const { fulfilled, rejected } = partitionOutcomes(results);
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
 
-    const winner = fulfilled[0];
-    if (!winner) throw new Error("Expected a winner");
-    expect(winner.email).toBe(sharedEmail);
-    // The service's role value comes straight from the `users.role` pgEnum
-    // (lowercase `"student"`) — NOT the GraphQL SDL canonical form
-    // (`"Student"`). The codegen enum transformation happens at the
-    // Pothos resolver boundary, NOT inside the service-layer return.
-    expect(winner.role).toBe("student");
-    // Track the winner's id for cleanup.
-    fixtures.createdUserIds.push(winner.id);
-    // Also delete the student child row (created via the create path).
-    await db
-      .delete(students)
-      .where(eq(students.id, winner.id))
-      .catch(() => {});
+      const winner = fulfilled[0];
+      if (!winner) throw new Error("Expected a winner");
+      expect(winner.email).toBe(sharedEmail);
+      // The service's role value comes straight from the `users.role` pgEnum
+      // (lowercase `"student"`) — NOT the GraphQL SDL canonical form
+      // (`"Student"`). The codegen enum transformation happens at the
+      // Pothos resolver boundary, NOT inside the service-layer return.
+      expect(winner.role).toBe("student");
+      // Track the winner's id for cleanup.
+      fixtures.createdUserIds.push(winner.id);
+      // Also delete the student child row (created via the create path).
+      await db
+        .delete(students)
+        .where(eq(students.id, winner.id))
+        .catch(() => {});
 
-    const loser = rejected[0];
-    if (!(loser instanceof Error)) throw new Error("Expected the loser to be an Error");
-    // The 23505 unique violation is translated to a localized
-    // ConflictError via the cause-chain traversal.
-    expect(loser).toBeInstanceOf(ConflictError);
-    assertErrorCode(loser, "CONFLICT");
+      const loser = rejected[0];
+      if (!(loser instanceof Error)) throw new Error("Expected the loser to be an Error");
+      // The 23505 unique violation is translated to a localized
+      // ConflictError via the cause-chain traversal.
+      expect(loser).toBeInstanceOf(ConflictError);
+      assertErrorCode(loser, "CONFLICT");
 
-    // Exactly one `users` row with the shared email (the loser's
-    // insert rolled back).
-    const [row] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(users)
-      .where(eq(users.email, sharedEmail));
-    expect(row?.count).toBe(1);
-  });
+      // Exactly one `users` row with the shared email (the loser's
+      // insert rolled back).
+      const [row] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(users)
+        .where(eq(users.email, sharedEmail));
+      expect(row?.count).toBe(1);
+    }
+  );
 
   // ─── (e) Forced-failure create → directory count unchanged ──────────
-  concurrencyTest("forced-failure createUser (duplicate email) — directory count unchanged for the failed call", async () => {
-    silenceDomainLog();
-    const adminId = fixtures.adminActor.id;
+  concurrencyTest(
+    "forced-failure createUser (duplicate email) — directory count unchanged for the failed call",
+    async () => {
+      silenceDomainLog();
+      const adminId = fixtures.adminActor.id;
 
-    // Establish the seed row.
-    const seedInput = makeCreateInput("student");
-    const seed = await AdminUserManagementService.createUser(seedInput, adminId, LOCALE);
-    fixtures.createdUserIds.push(seed.id);
-    await db
-      .delete(students)
-      .where(eq(students.id, seed.id))
-      .catch(() => {});
+      // Establish the seed row.
+      const seedInput = makeCreateInput("student");
+      const seed = await AdminUserManagementService.createUser(seedInput, adminId, LOCALE);
+      fixtures.createdUserIds.push(seed.id);
+      await db
+        .delete(students)
+        .where(eq(students.id, seed.id))
+        .catch(() => {});
 
-    const countBeforeValue = await countUsers();
+      const countBeforeValue = await countUsers();
 
-    // Forced-failure — same email, different fullName (BOPLA
-    // defense — the role-child insert uses field-by-field mapping,
-    // never mass-assignment, so smuggled fields cannot land).
-    const dupInput: AdminCreateUserSubmitInput = {
-      ...seedInput,
-      fullName: "Dup Force",
-    };
-    const error = await expectRepoError(() => AdminUserManagementService.createUser(dupInput, adminId, LOCALE));
-    expect(error).toBeInstanceOf(ConflictError);
-    assertErrorCode(error, "CONFLICT");
+      // Forced-failure — same email, different fullName (BOPLA
+      // defense — the role-child insert uses field-by-field mapping,
+      // never mass-assignment, so smuggled fields cannot land).
+      const dupInput: AdminCreateUserSubmitInput = {
+        ...seedInput,
+        fullName: "Dup Force",
+      };
+      const error = await expectRepoError(() => AdminUserManagementService.createUser(dupInput, adminId, LOCALE));
+      expect(error).toBeInstanceOf(ConflictError);
+      assertErrorCode(error, "CONFLICT");
 
-    expect(await countUsers()).toBe(countBeforeValue);
-  });
+      expect(await countUsers()).toBe(countBeforeValue);
+    }
+  );
 });
 
 describe("AdminUserManagementService — BFLA token + ID fuzz (pre-DB fail-closed)", () => {

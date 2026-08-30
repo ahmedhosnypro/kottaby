@@ -622,11 +622,35 @@ interface FieldProps {
 
 function Field({ label, value }: FieldProps): ReactNode {
   return (
-    <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-      <Typography variant="body2" sx={theme => ({ color: theme.palette.text.secondary, minWidth: 160 })}>
-        {label}:
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: { xs: "column", sm: "row" },
+        gap: { xs: 0.5, sm: 2 },
+        flexWrap: "wrap",
+        alignItems: { sm: "baseline" },
+      }}
+    >
+      <Typography
+        variant="body2"
+        sx={theme => ({
+          color: theme.palette.text.secondary,
+          minWidth: { sm: 160 },
+          fontWeight: 600,
+          lineHeight: 1.6,
+        })}
+      >
+        {label}
       </Typography>
-      <Box sx={{ flex: 1 }}>{typeof value === "string" ? <Typography variant="body2">{value}</Typography> : value}</Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        {typeof value === "string" ? (
+          <Typography variant="body2" sx={{ lineHeight: 1.6, wordBreak: "break-word" }}>
+            {value}
+          </Typography>
+        ) : (
+          value
+        )}
+      </Box>
     </Box>
   );
 }
@@ -804,12 +828,7 @@ function renderActivityTimeline({
                 {labels.activity.changedFields}
               </Typography>
               {entry.changedFields.map(field => (
-                <Chip
-                  key={field}
-                  size="small"
-                  variant="outlined"
-                  label={localizeAuditFieldName(field, labels)}
-                />
+                <Chip key={field} size="small" variant="outlined" label={localizeAuditFieldName(field, labels)} />
               ))}
             </Stack>
           )}

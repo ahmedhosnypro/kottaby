@@ -91,9 +91,7 @@ async function withAuditDeleteTriggersSuspended<T>(fn: () => Promise<T>): Promis
   // independent (no DDL ordering requirement between them), so `Promise.all`
   // satisfies `eslint(no-await-in-loop)` without changing semantics.
   await Promise.all(
-    triggers.map(trigger =>
-      db.execute(sql`ALTER TABLE audit_logs DISABLE TRIGGER ${sql.identifier(trigger.name)}`)
-    )
+    triggers.map(trigger => db.execute(sql`ALTER TABLE audit_logs DISABLE TRIGGER ${sql.identifier(trigger.name)}`))
   );
   try {
     return await fn();

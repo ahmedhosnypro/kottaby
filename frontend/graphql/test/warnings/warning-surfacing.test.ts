@@ -60,7 +60,7 @@ import {
   GraphQLString,
 } from "graphql";
 import { logoutMutationDocument } from "@/frontend/graphql/sharedDocuments/auth/auth.documents";
-import { expectMutationError, describeGraphqlSuite, setupTestServerLifecycle, testClient } from "@/test/helpers";
+import { describeGraphqlSuite, expectMutationError, setupTestServerLifecycle, testClient } from "@/test/helpers";
 
 // ─── Surfaced-literal fixtures (SEC: literal-pinned ⇒ PII/secret-free) ──────
 

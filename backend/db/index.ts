@@ -22,8 +22,8 @@ import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from "pg
 import {
   closePglite,
   getPglitePool,
-  type PgQueryConfig,
   type PglitePoolLike,
+  type PgQueryConfig,
   type PoolClientLike,
   type QueryResultLike,
   type Row,

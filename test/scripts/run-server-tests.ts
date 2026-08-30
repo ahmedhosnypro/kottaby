@@ -641,7 +641,13 @@ async function main(): Promise<void> {
   // run, every test will skip, and the runner exits clean without a
   // wasted 180 s `pollServerReady` timeout or OOM-killed child.
   const isPgliteProvider = (process.env.DB_PROVIDER ?? "").toLowerCase() === "pglite";
-  const serverProc = isPgliteProvider ? (null as unknown as ChildProcess) : spawnTestServer(port, logStream);
+  // Type widened to `ChildProcess | null` so the PGlite branch can stay
+  // type-honest — the cleanup below already uses optional chaining
+  // (`serverProc?.kill`) which is a no-op on `null`. The previous
+  // `null as unknown as ChildProcess` cast was an oxlint
+  // `no-unsafe-type-assertion` violation; the nullable type is the correct
+  // shape for a process that may not exist.
+  const serverProc: ChildProcess | null = isPgliteProvider ? null : spawnTestServer(port, logStream);
 
   if (isTty) {
     process.stdout.write("\x1b[?25l"); // Hide cursor

@@ -32,7 +32,13 @@
 import { expect, test } from "bun:test";
 import { gql } from "@apollo/client";
 import { meQueryDocument } from "@/frontend/graphql/sharedDocuments/auth/auth.documents";
-import { describeGraphqlSuite, extractErrorCode, setupTestServerLifecycle, TEST_PORT, testClient } from "@/test/helpers";
+import {
+  describeGraphqlSuite,
+  extractErrorCode,
+  setupTestServerLifecycle,
+  TEST_PORT,
+  testClient,
+} from "@/test/helpers";
 
 // ─── Transport-level helpers ──────────────────────────────────────────────
 
