@@ -26,6 +26,11 @@ enum Gender {
   Other
 }
 
+type HandshakeCodeLookup {
+  linkable: Boolean!
+  maskedName: String!
+}
+
 type HealthCheck {
   service: String!
   status: String!
@@ -73,12 +78,14 @@ type Mutation {
 
 type Query {
   _health: HealthCheck!
+  findStudentByHandshakeCode(code: String!): HandshakeCodeLookup
 
   """
   Returns the authenticated user (or null for anonymous). Anonymous callers receive null — the AuthProvider uses this to detect expired access tokens and silently restore the session via `refreshToken`.
   """
   me: User
   myApplicantProfile: ApplicantProfile
+  myHandshakeCode: String!
 
   """
   Returns the canonical list of recitation readings (Qira'at) for the registration form selector. Public — no authentication required. The values are stable API identifiers; display labels are resolved client-side via the i18n recitation namespace.

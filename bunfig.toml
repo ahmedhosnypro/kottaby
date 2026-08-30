@@ -7,7 +7,11 @@ coverageSkipTestFiles = true
 # graphql-interop.ts must come BEFORE any test file imports @apollo/client / graphql-tag:
 # it pre-imports graphql as ESM and seeds require.cache so graphql-tag's sync require('graphql')
 # resolves under Bun (graphql@17 CJS→ESM bridge is otherwise async-only).
-preload = ["./test/scripts/test-runner-guard.ts", "./backend/db/test/logger-mock.ts", "./backend/db/test/ensure-env.ts", "./test/preload/graphql-interop.ts"]
+# apollo-dev-flag.ts must come BEFORE the first @apollo/client import as well (any file order):
+# it sets globalThis.__DEV__ = true so Apollo's dev-only cache warnings (e.g. the
+# "Cache data may be lost" heuristic, invariant 118) are live under `bun test`, exactly
+# like the browser dev build — suites that assert "no warning emitted" stay non-vacuous.
+preload = ["./test/scripts/test-runner-guard.ts", "./backend/db/test/logger-mock.ts", "./backend/db/test/ensure-env.ts", "./test/preload/graphql-interop.ts", "./test/preload/apollo-dev-flag.ts"]
 
 # Backend DB tests: logger mock + env, NO happydom (no DOM needed)
 # [test.backend]

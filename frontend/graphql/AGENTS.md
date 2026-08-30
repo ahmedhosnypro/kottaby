@@ -97,6 +97,9 @@ written through different parent objects.
 
 Current embedded types:
 - `AdminNoteInfo` (fields: `content`, `lastUpdated`) — no `id`.
+- `HandshakeCodeLookup` (fields: `linkable`, `maskedName`) — no `id`; masked
+  parent-discovery payload, cached inline under `Query.findStudentByHandshakeCode`;
+  see `docs/parents/handshake-code-discovery.md` for the payload contract.
 - `OnlineMeetingInfo` (fields: `joinUrl`, `logoUrl`, `meetingId`, `platform`,
   `providerName`, `source`) — no `id`.
 - `HealthCheck` (fields: `service`, `status`, `timestamp`, `version`) — no `id`;

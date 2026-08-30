@@ -2,6 +2,7 @@
 
 > **Source of truth:** `draft_docs/1-sc.en.md` §7, §8
 > **Related:** `docs/domain/GLOSSARY.md`, `docs/specs/state-machine-invariants.md`
+> **Implementation:** the §4.2 parent search read-side contract is canonically documented in `docs/parents/handshake-code-discovery.md`.
 
 ---
 

@@ -221,6 +221,8 @@ stateDiagram-v2
 | INV-P3 | A parent receives real-time notification when a linked child's session completes. |
 | INV-P4 | ✅ RESOLVED (A.2): Parent-child link data model implemented via `students.parent_id` FK and `students.handshake_code`. |
 
+The handshake-code discovery surface (parent search by code, preceding this lifecycle) is bound by INV-P1..P4 and is canonically documented in `docs/parents/handshake-code-discovery.md`.
+
 ---
 
 ## 8. Payment Lifecycle

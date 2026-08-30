@@ -8,4 +8,5 @@
  */
 export * from "./auth";
 export * from "./shared";
+export * from "./students";
 export * from "./teachers";

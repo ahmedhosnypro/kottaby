@@ -5,6 +5,7 @@ import {
   FamilyRestroomOutlined as ChildrenIcon,
   DashboardOutlined as DashboardIcon,
   HistoryEduOutlined as HomeworkIcon,
+  LinkOutlined as LinkChildIcon,
   NotificationsOutlined as NotificationsIcon,
   VerifiedOutlined as PlansIcon,
   AccountCircleOutlined as ProfileIcon,
@@ -18,17 +19,53 @@ import {
   PaymentsOutlined as WalletIcon,
 } from "@mui/icons-material";
 import { UserRole } from "@/frontend/graphql/generated/gql/graphql";
+import { dashboardEn } from "@/shared/locale/en/dashboard";
 import type { DashboardLabels } from "@/shared/locale/types/dashboard";
+import type { HandshakeCodeLabels } from "@/shared/locale/types/handshakeCode";
 
 /**
  * Navigation item shape — used by `DashboardSidebar` to render role-aware
  * navigation links. Each item has a route (URL path), a label key (looked up
- * in `DashboardLabels`), and a `*Outlined` MUI icon.
+ * in `DashboardLabels`, or in `HandshakeCodeLabels` for feature-owned nav
+ * entries), and a `*Outlined` MUI icon.
  */
 export interface DashboardNavItem {
   readonly route: string;
-  readonly labelKey: keyof DashboardLabels;
+  readonly labelKey: NavLabelKey;
   readonly Icon: SvgIconComponent;
+}
+
+/**
+ * Nav-label keys owned by BOTH label namespaces. A cross-namespace key
+ * collision would make the runtime `key in dashboardEn` discrimination
+ * silently prefer the dashboard bundle, so colliding keys are carved OUT of
+ * the nav label-key union: a future collision fails at COMPILE time at the
+ * nav-item definition site (pick a key owned by exactly one namespace)
+ * instead of resolving ambiguously at runtime. The namespaces are disjoint
+ * today — a pure future-proofing guard with zero current behavior change.
+ */
+type CollidingNavLabelKeys = keyof DashboardLabels & keyof HandshakeCodeLabels;
+
+/**
+ * A nav label key owned by EXACTLY ONE label namespace — the discriminator
+ * `isDashboardLabelKey` stays total and unambiguous over this union.
+ */
+export type NavLabelKey = Exclude<keyof DashboardLabels | keyof HandshakeCodeLabels, CollidingNavLabelKeys>;
+
+/**
+ * Type guard: is this nav label key owned by the `dashboard` namespace?
+ *
+ * Membership is tested against the `dashboard` en leaf — key sets are
+ * compile-pinned on every locale leaf, so a key present on one leaf is
+ * present on all. Feature-owned keys (e.g. the handshake-code nav label)
+ * fall through to the `handshakeCode` label bundle at resolve time.
+ *
+ * `NavLabelKey` excludes cross-namespace collisions at the type level, so
+ * for every admissible key exactly ONE of the two branches can match — the
+ * guard can never silently prefer the dashboard bundle.
+ */
+function isDashboardLabelKey(key: NavLabelKey): key is keyof DashboardLabels {
+  return key in dashboardEn;
 }
 
 /**
@@ -66,6 +103,7 @@ const NAV_ITEMS_BY_ROLE: Record<UserRole, readonly DashboardNavItem[]> = {
   [UserRole.Parent]: [
     { route: "/parent/dashboard", labelKey: "dashboard", Icon: DashboardIcon },
     { route: "/children", labelKey: "children", Icon: ChildrenIcon },
+    { route: "/parent/handshake", labelKey: "navLinkMyChild", Icon: LinkChildIcon },
     { route: "/profile", labelKey: "profile", Icon: ProfileIcon },
   ],
   [UserRole.Admin]: [
@@ -93,16 +131,23 @@ export function getNavItemsForRole(role: UserRole | null | undefined): readonly 
 }
 
 /**
- * Returns the human-readable label for a nav item, looked up from the
- * `DashboardLabels` translation.
+ * Returns the human-readable label for a nav item, resolved from the label
+ * bundle that OWNS the key: `DashboardLabels` for the shared shell entries,
+ * `HandshakeCodeLabels` for feature-owned nav entries (the handshake-code
+ * discovery nav item).
  *
- * The `labelKey` is a keyof `DashboardLabels` — most entries are `string`
- * literals, but a few (`welcome`, `comingSoonBody`, `userAvatarAlt`) are
- * functions. The nav-item label keys are all `string` literals, so the cast
- * is safe here.
+ * Most `DashboardLabels` entries are `string` literals, but a few (`welcome`,
+ * `comingSoonBody`, `userAvatarAlt`) are functions. The nav-item label keys
+ * are all `string` literals, so the non-string fallback is safe here.
  */
-export function resolveNavItemLabel(item: DashboardNavItem, t: DashboardLabels): string {
-  const value = t[item.labelKey];
+export function resolveNavItemLabel(
+  item: DashboardNavItem,
+  dashboardLabels: DashboardLabels,
+  handshakeCodeLabels: HandshakeCodeLabels
+): string {
+  const value = isDashboardLabelKey(item.labelKey)
+    ? dashboardLabels[item.labelKey]
+    : handshakeCodeLabels[item.labelKey];
   return typeof value === "string" ? value : String(value);
 }
 

@@ -1,5 +1,5 @@
 /**
- * GraphQL schema surface assertion suite — "exactly one addition" gate +
+ * GraphQL schema surface assertion suite — pinned-additions gate +
  * codegen-sync proof.
  *
  * What this locks down:
@@ -14,11 +14,12 @@
  *  - **Surface freeze** — against the frozen baseline inventory (captured
  *    at HEAD `8e5ebb8`): ZERO new mutations, and all post-baseline
  *    additions are pinned by name — query fields grow ONLY by the
- *    sanctioned probe `_health` and `myApplicantProfile` (DEV2-004), the
- *    enum set grows ONLY by `ApplicantStatus` (DEV2-004), and the
- *    whole-schema named-type delta is exactly `{ApplicantProfile,
- *    ApplicantStatus, DateTime, HealthCheck}` (DEV2-004 surface + the
- *    `DateTime` scalar registered in `shared/scalar.pothos.ts`).
+ *    sanctioned probe `_health`, the DEV2-004 `myApplicantProfile`
+ *    query and the student-handshake queries (DEV1-013), the enum set
+ *    grows ONLY by `ApplicantStatus` (DEV2-004), and the whole-schema
+ *    named-type delta is exactly the DEV2-004 applicant surface, the
+ *    `DateTime` scalar (registered in `shared/scalar.pothos.ts`) and
+ *    the `HandshakeCodeLookup` object (DEV1-013).
  *  - **Allowlist agreement** — the scopeless `_health` field is present in
  *    the closed `PUBLIC_OPERATION_NAMES` tuple / `PUBLIC_OPERATIONS` set
  *    1:1 (schema↔allowlist agreement enforced as code).
@@ -100,10 +101,15 @@ describe("Query._health — retyped probe surface", () => {
     for (const name of PRE_3_1_QUERY_FIELDS) {
       expect(fieldNames).toContain(name);
     }
-    // …and the ONLY additions beyond them are the probe and the DEV2-004
-    // applicant-profile query.
+    // …and the ONLY additions beyond them are the probe, the DEV2-004
+    // applicant-profile query, and the student-handshake queries (DEV1-013).
     const additions = fieldNames.filter(name => !(PRE_3_1_QUERY_FIELDS as readonly string[]).includes(name));
-    expect(additions.toSorted((a, b) => a.localeCompare(b))).toEqual(["_health", "myApplicantProfile"]);
+    expect(additions.toSorted((a, b) => a.localeCompare(b))).toEqual([
+      "_health",
+      "findStudentByHandshakeCode",
+      "myApplicantProfile",
+      "myHandshakeCode",
+    ]);
   });
 
   test("`_health` is NON-NULLABLE `HealthCheck!` (retyped from the String! placeholder)", () => {
@@ -180,14 +186,20 @@ describe("Surface freeze — pinned additions vs the baseline inventory", () => 
     expect(enumNames).toEqual([...PRE_3_1_ENUMS]);
   });
 
-  test("whole-schema named-type delta is pinned: HealthCheck + DEV2-004 applicant surface + DateTime scalar", () => {
+  test("whole-schema named-type delta is pinned: DEV2-004 applicant surface + DateTime scalar + handshake-code surface", () => {
     const post = new Set(sdlTypeNames());
 
     for (const name of PRE_3_1_TYPE_NAMES) {
       expect(post.has(name)).toBe(true);
     }
     const additions = sdlTypeNames().filter(name => !(PRE_3_1_TYPE_NAMES as readonly string[]).includes(name));
-    expect(additions).toEqual(["ApplicantProfile", "ApplicantStatus", "DateTime", "HealthCheck"]);
+    expect(additions).toEqual([
+      "ApplicantProfile",
+      "ApplicantStatus",
+      "DateTime",
+      "HandshakeCodeLookup",
+      "HealthCheck",
+    ]);
   });
 });
 

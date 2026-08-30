@@ -74,6 +74,8 @@ throw new ConflictError("Handshake code generation failed after retries", { caus
 - On exhaustion, throws `ConflictError` and logs via `logger.logDomainError` — **never `console.*`**.
 - Non-collision errors are surfaced immediately (the outer `translateDbError` decides whether it's a 23505 on email or another failure).
 
+Parent-side discovery by handshake code — the consumption half of this contract — is canonically documented in `docs/parents/handshake-code-discovery.md`.
+
 ---
 
 ## 3. Atomicity Transaction Pattern

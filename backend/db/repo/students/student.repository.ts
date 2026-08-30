@@ -12,14 +12,23 @@
  * back on any child-insert failure (atomicity). The trial grant method
  * (`grantFreeTrialOnce`) accepts an optional `tx` so it can run either inside
  * the registration transaction or standalone against the global handle.
- * Read methods (`findById`) use `queryDb` (raw parameterized SQL) on the
- * non-transactional branch for the Neon HTTP fast path, and Drizzle's query
- * builder on the transactional branch — per `backend/db/repo/AGENTS.md`.
+ *
+ * Conventions per `backend/db/repo/AGENTS.md`:
+ *  - Reads are read-only, single-scalar/parameterized equality lookups that
+ *    take an OPTIONAL `tx` (last param) and use `queryDb` (raw parameterized
+ *    SQL) on the non-transactional branch, mirroring `UserRepository`
+ *    `findByEmail` / `findById` — Neon HTTP fast path when eligible, Drizzle
+ *    select inside a supplied transaction. No prepared statements (single
+ *    equality, no reuse win), no `inArray`, no LIKE/ILIKE, no `sql` templates.
+ *  - Zero business rules, zero log strings, zero i18n imports — reads return
+ *    `null` on miss; the service layer owns validation, governance filtering
+ *    and error mapping.
  */
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db, queryDb } from "@/backend/db";
 import { students } from "@/backend/db/schema/students/students";
-import type { DBQueryExecutor, DBTransaction, StudentSelectType } from "@/backend/types";
+import { users } from "@/backend/db/schema/users/users";
+import type { DBQueryExecutor, DBTransaction, HandshakeDiscoveryRowType, StudentSelectType } from "@/backend/types";
 
 /** Type guard — narrows `DBQueryExecutor` to `DBTransaction`. */
 function isDBTransaction(tx: DBQueryExecutor): tx is DBTransaction {
@@ -36,6 +45,17 @@ export namespace StudentRepository {
    * `parentId` is `null` at registration — set later via the parent
    * handshake flow.
    *
+   * The insert runs inside its own savepoint (a Drizzle nested transaction
+   * opened on the supplied `tx`): a unique-constraint rejection rolls back
+   * ONLY this insert and rethrows the driver error unchanged, leaving the
+   * caller's transaction usable. That is what lets the registration
+   * service's bounded collision retry regenerate a fresh code and insert
+   * again on the SAME transaction — without the savepoint, a rejected
+   * insert aborts the surrounding transaction and every subsequent
+   * statement on it fails with an aborted-transaction error. On success the
+   * savepoint is released, which is transparent to the surrounding
+   * registration transaction (same atomicity as a bare insert).
+   *
    * @returns The inserted student row.
    */
   export async function createForRegistration(
@@ -43,21 +63,105 @@ export namespace StudentRepository {
     handshakeCode: string,
     tx: DBTransaction
   ): Promise<StudentSelectType> {
-    const [row] = await tx
-      .insert(students)
-      .values({
-        id: userId,
-        handshakeCode,
-        balanceHifz: 0,
-        balanceTajweed: 0,
-        balanceReviews: 0,
-        parentId: null,
-      })
-      .returning();
-    if (!row) {
-      throw new Error("StudentRepository.createForRegistration: insert returned no rows");
+    return tx.transaction(async sp => {
+      const [row] = await sp
+        .insert(students)
+        .values({
+          id: userId,
+          handshakeCode,
+          balanceHifz: 0,
+          balanceTajweed: 0,
+          balanceReviews: 0,
+          parentId: null,
+        })
+        .returning();
+      if (!row) {
+        throw new Error("StudentRepository.createForRegistration: insert returned no rows");
+      }
+      return row;
+    });
+  }
+
+  /**
+   * Reads the `handshake_code` of the `students` row sharing the given user id
+   * (shared PK ≡ `users.id`).
+   *
+   * Single-column equality read — Drizzle select on the supplied transaction,
+   * or raw parameterized SQL via `queryDb` (Neon HTTP fast path) when called
+   * outside a transaction. Acquires no locks (pure read).
+   *
+   * @returns The row's `handshakeCode`, or `null` when no `students` row has
+   *          that id (the caller owns not-found handling).
+   */
+  export async function findHandshakeCodeByStudentId(studentId: number, tx?: DBTransaction): Promise<string | null> {
+    if (tx) {
+      // Transactional read — Drizzle select on the supplied executor.
+      const rows = await tx
+        .select({ handshakeCode: students.handshakeCode })
+        .from(students)
+        .where(eq(students.id, studentId))
+        .limit(1);
+      return rows[0]?.handshakeCode ?? null;
     }
-    return row;
+    // Non-transactional read — raw SQL via queryDb (Neon HTTP fast path).
+    const result = await queryDb<{ handshakeCode: string }>(
+      `SELECT handshake_code AS "handshakeCode" FROM students WHERE id = $1 LIMIT 1`,
+      [studentId]
+    );
+    return result.rows[0]?.handshakeCode ?? null;
+  }
+
+  /**
+   * Discovery read for parent-side handshake-code lookup: joins `students` to
+   * `users` on the shared PK and returns EXACTLY the columns the service layer
+   * needs for governance evaluation, name masking and the `linkable` signal —
+   * a fixed column list, never spread-driven.
+   *
+   * The ONLY predicate is the parameterized equality on `handshake_code`
+   * (`WHERE handshake_code = $1`); no LIKE/ILIKE, no `sql` templates, no
+   * `inArray`. Governance filtering (deleted/blocked/suspended) is a service
+   * concern — this method returns the row faithfully, or `null` on miss.
+   *
+   * @returns The joined discovery row, or `null` when no student carries that
+   *          handshake code.
+   */
+  export async function findDiscoveryByHandshakeCode(
+    code: string,
+    tx?: DBTransaction
+  ): Promise<HandshakeDiscoveryRowType | null> {
+    // Shared parameterized read — identical column aliases on both branches.
+    const readSql = `SELECT s.parent_id AS "parentId",
+            u.full_name AS "fullName",
+            u.is_deleted AS "isDeleted",
+            u.is_blocked AS "isBlocked",
+            u.suspended,
+            u.suspended_at AS "suspendedAt",
+            u.suspended_period_days AS "suspendedPeriodDays"
+     FROM students s
+     JOIN users u ON u.id = s.id
+     WHERE s.handshake_code = $1
+     LIMIT 1`;
+    if (tx) {
+      // Transactional read — Drizzle select on the supplied executor.
+      const rows = await tx
+        .select({
+          parentId: students.parentId,
+          fullName: users.fullName,
+          isDeleted: users.isDeleted,
+          isBlocked: users.isBlocked,
+          suspended: users.suspended,
+          suspendedAt: users.suspendedAt,
+          suspendedPeriodDays: users.suspendedPeriodDays,
+        })
+        .from(students)
+        .innerJoin(users, eq(users.id, students.id))
+        .where(eq(students.handshakeCode, code))
+        .limit(1);
+      return rows[0] ?? null;
+    }
+    // Non-transactional read — raw SQL via queryDb (Neon HTTP fast path).
+    const result = await queryDb<HandshakeDiscoveryRowType>(readSql, [code]);
+    return result.rows[0] ?? null;
   }
 
   /**

@@ -1,20 +1,24 @@
 /**
- * HealthCheck Apollo cache-policy suite.
+ * HealthCheck + HandshakeCodeLookup Apollo cache-policy suite.
  * Embedded-type normalization opt-out (`keyFields: false`) for the
- * scalar-only `_health` probe object.
+ * scalar-only `_health` probe object and the masked parent-discovery lookup
+ * payload (`HandshakeCodeLookup` — `maskedName` + `linkable` only, no `id`
+ * by design).
  *
  * WHAT THIS LOCKS
  *   1. CONFIG EXPOSURE (the task-def gate): an `InMemoryCache` built by
  *      `createApolloCache()` exposes `config.typePolicies.HealthCheck
- *      .keyFields === false` — the embedded-value declaration that keeps any
- *      future consumer of `_health` from ever triggering Apollo's "Cache data
- *      may be lost" heuristic. Behavioral halves below additionally pin the
- *      written-back value as an INLINE child of its parent (never a standalone
- *      `HealthCheck:*` entity) with loss-free rewrites.
+ *      .keyFields === false` AND `config.typePolicies.HandshakeCodeLookup
+ *      .keyFields === false` — the embedded-value declarations that keep any
+ *      future consumer of `_health` / `findStudentByHandshakeCode` from ever
+ *      triggering Apollo's "Cache data may be lost" heuristic. Behavioral
+ *      halves below additionally pin the written-back value as an INLINE
+ *      child of its parent (never a standalone `HealthCheck:*` /
+ *      `HandshakeCodeLookup:*` entity) with loss-free rewrites.
  *   2. SIBLING REGRESSION PIN — the pre-existing embedded entries
  *      (`AdminNoteInfo`, `OnlineMeetingInfo`) keep their `keyFields: false`
  *      posture and the `AdminDashboardScheduleResult.rows` replace-not-merge
- *      precedent stays exactly as authored (the four-entry policy surface is
+ *      precedent stays exactly as authored (the five-entry policy surface is
  *      FROZEN; a new embedded type must extend, never shrink, this list per
  *      frontend/graphql/AGENTS.md embedded-type policy).
  *
@@ -124,6 +128,32 @@ const SECOND_PROBE_VALUE = () => ({
   timestamp: "2026-08-27T00:01:00.000Z",
 });
 
+// ---------------------------------------------------------------------------
+// Fixture: the handshake discovery document shape (client-side cache only —
+// no server schema needed; mirrors the shared document's selection set).
+
+const HANDSHAKE_LOOKUP_DOCUMENT = parse(`
+  query HandshakeLookupProbe($code: String!) {
+    findStudentByHandshakeCode(code: $code) {
+      __typename
+      maskedName
+      linkable
+    }
+  }
+`);
+
+const FIRST_LOOKUP_VALUE = () => ({
+  __typename: "HandshakeCodeLookup",
+  maskedName: "A***",
+  linkable: true,
+});
+
+const SECOND_LOOKUP_VALUE = () => ({
+  __typename: "HandshakeCodeLookup",
+  maskedName: "B***",
+  linkable: false,
+});
+
 // ===========================================================================
 describe("createApolloCache — initialised InMemoryCache config exposure", () => {
   test("returns a genuine initialised InMemoryCache instance", () => {
@@ -137,11 +167,18 @@ describe("createApolloCache — initialised InMemoryCache config exposure", () =
     expect(keyFieldsOf(policies, "HealthCheck")).toBe(false);
   });
 
-  test("policy surface is FROZEN to the four documented entries", () => {
+  test("typePolicies.HandshakeCodeLookup.keyFields === false", () => {
+    const cache = createApolloCache();
+    const policies = typePoliciesOf(cache);
+    expect(keyFieldsOf(policies, "HandshakeCodeLookup")).toBe(false);
+  });
+
+  test("policy surface is FROZEN to the five documented entries", () => {
     const cache = createApolloCache();
     expect(Object.keys(typePoliciesOf(cache)).toSorted((a, b) => a.localeCompare(b))).toEqual([
       "AdminDashboardScheduleResult",
       "AdminNoteInfo",
+      "HandshakeCodeLookup",
       "HealthCheck",
       "OnlineMeetingInfo",
     ]);
@@ -205,5 +242,61 @@ describe("behavioral proof — HealthCheck writes stay embedded (no standalone e
     const extracted = JSON.stringify(cache.extract());
     expect(extracted.includes('"version":"0.1.0"')).toBe(false);
     expect(extracted.includes('"HealthCheck:')).toBe(false);
+  });
+});
+
+describe("behavioral proof — HandshakeCodeLookup writes stay embedded (no standalone entity)", () => {
+  test("lookup payloads normalize INLINE: extract contains no `HandshakeCodeLookup:` entity id", () => {
+    const cache = createApolloCache();
+    expect(() =>
+      cache.writeQuery({
+        query: HANDSHAKE_LOOKUP_DOCUMENT,
+        variables: { code: "KSB-ABCD1234" },
+        data: { findStudentByHandshakeCode: FIRST_LOOKUP_VALUE() },
+      })
+    ).not.toThrow();
+
+    const extracted = JSON.stringify(cache.extract());
+    expect(extracted).toContain('"maskedName":"A***"');
+    // A normalized entry would appear as a top-level `HandshakeCodeLookup:<key>`
+    // id — keyFields:false forbids exactly that, so NO identity-derived cache
+    // key can ever exist for the masked discovery payload.
+    expect(extracted.includes('"HandshakeCodeLookup:')).toBe(false);
+  });
+
+  test("second search REPLACES the inline value cleanly under the SAME field (loss-safe rewrite)", () => {
+    const cache = createApolloCache();
+    cache.writeQuery({
+      query: HANDSHAKE_LOOKUP_DOCUMENT,
+      variables: { code: "KSB-ABCD1234" },
+      data: { findStudentByHandshakeCode: FIRST_LOOKUP_VALUE() },
+    });
+    // Same code, different payload (e.g. linkable flipped server-side between
+    // searches) — the full-field selection set keeps the rewrite loss-free.
+    expect(() =>
+      cache.writeQuery({
+        query: HANDSHAKE_LOOKUP_DOCUMENT,
+        variables: { code: "KSB-ABCD1234" },
+        data: { findStudentByHandshakeCode: SECOND_LOOKUP_VALUE() },
+      })
+    ).not.toThrow();
+
+    const reread: unknown = cache.readQuery({
+      query: HANDSHAKE_LOOKUP_DOCUMENT,
+      variables: { code: "KSB-ABCD1234" },
+    });
+    if (!isRecord(reread) || !Object.hasOwn(reread, "findStudentByHandshakeCode")) {
+      throw new Error("embedded lookup value unreadable after rewrite");
+    }
+    const lookup = requireRecord(
+      Reflect.get(reread, "findStudentByHandshakeCode"),
+      "reread.findStudentByHandshakeCode"
+    );
+    expect(Reflect.get(lookup, "maskedName")).toBe("B***");
+    expect(Reflect.get(lookup, "linkable")).toBe(false);
+
+    const extracted = JSON.stringify(cache.extract());
+    expect(extracted.includes('"maskedName":"A***"')).toBe(false);
+    expect(extracted.includes('"HandshakeCodeLookup:')).toBe(false);
   });
 });

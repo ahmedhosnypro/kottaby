@@ -29,6 +29,7 @@ import { enMessages } from "@/shared/locale/en/messages";
 import { Applicant } from "@/shared/locale/namespaces/applicant";
 import { Auth } from "@/shared/locale/namespaces/auth";
 import { Errors } from "@/shared/locale/namespaces/errors";
+import { HandshakeCode } from "@/shared/locale/namespaces/handshakeCode";
 import { Landing } from "@/shared/locale/namespaces/landing";
 
 /** Mutable navigation state consumed by the mocked `next/navigation` exports. */
@@ -77,4 +78,7 @@ for (const translations of [arMessages, enMessages]) {
   // surface missing-key drift at preload time.
   Applicant.getLabels(translations);
   Errors.getLabels(translations);
+  // Warm the HandshakeCode handle so the student handshake-code card suite
+  // surfaces missing-key drift at preload time.
+  HandshakeCode.getLabels(translations);
 }

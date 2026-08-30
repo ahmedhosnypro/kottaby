@@ -244,7 +244,8 @@ const fullResult = await requestFullRepoLint("cli");
 
 ### Environment Variables
 
-- `LINT_QUEUE_CONCURRENCY` — ESLint `--concurrency` value (default `4`; set to `auto` to let ESLint decide).
+- `LINT_QUEUE_CONCURRENCY` — ESLint `--concurrency` value (default: adaptive `1`–`4`, derived from CPU count and memory budget — prevents OOM-kills on memory-constrained hosts; set to `auto` to let ESLint decide).
+- `LINT_MAX_OLD_SPACE_MB` — ESLint child heap cap in MB (default: adaptive, clamped to `2048`–`8192`). Note: with `--concurrency=N` the worst-case memory is `(N+1) × heap`, so lower concurrency on small hosts.
 - `LINT_QUEUE_TIMEOUT_MS` — Per-request timeout in milliseconds (default: 300000 for file-scoped, 1200000 for full-repo).
 
 ### Other quality commands are safe to run in parallel
@@ -460,6 +461,7 @@ After reading the applicable instruction files and AGENTS.md, subagents check fo
 - `docs/backend/cross-stream-contracts.md` — Cross-stream contract types canonical reference (DEV2-003: 6 contracts, composition-only rule, forbidden-field registry, consumer-ticket wiring, change governance)
 - `docs/graphql/api-gateway-and-routing.md` — API gateway & routing canonical reference (dev3-003: seven-step request pipeline in `app/api/graphql/route.ts`, transport-failure matrix + `MAX_GRAPHQL_BODY_BYTES`, default-deny public-operation allowlist gate, the two sanctioned health probes, ROUTE_INVENTORY registration rule (A4), REQ-018 operation-registration contract)
 - `docs/teachers/applicant-lifecycle.md` — Teacher applicant lifecycle canonical reference (DEV2-004: `applicants` state machine REQ-013, cooldown/attempt contracts REQ-014/015/016, zero-arg `myApplicantProfile` query contract REQ-017, INV-TV1..TV7 + B.6/B.7 anchoring, consumer guidance for DEV2-005..010/DEV3-019)
+- `docs/parents/handshake-code-discovery.md` — Parent handshake-code discovery canonical reference (code format + generation contract by reference, minimal masked payload with no `id`, governance-exclusion collapse, null-not-error not-found, advisory `linkable` semantics, binding link-request forward contract, brute-force posture)
 - `docs/students/free-trial-provisioning.md` — Free Trial Provisioning canonical reference (one-time trial credit grant for new students, dedicated `balance_trial` lane, grant-once guarded UPDATE, DEV3 booking-eligibility & decrement forward contract)
 
 
