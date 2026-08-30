@@ -314,19 +314,11 @@ export default function LandingPage(): ReactNode {
             <Stack direction="row" spacing={1.25} sx={{ alignItems: "center", display: { xs: "none", md: "flex" } }}>
               <LocaleSwitcher />
               {/* Dark mode toggle */}
-              <Button
-                onClick={() => setMode(mode === "dark" ? "light" : "dark")}
-                sx={{
-                  minWidth: "auto",
-                  p: 1,
-                  color: "var(--mui-palette-secondary-light)",
-                  borderRadius: 2,
-                  "&:hover": { bgcolor: "color-mix(in srgb, var(--mui-palette-secondary-main) 15%, transparent)" },
-                }}
-                aria-label={t.a11yToggleColorMode}
-              >
-                {mode === "dark" ? <LightModeOutlined /> : <DarkModeOutlined />}
-              </Button>
+              <ColorModeToggleButton
+                mode={mode}
+                onToggle={() => setMode(mode === "dark" ? "light" : "dark")}
+                ariaLabel={t.a11yToggleColorMode}
+              />
               <Button
                 component={Link}
                 href="/login"
@@ -335,54 +327,18 @@ export default function LandingPage(): ReactNode {
               >
                 {t.navSignIn}
               </Button>
-              <Button
-                component={Link}
-                href="/register"
-                variant="contained"
-                sx={{
-                  position: "relative",
-                  overflow: "hidden",
-                  bgcolor: "var(--mui-palette-secondary-main)",
-                  color: "var(--mui-palette-onSecondary)",
-                  fontWeight: 700,
-                  textTransform: "none",
-                  borderRadius: 2,
-                  px: 2.5,
-                  "&::after": {
-                    content: '""',
-                    position: "absolute",
-                    top: 0,
-                    left: "-100%",
-                    width: "100%",
-                    height: "100%",
-                    background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
-                    transition: "left 0.5s ease",
-                  },
-                  "&:hover": {
-                    bgcolor: "var(--mui-palette-secondary-dark)",
-                    "&::after": { left: "100%" },
-                  },
-                }}
-              >
+              <Button component={Link} href="/register" variant="contained" sx={{ ...ctaShimmerSx, px: 2.5 }}>
                 {t.navGetStarted}
               </Button>
             </Stack>
 
             {/* Mobile hamburger button — visible on xs/sm only */}
             <Stack direction="row" spacing={1} sx={{ alignItems: "center", display: { xs: "flex", md: "none" } }}>
-              <Button
-                onClick={() => setMode(mode === "dark" ? "light" : "dark")}
-                sx={{
-                  minWidth: "auto",
-                  p: 1,
-                  color: "var(--mui-palette-secondary-light)",
-                  borderRadius: 2,
-                  "&:hover": { bgcolor: "color-mix(in srgb, var(--mui-palette-secondary-main) 15%, transparent)" },
-                }}
-                aria-label={t.a11yToggleColorMode}
-              >
-                {mode === "dark" ? <LightModeOutlined /> : <DarkModeOutlined />}
-              </Button>
+              <ColorModeToggleButton
+                mode={mode}
+                onToggle={() => setMode(mode === "dark" ? "light" : "dark")}
+                ariaLabel={t.a11yToggleColorMode}
+              />
               <Button
                 onClick={() => setMobileOpen(prev => !prev)}
                 sx={{
@@ -471,35 +427,7 @@ export default function LandingPage(): ReactNode {
                 >
                   {t.navSignIn}
                 </Button>
-                <Button
-                  component={Link}
-                  href="/register"
-                  variant="contained"
-                  fullWidth
-                  sx={{
-                    position: "relative",
-                    overflow: "hidden",
-                    bgcolor: "var(--mui-palette-secondary-main)",
-                    color: "var(--mui-palette-onSecondary)",
-                    fontWeight: 700,
-                    textTransform: "none",
-                    borderRadius: 2,
-                    "&::after": {
-                      content: '""',
-                      position: "absolute",
-                      top: 0,
-                      left: "-100%",
-                      width: "100%",
-                      height: "100%",
-                      background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
-                      transition: "left 0.5s ease",
-                    },
-                    "&:hover": {
-                      bgcolor: "var(--mui-palette-secondary-dark)",
-                      "&::after": { left: "100%" },
-                    },
-                  }}
-                >
+                <Button component={Link} href="/register" variant="contained" fullWidth sx={ctaShimmerSx}>
                   {t.navGetStarted}
                 </Button>
               </Stack>
@@ -633,6 +561,187 @@ function isEmailLike(value: string): boolean {
   if (domain.includes("@") || /\s/.test(value)) return false;
   const dot = domain.lastIndexOf(".");
   return dot > 0 && dot < domain.length - 1;
+}
+
+// ─── Shared landing markup helpers (single source for repeated blocks) ───────
+
+/** Shimmer-sweep CTA button styling (nav, mobile drawer, cookie dialog). */
+const ctaShimmerSx = {
+  position: "relative",
+  overflow: "hidden",
+  bgcolor: "var(--mui-palette-secondary-main)",
+  color: "var(--mui-palette-onSecondary)",
+  fontWeight: 700,
+  textTransform: "none",
+  borderRadius: 2,
+  "&::after": {
+    content: '""',
+    position: "absolute",
+    top: 0,
+    left: "-100%",
+    width: "100%",
+    height: "100%",
+    background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+    transition: "left 0.5s ease",
+  },
+  "&:hover": {
+    bgcolor: "var(--mui-palette-secondary-dark)",
+    "&::after": { left: "100%" },
+  },
+};
+
+/** Dark/light mode toggle — rendered in both the desktop and mobile header rows. */
+function ColorModeToggleButton({
+  mode,
+  onToggle,
+  ariaLabel,
+}: Readonly<{ mode: string | undefined; onToggle: () => void; ariaLabel: string }>): ReactNode {
+  return (
+    <Button
+      onClick={onToggle}
+      sx={{
+        minWidth: "auto",
+        p: 1,
+        color: "var(--mui-palette-secondary-light)",
+        borderRadius: 2,
+        "&:hover": { bgcolor: "color-mix(in srgb, var(--mui-palette-secondary-main) 15%, transparent)" },
+      }}
+      aria-label={ariaLabel}
+    >
+      {mode === "dark" ? <LightModeOutlined /> : <DarkModeOutlined />}
+    </Button>
+  );
+}
+
+/** Spinning diamond ornament used on both sides of the Islamic divider. */
+function DividerDiamond(): ReactNode {
+  return (
+    <Box
+      sx={{
+        width: 12,
+        height: 12,
+        transform: "rotate(45deg)",
+        bgcolor: "var(--mui-palette-secondary-main)",
+        opacity: 0.85,
+        mx: 2,
+        flexShrink: 0,
+        animation: "dividerSpin 12s linear infinite",
+        boxShadow: "0 0 10px rgba(184,115,51,0.55)",
+        "@keyframes dividerSpin": {
+          "0%": { transform: "rotate(45deg)" },
+          "100%": { transform: "rotate(405deg)" },
+        },
+      }}
+    />
+  );
+}
+
+const sectionBadgeLineSx = {
+  width: 24,
+  height: 2,
+  bgcolor: "var(--mui-palette-secondary-main)",
+};
+
+/** Overline badge with a leading rule (optionally a trailing rule) for section headers. */
+function SectionBadge({
+  label,
+  showTrailingLine = false,
+}: Readonly<{ label: ReactNode; showTrailingLine?: boolean }>): ReactNode {
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+      <Box aria-hidden sx={sectionBadgeLineSx} />
+      <Typography
+        variant="overline"
+        sx={{
+          fontWeight: 700,
+          letterSpacing: "0.12em",
+          color: "var(--mui-palette-secondary-main)",
+          lineHeight: 1,
+        }}
+      >
+        {label}
+      </Typography>
+      {showTrailingLine ? <Box aria-hidden sx={sectionBadgeLineSx} /> : null}
+    </Stack>
+  );
+}
+
+/** Circular prev/next arrow for the testimonials carousel. */
+function TestimonialNavButton({
+  side,
+  label,
+  disabled,
+  onClick,
+}: Readonly<{
+  side: "left" | "right";
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+}>): ReactNode {
+  return (
+    <IconButton
+      aria-label={label}
+      onClick={onClick}
+      disabled={disabled}
+      sx={{
+        position: "absolute",
+        top: "50%",
+        [side]: { xs: -8, md: -48 },
+        transform: "translateY(-50%)",
+        zIndex: 2,
+        width: 40,
+        height: 40,
+        border: "2px solid var(--mui-palette-secondary-main)",
+        borderRadius: "50%",
+        color: "var(--mui-palette-secondary-main)",
+        "&:hover": {
+          bgcolor: "var(--mui-palette-secondary-main)",
+          color: "var(--mui-palette-onSecondary)",
+        },
+        "&:disabled": {
+          opacity: 0.3,
+          borderColor: "var(--mui-palette-divider)",
+          color: "var(--mui-palette-text-disabled)",
+        },
+      }}
+    >
+      {side === "left" ? <KeyboardArrowLeft /> : <KeyboardArrowRight />}
+    </IconButton>
+  );
+}
+
+/** Newsletter section shell with the pulsing accent border (used by both success and form states). */
+const newsletterShellSx = {
+  position: "relative",
+  bgcolor: "var(--mui-palette-background-paper)",
+  py: { xs: 6, md: 10 },
+  pl: 3,
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 5,
+    background: "linear-gradient(to bottom, var(--mui-palette-secondary-main), transparent)",
+    animation: "newsletterBorderPulse 2s ease-in-out infinite",
+    "@keyframes newsletterBorderPulse": {
+      "0%, 100%": { opacity: 0.7 },
+      "50%": { opacity: 1 },
+    },
+  },
+};
+
+function NewsletterShell({ children }: Readonly<{ children: ReactNode }>): ReactNode {
+  return (
+    <Box component="section" sx={newsletterShellSx}>
+      <Container maxWidth="lg">
+        <Stack spacing={3} sx={{ alignItems: "center", textAlign: "center", maxWidth: 560, mx: "auto" }}>
+          {children}
+        </Stack>
+      </Container>
+    </Box>
+  );
 }
 
 function ScrollProgressBar(): ReactNode {
@@ -1164,23 +1273,7 @@ function IslamicDivider(): ReactNode {
         }}
       />
       {/* Center diamond ornament */}
-      <Box
-        sx={{
-          width: 12,
-          height: 12,
-          transform: "rotate(45deg)",
-          bgcolor: "var(--mui-palette-secondary-main)",
-          opacity: 0.85,
-          mx: 2,
-          flexShrink: 0,
-          animation: "dividerSpin 12s linear infinite",
-          boxShadow: "0 0 10px rgba(184,115,51,0.55)",
-          "@keyframes dividerSpin": {
-            "0%": { transform: "rotate(45deg)" },
-            "100%": { transform: "rotate(405deg)" },
-          },
-        }}
-      />
+      <DividerDiamond />
       <Box
         sx={{
           width: 4,
@@ -1203,23 +1296,7 @@ function IslamicDivider(): ReactNode {
           flexShrink: 0,
         }}
       />
-      <Box
-        sx={{
-          width: 12,
-          height: 12,
-          transform: "rotate(45deg)",
-          bgcolor: "var(--mui-palette-secondary-main)",
-          opacity: 0.85,
-          mx: 2,
-          flexShrink: 0,
-          animation: "dividerSpin 12s linear infinite",
-          boxShadow: "0 0 10px rgba(184,115,51,0.55)",
-          "@keyframes dividerSpin": {
-            "0%": { transform: "rotate(45deg)" },
-            "100%": { transform: "rotate(405deg)" },
-          },
-        }}
-      />
+      <DividerDiamond />
       <Box
         sx={{
           flex: 1,
@@ -1643,21 +1720,7 @@ function VerseSection(): ReactNode {
       <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1 }}>
         <Stack spacing={4} sx={{ alignItems: "center", textAlign: "center" }}>
           {/* Badge */}
-          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-            <Box aria-hidden sx={{ width: 24, height: 2, bgcolor: "var(--mui-palette-secondary-main)" }} />
-            <Typography
-              variant="overline"
-              sx={{
-                fontWeight: 700,
-                letterSpacing: "0.12em",
-                color: "var(--mui-palette-secondary-main)",
-                lineHeight: 1,
-              }}
-            >
-              {t.verseBadge}
-            </Typography>
-            <Box aria-hidden sx={{ width: 24, height: 2, bgcolor: "var(--mui-palette-secondary-main)" }} />
-          </Stack>
+          <SectionBadge label={t.verseBadge} showTrailingLine />
 
           {/* Title */}
           <Typography
@@ -2501,20 +2564,7 @@ function AchievementsSection(): ReactNode {
       <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1 }}>
         {/* Section header */}
         <Stack spacing={1.5} sx={{ mb: 5, maxWidth: 640 }}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-            <Box aria-hidden sx={{ width: 24, height: 2, bgcolor: "var(--mui-palette-secondary-main)" }} />
-            <Typography
-              variant="overline"
-              sx={{
-                fontWeight: 700,
-                letterSpacing: "0.12em",
-                color: "var(--mui-palette-secondary-main)",
-                lineHeight: 1,
-              }}
-            >
-              {t.achievementsBadge}
-            </Typography>
-          </Stack>
+          <SectionBadge label={t.achievementsBadge} />
           <Typography
             variant="h3"
             sx={{ fontWeight: 800, fontSize: { xs: 26, md: 34 }, letterSpacing: "-0.02em", lineHeight: 1.2, m: 0 }}
@@ -3131,64 +3181,15 @@ function TestimonialsSection(): ReactNode {
     >
       <Box sx={{ position: "relative" }}>
         {/* Previous button */}
-        <IconButton
-          aria-label={t.testimonialPrev}
-          onClick={handlePrev}
-          disabled={current === 0}
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: { xs: -8, md: -48 },
-            transform: "translateY(-50%)",
-            zIndex: 2,
-            width: 40,
-            height: 40,
-            border: "2px solid var(--mui-palette-secondary-main)",
-            borderRadius: "50%",
-            color: "var(--mui-palette-secondary-main)",
-            "&:hover": {
-              bgcolor: "var(--mui-palette-secondary-main)",
-              color: "var(--mui-palette-onSecondary)",
-            },
-            "&:disabled": {
-              opacity: 0.3,
-              borderColor: "var(--mui-palette-divider)",
-              color: "var(--mui-palette-text-disabled)",
-            },
-          }}
-        >
-          <KeyboardArrowLeft />
-        </IconButton>
+        <TestimonialNavButton side="left" label={t.testimonialPrev} onClick={handlePrev} disabled={current === 0} />
 
         {/* Next button */}
-        <IconButton
-          aria-label={t.testimonialNext}
+        <TestimonialNavButton
+          side="right"
+          label={t.testimonialNext}
           onClick={handleNext}
           disabled={current === total - 1}
-          sx={{
-            position: "absolute",
-            top: "50%",
-            right: { xs: -8, md: -48 },
-            transform: "translateY(-50%)",
-            zIndex: 2,
-            width: 40,
-            height: 40,
-            border: "2px solid var(--mui-palette-secondary-main)",
-            borderRadius: "50%",
-            color: "var(--mui-palette-secondary-main)",
-            "&:hover": {
-              bgcolor: "var(--mui-palette-secondary-main)",
-              color: "var(--mui-palette-onSecondary)",
-            },
-            "&:disabled": {
-              opacity: 0.3,
-              borderColor: "var(--mui-palette-divider)",
-              color: "var(--mui-palette-text-disabled)",
-            },
-          }}
-        >
-          <KeyboardArrowRight />
-        </IconButton>
+        />
 
         {/* Carousel viewport */}
         <Box sx={{ overflow: "hidden" }}>
@@ -3518,196 +3519,117 @@ function NewsletterSection(): ReactNode {
 
   if (success) {
     return (
-      <Box
-        component="section"
-        sx={{
-          position: "relative",
-          bgcolor: "var(--mui-palette-background-paper)",
-          py: { xs: 6, md: 10 },
-          pl: 3,
-          "&::before": {
-            content: '""',
-            position: "absolute",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            width: 5,
-            background: "linear-gradient(to bottom, var(--mui-palette-secondary-main), transparent)",
-            animation: "newsletterBorderPulse 2s ease-in-out infinite",
-            "@keyframes newsletterBorderPulse": {
-              "0%, 100%": { opacity: 0.7 },
-              "50%": { opacity: 1 },
-            },
-          },
-        }}
-      >
-        <Container maxWidth="lg">
-          <Stack spacing={3} sx={{ alignItems: "center", textAlign: "center", maxWidth: 560, mx: "auto" }}>
-            <CheckIcon sx={{ fontSize: 48, color: "var(--mui-palette-secondary-main)" }} />
-            <Typography
-              variant="h3"
-              sx={{ fontWeight: 800, fontSize: { xs: 26, md: 34 }, letterSpacing: "-0.02em", lineHeight: 1.2, m: 0 }}
-            >
-              {t.newsletterSuccess}
-            </Typography>
-          </Stack>
-        </Container>
-      </Box>
+      <NewsletterShell>
+        <CheckIcon sx={{ fontSize: 48, color: "var(--mui-palette-secondary-main)" }} />
+        <Typography
+          variant="h3"
+          sx={{ fontWeight: 800, fontSize: { xs: 26, md: 34 }, letterSpacing: "-0.02em", lineHeight: 1.2, m: 0 }}
+        >
+          {t.newsletterSuccess}
+        </Typography>
+      </NewsletterShell>
     );
   }
 
   return (
-    <Box
-      component="section"
-      sx={{
-        position: "relative",
-        bgcolor: "var(--mui-palette-background-paper)",
-        py: { xs: 6, md: 10 },
-        pl: 3,
-        "&::before": {
-          content: '""',
-          position: "absolute",
-          top: 0,
-          left: 0,
-          bottom: 0,
-          width: 5,
-          background: "linear-gradient(to bottom, var(--mui-palette-secondary-main), transparent)",
-          animation: "newsletterBorderPulse 2s ease-in-out infinite",
-          "@keyframes newsletterBorderPulse": {
-            "0%, 100%": { opacity: 0.7 },
-            "50%": { opacity: 1 },
-          },
-        },
-      }}
-    >
-      <Container maxWidth="lg">
-        <Stack spacing={3} sx={{ alignItems: "center", textAlign: "center", maxWidth: 560, mx: "auto" }}>
-          {/* Badge */}
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              alignItems: "center",
-              px: 2,
-              py: 0.75,
-              borderRadius: 99,
-              border: "1px solid var(--mui-palette-secondary-main)",
-              bgcolor: "color-mix(in srgb, var(--mui-palette-secondary-main) 10%, transparent)",
+    <NewsletterShell>
+      {/* Badge */}
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "center",
+          px: 2,
+          py: 0.75,
+          borderRadius: 99,
+          border: "1px solid var(--mui-palette-secondary-main)",
+          bgcolor: "color-mix(in srgb, var(--mui-palette-secondary-main) 10%, transparent)",
+        }}
+      >
+        <Box
+          aria-hidden
+          sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "var(--mui-palette-secondary-light)" }}
+        />
+        <Typography
+          variant="caption"
+          sx={{ fontWeight: 700, letterSpacing: "0.12em", color: "var(--mui-palette-secondary-main)" }}
+        >
+          {t.newsletterBadge}
+        </Typography>
+      </Stack>
+
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+        <MailIcon sx={{ fontSize: 32, color: "var(--mui-palette-secondary-main)" }} />
+        <Typography
+          variant="h3"
+          sx={{ fontWeight: 800, fontSize: { xs: 26, md: 34 }, letterSpacing: "-0.02em", lineHeight: 1.2, m: 0 }}
+        >
+          {t.newsletterTitle}
+        </Typography>
+      </Stack>
+
+      <Typography variant="body1" sx={{ color: "var(--mui-palette-text-secondary)", lineHeight: 1.6, fontSize: 16 }}>
+        {t.newsletterSubtitle}
+      </Typography>
+
+      {/* Email input row */}
+      <Box component="form" onSubmit={handleNewsletterSubmit} sx={{ width: "100%", mt: 1 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+          <MuiTextField
+            fullWidth
+            placeholder={t.newsletterPlaceholder}
+            value={email}
+            onChange={e => {
+              setEmail(e.target.value);
+              setError(false);
             }}
+            variant="outlined"
+            type="email"
+            size="small"
+            error={error}
+            helperText={error ? t.newsletterError : undefined}
+            sx={{
+              bgcolor: "var(--mui-palette-background-default)",
+              borderRadius: 2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                "& fieldset": {
+                  borderColor: error ? "var(--mui-palette-error-main)" : "var(--mui-palette-divider)",
+                  transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+                },
+                "&:hover fieldset": {
+                  borderColor: error ? "var(--mui-palette-error-main)" : "var(--mui-palette-secondary-main)",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: error ? "var(--mui-palette-error-main)" : "var(--mui-palette-secondary-main)",
+                  ...(error
+                    ? {}
+                    : {
+                        animation: "pulseInputBorder 2s ease-in-out infinite",
+                        "@keyframes pulseInputBorder": {
+                          "0%, 100%": { boxShadow: "0 0 0 0 rgba(184,115,51,0.3)" },
+                          "50%": { boxShadow: "0 0 0 4px rgba(184,115,51,0.08)" },
+                        },
+                      }),
+                },
+              },
+            }}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading}
+            sx={{ ...ctaShimmerSx, px: 3, whiteSpace: "nowrap" }}
           >
-            <Box
-              aria-hidden
-              sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "var(--mui-palette-secondary-light)" }}
-            />
-            <Typography
-              variant="caption"
-              sx={{ fontWeight: 700, letterSpacing: "0.12em", color: "var(--mui-palette-secondary-main)" }}
-            >
-              {t.newsletterBadge}
-            </Typography>
-          </Stack>
-
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-            <MailIcon sx={{ fontSize: 32, color: "var(--mui-palette-secondary-main)" }} />
-            <Typography
-              variant="h3"
-              sx={{ fontWeight: 800, fontSize: { xs: 26, md: 34 }, letterSpacing: "-0.02em", lineHeight: 1.2, m: 0 }}
-            >
-              {t.newsletterTitle}
-            </Typography>
-          </Stack>
-
-          <Typography
-            variant="body1"
-            sx={{ color: "var(--mui-palette-text-secondary)", lineHeight: 1.6, fontSize: 16 }}
-          >
-            {t.newsletterSubtitle}
-          </Typography>
-
-          {/* Email input row */}
-          <Box component="form" onSubmit={handleNewsletterSubmit} sx={{ width: "100%", mt: 1 }}>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-              <MuiTextField
-                fullWidth
-                placeholder={t.newsletterPlaceholder}
-                value={email}
-                onChange={e => {
-                  setEmail(e.target.value);
-                  setError(false);
-                }}
-                variant="outlined"
-                type="email"
-                size="small"
-                error={error}
-                helperText={error ? t.newsletterError : undefined}
-                sx={{
-                  bgcolor: "var(--mui-palette-background-default)",
-                  borderRadius: 2,
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 2,
-                    "& fieldset": {
-                      borderColor: error ? "var(--mui-palette-error-main)" : "var(--mui-palette-divider)",
-                      transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: error ? "var(--mui-palette-error-main)" : "var(--mui-palette-secondary-main)",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: error ? "var(--mui-palette-error-main)" : "var(--mui-palette-secondary-main)",
-                      ...(error
-                        ? {}
-                        : {
-                            animation: "pulseInputBorder 2s ease-in-out infinite",
-                            "@keyframes pulseInputBorder": {
-                              "0%, 100%": { boxShadow: "0 0 0 0 rgba(184,115,51,0.3)" },
-                              "50%": { boxShadow: "0 0 0 4px rgba(184,115,51,0.08)" },
-                            },
-                          }),
-                    },
-                  },
-                }}
-              />
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={loading}
-                sx={{
-                  position: "relative",
-                  overflow: "hidden",
-                  bgcolor: "var(--mui-palette-secondary-main)",
-                  color: "var(--mui-palette-onSecondary)",
-                  fontWeight: 700,
-                  textTransform: "none",
-                  borderRadius: 2,
-                  px: 3,
-                  whiteSpace: "nowrap",
-                  "&::after": {
-                    content: '""',
-                    position: "absolute",
-                    top: 0,
-                    left: "-100%",
-                    width: "100%",
-                    height: "100%",
-                    background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
-                    transition: "left 0.5s ease",
-                  },
-                  "&:hover": {
-                    bgcolor: "var(--mui-palette-secondary-dark)",
-                    "&::after": { left: "100%" },
-                  },
-                }}
-              >
-                {loading ? <CircularProgress size={20} color="inherit" /> : t.newsletterButton}
-              </Button>
-            </Stack>
-          </Box>
-
-          <Typography variant="caption" sx={{ opacity: 0.6, mt: 1 }}>
-            {t.newsletterDisclaimer}
-          </Typography>
+            {loading ? <CircularProgress size={20} color="inherit" /> : t.newsletterButton}
+          </Button>
         </Stack>
-      </Container>
-    </Box>
+      </Box>
+
+      <Typography variant="caption" sx={{ opacity: 0.6, mt: 1 }}>
+        {t.newsletterDisclaimer}
+      </Typography>
+    </NewsletterShell>
   );
 }
 
@@ -4537,33 +4459,7 @@ function CookieConsent(): ReactNode {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button
-            onClick={handleSaveCookieSettings}
-            variant="contained"
-            sx={{
-              position: "relative",
-              overflow: "hidden",
-              bgcolor: "var(--mui-palette-secondary-main)",
-              color: "var(--mui-palette-onSecondary)",
-              fontWeight: 700,
-              textTransform: "none",
-              borderRadius: 2,
-              "&::after": {
-                content: '""',
-                position: "absolute",
-                top: 0,
-                left: "-100%",
-                width: "100%",
-                height: "100%",
-                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
-                transition: "left 0.5s ease",
-              },
-              "&:hover": {
-                bgcolor: "var(--mui-palette-secondary-dark)",
-                "&::after": { left: "100%" },
-              },
-            }}
-          >
+          <Button onClick={handleSaveCookieSettings} variant="contained" sx={ctaShimmerSx}>
             {t.cookieDialogSave}
           </Button>
         </DialogActions>
@@ -4599,20 +4495,7 @@ function SectionWrapper({
     >
       <Container maxWidth="lg">
         <Stack spacing={1.5} sx={{ mb: 5, maxWidth: 640 }}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-            <Box aria-hidden sx={{ width: 24, height: 2, bgcolor: "var(--mui-palette-secondary-main)" }} />
-            <Typography
-              variant="overline"
-              sx={{
-                fontWeight: 700,
-                letterSpacing: "0.12em",
-                color: "var(--mui-palette-secondary-main)",
-                lineHeight: 1,
-              }}
-            >
-              {badge}
-            </Typography>
-          </Stack>
+          <SectionBadge label={badge} />
           {/* Decorative diamond */}
           <Box
             aria-hidden

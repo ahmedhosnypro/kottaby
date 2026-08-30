@@ -2,6 +2,7 @@ import { INITIAL_DEMO_USERS } from "@/backend/db/seeds/users";
 import { ConflictError } from "@/backend/lib/errors";
 import { logger } from "@/backend/lib/logger";
 import { StudentTrialService } from "@/backend/services/students/student-trial.service";
+import type { RegistrationReturnType } from "@/backend/types";
 
 /**
  * Trial-grant state for a single demo student resolved by the seed step.
@@ -17,8 +18,14 @@ interface ResolvedTrialState {
 
 /**
  * Demo student seeder — reconciles the one-time free-trial grant for every
- * demo student declared in `INITIAL_DEMO_USERS` through the production student
- * trial provisioning service.
+ * demo student through the production student trial provisioning service.
+ *
+ * The student email list is passed in from the users seed step (master
+ * controller context) for students the users seeder just registered. The
+ * users-step result only contains newly created rows — on re-runs those users
+ * already exist and are absent from the result — so the reconcile falls back
+ * to the shared `INITIAL_DEMO_USERS` specs for any demo student not covered
+ * by the passed-in result.
  *
  * The grant is invoked ONLY when the student row's `trialGrantedAt` marker is
  * `null`. On re-runs the marker is already set, so the seed step skips the
@@ -28,18 +35,20 @@ interface ResolvedTrialState {
  * way). Demo user creation itself stays owned by the user seeder; this step
  * assumes those rows already exist by the time it runs.
  */
-export async function seedOrGet(): Promise<ResolvedTrialState[]> {
+export async function seedOrGet(usersResult: readonly RegistrationReturnType[] = []): Promise<ResolvedTrialState[]> {
   const locale = "en";
-  const demoStudentSpecs = INITIAL_DEMO_USERS.filter(spec => spec.role === "student");
+  const fromUsersStep = usersResult.filter(user => user.role === "student").map(user => user.email);
+  const fromDemoSpecs = INITIAL_DEMO_USERS.filter(spec => spec.role === "student").map(spec => spec.email);
+  const demoStudentEmails = [...new Set([...fromUsersStep, ...fromDemoSpecs])];
 
-  logger.info(`Reconciling trial grant for ${demoStudentSpecs.length} demo student(s)...`);
+  logger.info(`Reconciling trial grant for ${demoStudentEmails.length} demo student(s)...`);
 
   const resolved: ResolvedTrialState[] = [];
 
-  await demoStudentSpecs.reduce<Promise<void>>(async (previous, spec) => {
+  await demoStudentEmails.reduce<Promise<void>>(async (previous, email) => {
     await previous;
 
-    const state = await StudentTrialService.findTrialGrantStateByEmail(spec.email);
+    const state = await StudentTrialService.findTrialGrantStateByEmail(email);
     if (!state) {
       logger.info("Demo student row not found, skipping trial reconcile");
       return;
@@ -51,7 +60,7 @@ export async function seedOrGet(): Promise<ResolvedTrialState[]> {
         logger.info("Granted free trial to demo student");
       } catch (err) {
         if (err instanceof ConflictError) {
-          const rechecked = await StudentTrialService.findTrialGrantStateByEmail(spec.email);
+          const rechecked = await StudentTrialService.findTrialGrantStateByEmail(email);
           if (rechecked?.trialGrantedAt) {
             logger.info("Demo student trial grant confirmed after concurrent grant");
           } else {

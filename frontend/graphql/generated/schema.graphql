@@ -15,6 +15,24 @@ enum ApplicantStatus {
   Pending
 }
 
+"""Input fields required to create a new subscription plan."""
+input CreatePlanInput {
+  """3-letter uppercase currency code (e.g. 'EGP')."""
+  currency: String!
+
+  """Plan duration in days (integer >= 1)."""
+  intervalDays: Int!
+
+  """Exact price formatted as numeric string (e.g. '150.00')."""
+  price: String!
+
+  """Total sessions included (integer >= 1)."""
+  sessionCount: Int!
+
+  """Plan title (1..255 characters)."""
+  title: String!
+}
+
 """
 A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
 """
@@ -59,6 +77,12 @@ type LogoutPayload {
 }
 
 type Mutation {
+  """Creates a new subscription plan in the catalog (Admin only)."""
+  createPlan(
+    """Input fields for the new subscription plan."""
+    input: CreatePlanInput!
+  ): Plan!
+
   """
   Authenticate with email + password. Returns the authenticated user + access + refresh tokens. The access_token + refresh_token + session_id are also set as httpOnly cookies.
   """
@@ -74,10 +98,69 @@ type Mutation {
   """
   refreshToken(refreshToken: String!): RefreshTokenPayload!
   registerUser(input: RegisterUserInput!): User!
+
+  """Activates or deactivates an existing subscription plan (Admin only)."""
+  setPlanActiveStatus(
+    """ID of the subscription plan."""
+    id: ID!
+
+    """Target active state for the plan."""
+    isActive: Boolean!
+  ): Plan!
+
+  """Updates mutable fields on an existing subscription plan (Admin only)."""
+  updatePlan(
+    """ID of the subscription plan to update."""
+    id: ID!
+
+    """Updated fields for the subscription plan."""
+    input: UpdatePlanInput!
+  ): Plan!
+}
+
+"""A subscription plan in the Kottaby catalog."""
+type Plan {
+  """Timestamp when the plan record was created."""
+  createdAt: String!
+
+  """Three-letter ISO currency code (e.g. EGP, USD)."""
+  currency: String!
+
+  """Timestamp when the plan was deactivated, or null if currently active."""
+  deactivatedAt: String
+
+  """Unique plan identifier (Apollo cache normalization key)."""
+  id: ID!
+
+  """Duration of the billing/service cycle in days."""
+  intervalDays: Int!
+
+  """
+  Flag indicating whether this plan is actively offered in the student catalog.
+  """
+  isActive: Boolean!
+
+  """Plan price represented as an exact decimal string."""
+  price: String!
+
+  """Number of lesson sessions included in this plan."""
+  sessionCount: Int!
+
+  """Human-readable title of the subscription plan."""
+  title: String!
+
+  """Timestamp when the plan record was last modified."""
+  updatedAt: String!
 }
 
 type Query {
   _health: HealthCheck!
+
+  """Admin-only query to list plans, optionally including inactive plans."""
+  adminPlans(
+    """Whether to include deactivated plans in the returned list."""
+    includeInactive: Boolean = true
+  ): [Plan!]!
   findStudentByHandshakeCode(code: String!): HandshakeCodeLookup
 
   """
@@ -86,6 +169,9 @@ type Query {
   me: User
   myApplicantProfile: ApplicantProfile
   myHandshakeCode: String!
+
+  """Returns the active subscription plans catalog for authenticated users."""
+  planCatalog: [Plan!]!
 
   """
   Returns the canonical list of recitation readings (Qira'at) for the registration form selector. Public — no authentication required. The values are stable API identifiers; display labels are resolved client-side via the i18n recitation namespace.
@@ -131,6 +217,24 @@ input RegisterUserInput {
   phone: String!
   preferredRecitation: RecitationReading
   role: RegisterPublicRole!
+}
+
+"""Mutable fields for updating an existing subscription plan."""
+input UpdatePlanInput {
+  """Updated currency code."""
+  currency: String
+
+  """Updated duration in days."""
+  intervalDays: Int
+
+  """Updated price string."""
+  price: String
+
+  """Updated session count."""
+  sessionCount: Int
+
+  """Updated plan title."""
+  title: String
 }
 
 type User {

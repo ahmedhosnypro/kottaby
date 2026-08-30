@@ -3,6 +3,7 @@
 - **Registration: see `docs/auth/user-registration.md` for the role→child mapping, handshake generation, and atomicity pattern.**
 - **Handshake-code discovery: `StudentHandshakeService` (`backend/services/students/student-handshake.service.ts`) answers a parent code lookup with ONLY the minimal masked payload — `{ maskedName, linkable }`, never an id or any other field; see `docs/parents/handshake-code-discovery.md` for the full contract.**
 - **Auth service: see `docs/auth/jwt-authentication-service.md` for the JWT auth contract (token claims, cookie matrix, redirect-loop fix, governance gate, `AuthService.login`/`refreshToken`/`getMe`, `assertUserActive`, DEV2-002 RBAC consumption guide).**
+- **Plan catalog service: see `docs/billing/plan-catalog.md` for plan catalog operations, forward-only price edits, and guarded state-transition semantics.**
 - **Teacher applicant lifecycle: applicant lifecycle logic lives in `ApplicantLifecycleService` (`backend/services/teachers/`) — the cooldown/attempt contracts (`assertCanPurchaseVerification`, `recordReapplication`, strict-`>` `applicants.cooldown_until` reads, REQ-014/015/016) are owned there; see `docs/teachers/applicant-lifecycle.md`.**
 - Student trial provisioning flows exclusively through `StudentTrialService.grantFreeTrial` (grant-once, guarded UPDATE). See `docs/students/free-trial-provisioning.md`.
 - **Domain-Driven Architecture**: Service layers must be constructed per domain of concern (e.g., `PermissionsService`, `ScheduleService`).

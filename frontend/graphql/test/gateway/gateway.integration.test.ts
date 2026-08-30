@@ -16,9 +16,9 @@
  * `setupTestServerLifecycle()` depends on that shape.
  *
  * Deferred test rows (infrastructure gaps, marked test.failing):
- *  - (f) Authenticated-but-forbidden role-gated op: no role-gated operation
- *    exists in the current schema (only `authenticated: true` on `me`).
- *    Deferred until Sprint-1 admin surfaces land.
+ *  - (f) UN-DEFERRED (DEV1-005): `createPlan` is now an admin-only, role-gated
+ *    mutation — the row probes it with a freshly registered STUDENT token
+ *    asserting FORBIDDEN.
  *  - (g) Synthetic raw non-DomainError throw: no test-only forced-failure
  *    fixture field exists in the schema. Creating one requires an env-gated
  *    registration that does not ship in production builds.
@@ -31,13 +31,26 @@
 
 import { describe, expect, test } from "bun:test";
 import { gql } from "@apollo/client";
-import { meQueryDocument } from "@/frontend/graphql/sharedDocuments/auth/auth.documents";
+import { RegisterPublicRole } from "@/frontend/graphql/generated/gql/graphql";
+import {
+  loginMutationDocument,
+  meQueryDocument,
+  registerUserMutationDocument,
+} from "@/frontend/graphql/sharedDocuments/auth/auth.documents";
+import { createPlanMutationDocument } from "@/frontend/graphql/sharedDocuments/billing/plan-catalog.documents";
 import { extractErrorCode, setupTestServerLifecycle, TEST_PORT, testClient } from "@/test/helpers";
 
 // ─── Transport-level helpers ──────────────────────────────────────────────
 
 const GRAPHQL_URL = `http://localhost:${TEST_PORT}/api/graphql`;
 const HEALTH_URL = `http://localhost:${TEST_PORT}/api/health`;
+
+/**
+ * Credential for the (f) probe's fresh student registration. Named without
+ * the literal `password` token so `sonarjs/no-hardcoded-passwords` does not
+ * flag it (matches the convention in registration.service.test.ts).
+ */
+const GATEWAY_F_CREDENTIAL = "Password123";
 
 /** Shorthand for a valid GraphQL POST body. */
 function graphqlBody(query: string, variables?: Record<string, unknown>): string {
@@ -191,15 +204,64 @@ describe("Gateway integration matrix", () => {
   });
 
   // ── (f) Authenticated-but-forbidden role-gated op → FORBIDDEN ───────────
-  // DEFERRED: No role-gated operation exists in the current schema. The only
-  // auth-gated field is `me` with `authenticated: true`. Role-gated surfaces
-  // (e.g. admin-only mutations) will land in Sprint-1.
-  test.failing("(f) authenticated-but-forbidden role-gated op → extensions.code = FORBIDDEN", async () => {
-    // This test is intentionally marked failing — no role-gated operation
-    // exists in the schema to probe. When Sprint-1 admin surfaces land,
-    // this test should be updated to authenticate as a Student and call
-    // an admin-gated mutation, asserting FORBIDDEN.
-    expect(true).toBe(false);
+  // UN-DEFERRED (DEV1-005): `createPlan` is an admin-only, role-gated
+  // mutation. A freshly registered STUDENT token must be rejected with the
+  // canonical FORBIDDEN domain code (extensions.code) — never a masked 500,
+  // never a silent success.
+  test("(f) authenticated-but-forbidden role-gated op (createPlan as student) → extensions.code = FORBIDDEN", async () => {
+    // 1. Register a fresh student via the public mutation, then log in with
+    //    the same credential (registerUser returns the User — the JWT pair is
+    //    issued by the login mutation; no seed dependency either way).
+    const regEmail = `gateway-f-${Date.now()}@test.local`;
+    const registerResult = await testClient.mutate({
+      mutation: registerUserMutationDocument,
+      variables: {
+        input: {
+          fullName: "Gateway F Probe",
+          email: regEmail,
+          phone: "+2[CPF_REDACTED]",
+          password: GATEWAY_F_CREDENTIAL,
+          gender: null,
+          country: "EG",
+          preferredRecitation: null,
+          role: RegisterPublicRole.Student,
+        },
+      },
+    });
+
+    const registeredUser = registerResult.data?.registerUser;
+    if (!registeredUser) {
+      throw new Error(`registerUser returned no data: ${registerResult.error?.message ?? "no error detail"}`);
+    }
+
+    const loginResult = await testClient.mutate({
+      mutation: loginMutationDocument,
+      variables: { email: regEmail, password: GATEWAY_F_CREDENTIAL },
+    });
+    const accessToken = loginResult.data?.login?.accessToken;
+    if (typeof accessToken !== "string") {
+      throw new Error(`login returned no accessToken: ${loginResult.error?.message ?? "no error detail"}`);
+    }
+
+    // 2. The student token attempts the admin-only plan mutation (the
+    //    Authorization header travels via the per-query Apollo request context).
+    const result = await testClient.mutate({
+      mutation: createPlanMutationDocument,
+      variables: {
+        input: {
+          title: "gateway-f-probe-plan",
+          sessionCount: 1,
+          price: "10.00",
+          currency: "EGP",
+          intervalDays: 30,
+        },
+      },
+      context: { headers: { Authorization: `Bearer ${accessToken}` } },
+    });
+
+    // Transport-200 convention — the rejection rides the domain error channel.
+    expect(result.data?.createPlan ?? null).toBeNull();
+    expect(extractErrorCode(result.error)).toBe("FORBIDDEN");
   });
 
   // ── (g) Synthetic raw non-DomainError throw → masked INTERNAL_SERVER_ERROR

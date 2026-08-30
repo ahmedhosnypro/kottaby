@@ -5,6 +5,19 @@
  *
  * Keys are lowercase camelCase of the SCREAMING_SNAKE_CASE codes.
  */
+export interface PlanCatalogErrorsLabels {
+  readonly planNotFound: string;
+  readonly planAlreadyInactive: string;
+  readonly planAlreadyActive: string;
+  readonly planTitleRequired: string;
+  readonly planTitleTooLong: string;
+  readonly planSessionCountInvalid: string;
+  readonly planPriceInvalid: string;
+  readonly planCurrencyInvalid: string;
+  readonly planIntervalDaysInvalid: string;
+  readonly planPatchEmpty: string;
+}
+
 export interface ErrorsLabels {
   readonly unauthorized: string;
   readonly forbidden: string;
@@ -30,6 +43,7 @@ export interface ErrorsLabels {
   readonly tokenExpired: string;
   /** "You do not have permission to access this page." — role-mismatch deny. */
   readonly forbiddenRole: string;
+  readonly planCatalog: PlanCatalogErrorsLabels;
   /** "Teacher application not found." — self-applicants lookup miss → NotFoundError("APPLICANT"). */
   readonly applicantNotFound: string;
   /**
@@ -49,3 +63,7 @@ export interface ErrorsLabels {
   /** "The free trial credit has already been granted for this student." — re-grant attempt on a student whose trial_granted_at marker is non-null. */
   readonly trialAlreadyGranted: string;
 }
+
+export type ErrorMessageKey = {
+  [K in keyof ErrorsLabels]: ErrorsLabels[K] extends string ? K : never;
+}[keyof ErrorsLabels];

@@ -270,6 +270,9 @@
 | `recitation.user_id` → `session_id` (unique) | C.5 | One per session |
 | `home_work.current_surah_juz`, `revision_surah_juz` added | B.11 | Surah/Juz enum |
 | `users.last_active_at` added | B.15 | Inactivity tracking |
+| `plans.is_active`, `plans.deactivated_at` added | A.11 | Plan catalog deactivation & forward-only lifecycle |
 | 7 new enums created | Multiple | `session_type`, `session_intent`, `subscription_status`, `link_status`, `notification_type`, `audit_action_type`, `surah_juz_ref`, `teacher_request_preference` |
+
+All schema changes have been validated with `bun validate:dbml`.
 
 All schema changes have been validated against the Drizzle schema in `backend/db/schema/` (the sole structural ground truth).

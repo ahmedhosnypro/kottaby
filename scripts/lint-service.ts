@@ -341,7 +341,6 @@ class LintService {
     const maxWarningsFlag = options.maxWarnings !== undefined ? `--max-warnings ${options.maxWarnings}` : "";
 
     // Construct the command
-    const envPrefix = options.typeAware ? 'ESLINT_TYPE_AWARE="true"' : "";
     const concurrencySetting = options.typeAware ? "1" : CONCURRENCY;
     const nodeOptions = `${ESLINT_PATCH} --max-old-space-size=${MAX_OLD_SPACE_MB}`;
     // Type-aware mode toggles parserOptions/rules via ESLINT_TYPE_AWARE; sharing
@@ -349,8 +348,6 @@ class LintService {
     // (e.g. resolved merge conflicts). Use a dedicated cache file instead.
     const cacheLocation = options.typeAware ? ".eslintcache-type-aware" : ".eslintcache";
     const cmd = [
-      envPrefix,
-      `NODE_OPTIONS="${nodeOptions}"`,
       ESLINT_BIN,
       "x eslint",
       "--cache",
@@ -369,7 +366,12 @@ class LintService {
         cmd,
         {
           cwd: process.cwd(),
-          shell: "bash",
+          shell: process.platform === "win32" ? undefined : "bash",
+          env: {
+            ...process.env,
+            NODE_OPTIONS: nodeOptions,
+            ...(options.typeAware ? { ESLINT_TYPE_AWARE: "true" } : {}),
+          },
           timeout,
           maxBuffer: 50 * 1024 * 1024, // 50MB
         },

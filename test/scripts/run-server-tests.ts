@@ -337,12 +337,7 @@ function formatFinalReport(state: TestState, success: boolean, logPath: string, 
 
   out += `\n\x1b[1m🔍 ERROR DETAILS:\x1b[0m\n`;
   out += `${thinRule}\n`;
-  const errDetails =
-    state.failureReason ||
-    state.rawTestOutput
-      .filter(l => l.includes("fail") || l.includes("error:") || l.includes("Expected") || l.includes("Received"))
-      .join("\n") ||
-    "Server reported an unhandled exception.";
+  const errDetails = state.rawTestOutput.join("\n") || state.failureReason || "Server reported an unhandled exception.";
   out += `${deduplicateLines(errDetails)}\n`;
   out += `${thinRule}\n`;
 

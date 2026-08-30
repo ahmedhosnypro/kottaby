@@ -273,7 +273,15 @@ const MUTATION_SURFACE_INVENTORY_QUERY_DOCUMENT: DocumentNode = gql`
 `;
 
 /** The exhaustive live root-mutation inventory (ground truth at lock time). */
-const KNOWN_LIVE_MUTATION_FIELDS = ["login", "logout", "refreshToken", "registerUser"];
+const KNOWN_LIVE_MUTATION_FIELDS = [
+  "createPlan",
+  "login",
+  "logout",
+  "refreshToken",
+  "registerUser",
+  "setPlanActiveStatus",
+  "updatePlan",
+];
 /** Documented precedent surfaces that must ADOPT Rules #6/#7 when wired. */
 const DOCUMENTED_WARNING_SURFACES_PENDING = ["releaseQuotaIfDeducted", "deleteClassInstance"];
 

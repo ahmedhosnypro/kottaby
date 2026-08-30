@@ -1,14 +1,17 @@
 /**
- * `navItems` contract tests (paired with
- * `frontend/views/dashboard/navItems.ts`).
+ * Dashboard Navigation Items Unit Tests
  *
- * Locks the cross-namespace nav-label discrimination the sidebar depends on:
- * every nav item's label key is owned by EXACTLY ONE label bundle
- * (`DashboardLabels` for the shared shell entries, `HandshakeCodeLabels` for
- * feature-owned entries), and `resolveNavItemLabel` resolves from the OWNING
- * bundle in both locales. The compile-time guard (`NavLabelKey`) already makes
- * a future cross-namespace key collision a build error; these tests are the
- * runtime belt — a collision or a mis-rooted resolution fails here first.
+ * Verifies:
+ *  - REQ-054, REQ-064 (DEV1-005): Admin navigation contains "/admin/plans"
+ *    entry; non-admin roles (Student, Teacher, Parent) do NOT contain it.
+ *  - The cross-namespace nav-label discrimination the sidebar depends on:
+ *    every nav item's label key is owned by EXACTLY ONE label bundle
+ *    (`DashboardLabels` for the shared shell entries, `HandshakeCodeLabels`
+ *    for feature-owned entries), and `resolveNavItemLabel` resolves from the
+ *    OWNING bundle in both locales. The compile-time guard (`NavLabelKey`)
+ *    already makes a future cross-namespace key collision a build error;
+ *    these tests are the runtime belt — a collision or a mis-rooted
+ *    resolution fails here first.
  *
  * Translation discipline: assertions reference ONLY label objects resolved
  * through the namespace handles (`Dashboard.getLabels`,
@@ -117,4 +120,22 @@ describe("getNavItemsForRole — role subsets and fallback", () => {
     const teacherRoutes = getNavItemsForRole(UserRole.Teacher).map(item => item.route);
     expect(teacherRoutes.includes("/wallet")).toBe(true);
   });
+});
+
+describe("Dashboard Nav Items (REQ-054, REQ-064)", () => {
+  test("Admin navigation includes /admin/plans item", () => {
+    const adminNav = getNavItemsForRole(UserRole.Admin);
+    const plansItem = adminNav.find(item => item.route === "/admin/plans");
+    expect(plansItem).toBeDefined();
+    expect(plansItem?.labelKey).toBe("plans");
+  });
+
+  test.each([UserRole.Student, UserRole.Teacher, UserRole.Parent])(
+    "Non-admin role %s does NOT include /admin/plans item",
+    role => {
+      const nav = getNavItemsForRole(role);
+      const plansItem = nav.find(item => item.route === "/admin/plans" || item.route === "/plans");
+      expect(plansItem).toBeUndefined();
+    }
+  );
 });

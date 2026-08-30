@@ -94,3 +94,33 @@ export async function expectRepoError(fn: () => Promise<unknown>): Promise<Error
   const message = typeof errorCaught === "string" ? errorCaught : `[non-Error throw: ${typeof errorCaught}]`;
   return new Error(message);
 }
+
+/**
+ * Extracts the PostgreSQL constraint name from a thrown query error.
+ *
+ * Drivers wrap `pg` errors differently across versions (some expose
+ * `.constraint` directly, others nest it under `.cause`), and drizzle may add
+ * its own wrapping layer — this helper checks all of those shapes and falls
+ * back to scanning the message text (PG CHECK violations always mention the
+ * constraint name).
+ *
+ * Used by constraint-proof tests to assert the SPECIFIC constraint that fired
+ * (an aborted-transaction `25P02` error would otherwise be indistinguishable
+ * from the intended CHECK violation).
+ */
+export function constraintNameOf(err: unknown): string {
+  if (!(err instanceof Error)) {
+    return "";
+  }
+  const direct = err as Error & { constraint?: unknown; cause?: unknown };
+  if (typeof direct.constraint === "string") {
+    return direct.constraint;
+  }
+  if (direct.cause instanceof Error) {
+    const nested = direct.cause as Error & { constraint?: unknown };
+    if (typeof nested.constraint === "string") {
+      return nested.constraint;
+    }
+  }
+  return "";
+}

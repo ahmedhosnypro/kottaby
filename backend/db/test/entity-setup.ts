@@ -16,6 +16,7 @@
  * `RegistrationService.registerUser(...)` directly in the test body.
  */
 import { randomUUID } from "node:crypto";
+import { plans } from "@/backend/db/schema/billing/plans";
 import { parents } from "@/backend/db/schema/parents/parents";
 import { students } from "@/backend/db/schema/students/students";
 import { applicants } from "@/backend/db/schema/teachers/applicants";
@@ -26,6 +27,7 @@ import type {
   ApplicantSelectType,
   DBTransaction,
   ParentSelectType,
+  PlanSelectType,
   StudentSelectType,
   UserSelectType,
 } from "@/backend/types";
@@ -141,6 +143,32 @@ export async function createTestAdmin(tx: DBTransaction, userId: number): Promis
   const [row] = await tx.insert(admin).values({ id: userId }).returning();
   if (!row) {
     throw new Error("createTestAdmin: insert returned no rows");
+  }
+  return row;
+}
+
+/**
+ * Creates a unique test subscription plan row with randomized unique title.
+ */
+export async function createTestPlan(
+  tx: DBTransaction,
+  overrides: Partial<PlanSelectType> = {}
+): Promise<PlanSelectType> {
+  const [row] = await tx
+    .insert(plans)
+    .values({
+      title: `Test Plan ${randomUUID().slice(0, 8)}`,
+      sessionCount: 8,
+      price: "200.00",
+      currency: "EGP",
+      intervalDays: 30,
+      isActive: true,
+      deactivatedAt: null,
+      ...overrides,
+    })
+    .returning();
+  if (!row) {
+    throw new Error("createTestPlan: insert returned no rows");
   }
   return row;
 }

@@ -56,23 +56,34 @@ import { PUBLIC_OPERATION_NAMES, PUBLIC_OPERATIONS } from "@/backend/lib/gateway
 
 // ─── Frozen baseline inventory (captured @ HEAD 8e5ebb8) ─────────────────────
 
-/** Root query field names present before the probe re-registration. */
-const PRE_3_1_QUERY_FIELDS = ["me", "recitationReadings"] as const;
+/** Root query field names present BEFORE dev3-003 Phase 3 (plus DEV1-005 plan-catalog additions). */
+const PRE_3_1_QUERY_FIELDS = ["adminPlans", "me", "planCatalog", "recitationReadings"] as const;
 /** Root mutation field names — must remain UNCHANGED forever. */
-const PRE_3_1_MUTATION_FIELDS = ["login", "logout", "refreshToken", "registerUser"] as const;
+const PRE_3_1_MUTATION_FIELDS = [
+  "createPlan",
+  "login",
+  "logout",
+  "refreshToken",
+  "registerUser",
+  "setPlanActiveStatus",
+  "updatePlan",
+] as const;
 /** GraphQL enum type names — every new Pothos enum must be pinned here by name. */
 const PRE_3_1_ENUMS = ["ApplicantStatus", "Gender", "RecitationReading", "RegisterPublicRole", "UserRole"] as const;
 /** Non-root object/enum/scalar SDL type names in the baseline (introspection `__*` and spec scalars excluded). */
 const PRE_3_1_TYPE_NAMES = [
+  "CreatePlanInput",
   "Gender",
   "LoginPayload",
   "LogoutPayload",
   "Mutation",
+  "Plan",
   "Query",
   "RecitationReading",
   "RefreshTokenPayload",
   "RegisterPublicRole",
   "RegisterUserInput",
+  "UpdatePlanInput",
   "User",
   "UserRole",
 ] as const;

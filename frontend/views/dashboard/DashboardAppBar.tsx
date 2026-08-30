@@ -102,8 +102,9 @@ export function DashboardAppBar({ onMenuClick, showMenuButton }: Readonly<Dashbo
             textDecoration: "none",
             color: theme.palette.text.primary,
             fontWeight: 700,
-            fontSize: 20,
+            fontSize: { xs: 16, sm: 20 },
             letterSpacing: "-0.01em",
+            whiteSpace: "nowrap",
             flexGrow: 1,
           })}
         >

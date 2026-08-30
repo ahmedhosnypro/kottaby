@@ -276,3 +276,21 @@ The handshake-code discovery surface (parent search by code, preceding this life
 | INV-E4 | Teacher evaluations (submitted by students) update `teacher.average_rating` (0-5 scale). |
 | INV-E5 | Student evaluations are aggregated from session reports and grades for cumulative performance metrics. |
 | INV-E6 | Evaluation records are permanently retained for dispute resolution and teacher re-evaluations. |
+
+---
+
+## 11. Plan Catalog Lifecycle
+
+### 11.1 States
+| State | Schema Representation | Description |
+|---|---|---|
+| Active | `plans.is_active = true`, `plans.deactivated_at IS NULL` | Publicly purchasable lesson package |
+| Inactive | `plans.is_active = false`, `plans.deactivated_at IS NOT NULL` | Deactivated package hidden from public catalog |
+
+### 11.2 Invariants
+| ID | Invariant |
+|---|---|
+| INV-PC1 | A deactivated plan (`is_active = false`) never appears in the public student/parent/teacher catalog (`planCatalog` query) and cannot be purchased. |
+| INV-PC2 | Deactivation or forward-only plan edits never alter or invalidate existing subscriptions or credited balances. |
+| INV-PC3 | Plan rows are never hard-deleted from PostgreSQL (`DELETE` is prohibited). Deactivation transitions `is_active` to `false` and sets `deactivated_at`. |
+
