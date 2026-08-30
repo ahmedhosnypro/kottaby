@@ -49,7 +49,7 @@ interface QueryResultLike<T extends Row = Row> {
 interface PgQueryConfig {
   text?: string;
   name?: string;
-  rowMode?: "array" | undefined;
+  rowMode?: "array";
   values?: ReadonlyArray<unknown>;
   types?: unknown;
 }
@@ -74,7 +74,7 @@ export interface PglitePoolLike {
 function normalizeArgs(
   textOrConfig: string | PgQueryConfig,
   params?: ReadonlyArray<unknown>
-): { text: string; params: ReadonlyArray<unknown> | undefined; rowMode?: "array" | undefined } {
+): { text: string; params: ReadonlyArray<unknown> | undefined; rowMode?: "array" } {
   if (typeof textOrConfig === "string") {
     return { text: textOrConfig, params, rowMode: undefined };
   }

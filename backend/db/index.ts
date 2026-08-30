@@ -34,7 +34,7 @@ type AnyPool = Pool | PglitePoolLike;
  * signatures are wider, so the runtime accepts everything this exposes.
  */
 type AnyQuery = (
-  textOrConfig: string | { text?: string; values?: ReadonlyArray<unknown>; rowMode?: "array" | undefined },
+  textOrConfig: string | { text?: string; values?: ReadonlyArray<unknown>; rowMode?: "array" },
   params?: ReadonlyArray<unknown>
 ) => Promise<QueryResult<QueryResultRow>>;
 

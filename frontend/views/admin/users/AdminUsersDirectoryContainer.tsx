@@ -319,6 +319,25 @@ interface StatsBarProps {
 }
 
 /**
+ * Renders the numeric value cell of a stats card. Uses early-return
+ * branches instead of a nested ternary so the JSX in `StatsBar` stays
+ * declarative (sonarjs/no-nested-conditional).
+ *
+ * Priority order: loading skeleton → loaded value → fallback em-dash
+ * (the em-dash covers both "no stats yet" and "stats present but field
+ * undefined"; both render identically so a single fallback is fine).
+ */
+function renderStatValue(loading: boolean, hasStats: boolean, value: number | undefined): ReactNode {
+  if (loading) {
+    return <Skeleton variant="text" width={28} sx={{ display: "inline-block" }} />;
+  }
+  if (hasStats) {
+    return value;
+  }
+  return "—";
+}
+
+/**
  * Clickable overview strip above the directory table. Each governance card
  * toggles the matching governance filter (the total card clears it); the
  * selected card is visually anchored (primary border + selected surface).
@@ -431,13 +450,7 @@ function StatsBar(props: StatsBarProps): ReactNode {
                   </Box>
                   <Box sx={{ minWidth: 0 }}>
                     <Typography variant="h5" component="span" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-                      {loading ? (
-                        <Skeleton variant="text" width={28} sx={{ display: "inline-block" }} />
-                      ) : stats ? (
-                        card.value
-                      ) : (
-                        "—"
-                      )}
+                      {renderStatValue(loading, Boolean(stats), card.value)}
                     </Typography>
                     <Typography
                       variant="body2"
@@ -558,7 +571,11 @@ function FilterBar(props: FilterBarProps): ReactNode {
             onChange={e => props.setSearchInput(e.target.value)}
             sx={{ minWidth: 220, flex: 1 }}
             slotProps={{
-              input: { startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: "text.secondary" }} /> },
+              input: {
+                startAdornment: (
+                  <SearchIcon fontSize="small" sx={theme => ({ mr: 1, color: theme.palette.text.secondary })} />
+                ),
+              },
             }}
           />
           {hasFilters && (
@@ -572,7 +589,7 @@ function FilterBar(props: FilterBarProps): ReactNode {
                 props.setCountryFilter("");
                 props.setSearchInput("");
               }}
-              sx={{ alignSelf: "center", minHeight: 44, color: "text.secondary" }}
+              sx={theme => ({ alignSelf: "center", minHeight: 44, color: theme.palette.text.secondary })}
             >
               {labels.filters.clear}
             </Button>
@@ -671,7 +688,7 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                     {hasFilters ? labels.emptyState.filteredTitle : labels.emptyState.title}
                   </Typography>
-                  <Typography color="text.secondary">
+                  <Typography sx={theme => ({ color: theme.palette.text.secondary })}>
                     {hasFilters ? labels.emptyState.filteredMessage : labels.emptyState.message}
                   </Typography>
                 </Stack>
@@ -708,7 +725,7 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
                   </Stack>
                   <StatusChip user={u} labels={labels} />
                 </Box>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={theme => ({ color: theme.palette.text.secondary })}>
                   {u.email}
                 </Typography>
                 <Box sx={{ display: "flex", gap: 1 }}>
@@ -792,9 +809,20 @@ interface CreateDialogProps {
     readonly password: string;
     readonly gender?: "Male" | "Female" | "Other";
     readonly country: string;
-    readonly role: "Student" | "Teacher" | "Parent";
+    readonly role: CreateUserDialogRole;
   }) => Promise<void>;
 }
+
+/**
+ * Role options the create-user surface can submit. Excludes `admin` —
+ * the runtime role-pre-guard rejects any admin-role tamper before the
+ * DB write (defense-in-depth on top of the structural `RegisterPublicRole`
+ * enum that already omits `admin`).
+ *
+ * Extracted as a named alias per `sonarjs/use-type-alias` (the inline
+ * three-arm string union was flagged).
+ */
+type CreateUserDialogRole = "Student" | "Teacher" | "Parent";
 
 function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogProps): ReactNode {
   const CREATE_GENDER_ID = "admin-users-create-gender";

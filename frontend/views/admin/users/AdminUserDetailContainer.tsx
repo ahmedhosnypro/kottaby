@@ -77,6 +77,107 @@ type Governance = "Active" | "Suspended" | "Blocked" | "Deleted";
 /** Entries fetched for the per-user activity timeline (server clamps 1..50). */
 const ACTIVITY_TIMELINE_LIMIT = 10;
 
+/**
+ * Derives the governance state from a detail-fragment's flags. `isDeleted`
+ * short-circuits first (a soft-deleted account renders as "Deleted" even
+ * when the now-immutable `suspended` / `isBlocked` flags are still set on
+ * the row — governance reads the deletion gate as authoritative).
+ *
+ * Extracted as a helper to keep `AdminUserDetailContainer`'s body free of
+ * nested ternaries (sonarjs/no-nested-conditional).
+ */
+function governanceOf(user: {
+  isDeleted: boolean | null;
+  isBlocked: boolean | null;
+  suspended: boolean | null;
+}): Governance {
+  if (user.isDeleted) return "Deleted";
+  if (user.isBlocked) return "Blocked";
+  if (user.suspended) return "Suspended";
+  return "Active";
+}
+
+/**
+ * Formats an ISO-8601 server timestamp or a `YYYY-MM-DD` calendar string
+ * using the bound locale `Intl.DateTimeFormat`. Returns "—" for empty
+ * input and the raw string when the input is not a parseable date.
+ *
+ * Used for both server timestamps (`lastActiveAt`, `createdAt`, `deletedAt`,
+ * …) via the date+time formatter and for calendar `dateOfBirth` strings
+ * via the date-only formatter — both call paths share the same null-guard
+ * + NaN-guard + format pipeline, so this single helper covers both.
+ */
+function formatTimestamp(raw: string | null | undefined, formatter: Intl.DateTimeFormat): string {
+  if (!raw) return "—";
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return raw;
+  return formatter.format(parsed);
+}
+
+/** Localized yes/no. */
+function formatBoolean(value: boolean, labels: AdminUsersLabels): string {
+  return value ? labels.detail.booleanValues.yes : labels.detail.booleanValues.no;
+}
+
+/** Localized gender label; "—" when not set. */
+function formatGender(g: GenderEnum | null | undefined, labels: AdminUsersLabels): string {
+  if (!g) return "—";
+  if (g === GenderEnum.Male) return labels.genderOptions.male;
+  if (g === GenderEnum.Female) return labels.genderOptions.female;
+  return labels.genderOptions.other;
+}
+
+/** Localized applicant-status label (exhaustive over the enum). */
+function formatApplicantStatus(s: ApplicantStatusEnum, labels: AdminUsersLabels): string {
+  switch (s) {
+    case ApplicantStatusEnum.Pending:
+      return labels.detail.applicantStatus.pending;
+    case ApplicantStatusEnum.InEvaluation:
+      return labels.detail.applicantStatus.inEvaluation;
+    case ApplicantStatusEnum.Passed:
+      return labels.detail.applicantStatus.passed;
+    case ApplicantStatusEnum.Failed:
+      return labels.detail.applicantStatus.failed;
+    default: {
+      const exhaustive: never = s;
+      return exhaustive;
+    }
+  }
+}
+
+/**
+ * Resolves a `Role` to its `Chip` color. Mirrors `rolePaletteKey` in
+ * `AdminUserAvatar` (single-source discipline). Switch keeps the mapping
+ * flat — no nested ternaries — and the `never` arm guarantees exhaustive
+ * coverage if the union grows.
+ */
+function roleChipColor(role: Role): "error" | "secondary" | "primary" | "default" {
+  switch (role) {
+    case "Admin":
+      return "error";
+    case "Teacher":
+      return "secondary";
+    case "Student":
+      return "primary";
+    default:
+      return "default";
+  }
+}
+
+/** Resolves a `Role` to its localized label (exhaustive switch). */
+function roleChipLabel(role: Role, labels: AdminUsersLabels): string {
+  switch (role) {
+    case "Admin":
+      return labels.roleLabels.admin;
+    case "Teacher":
+      return labels.roleLabels.teacher;
+    case "Student":
+      return labels.roleLabels.student;
+    default:
+      return labels.roleLabels.parent;
+  }
+}
+
 export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailContainerProps): ReactNode {
   const locale = useAppLocale();
   // Intl.DateTimeFormat instances are locale-bound; recreating per render is
@@ -95,42 +196,11 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
   // Render timestamps through the locale formatter; pass `dateOfBirth` through
   // the date-only formatter (the calendar string is timezone-naive so the
   // time-style branch is skipped).
-  const fmtTimestamp = (raw: string | null | undefined): string => {
-    if (!raw) return "—";
-    const parsed = new Date(raw);
-    if (Number.isNaN(parsed.getTime())) return raw;
-    return dateTimeFormatter.format(parsed);
-  };
-  const fmtDate = (raw: string | null | undefined): string => {
-    if (!raw) return "—";
-    const parsed = new Date(raw);
-    if (Number.isNaN(parsed.getTime())) return raw;
-    return dateFormatter.format(parsed);
-  };
-  const fmtBoolean = (value: boolean): string =>
-    value ? labels.detail.booleanValues.yes : labels.detail.booleanValues.no;
-  const fmtGender = (g: GenderEnum | null | undefined): string => {
-    if (!g) return "—";
-    if (g === GenderEnum.Male) return labels.genderOptions.male;
-    if (g === GenderEnum.Female) return labels.genderOptions.female;
-    return labels.genderOptions.other;
-  };
-  const fmtApplicantStatus = (s: ApplicantStatusEnum): string => {
-    switch (s) {
-      case ApplicantStatusEnum.Pending:
-        return labels.detail.applicantStatus.pending;
-      case ApplicantStatusEnum.InEvaluation:
-        return labels.detail.applicantStatus.inEvaluation;
-      case ApplicantStatusEnum.Passed:
-        return labels.detail.applicantStatus.passed;
-      case ApplicantStatusEnum.Failed:
-        return labels.detail.applicantStatus.failed;
-      default: {
-        const exhaustive: never = s;
-        return exhaustive;
-      }
-    }
-  };
+  const fmtTimestamp = (raw: string | null | undefined): string => formatTimestamp(raw, dateTimeFormatter);
+  const fmtDate = (raw: string | null | undefined): string => formatTimestamp(raw, dateFormatter);
+  const fmtBoolean = (value: boolean): string => formatBoolean(value, labels);
+  const fmtGender = (g: GenderEnum | null | undefined): string => formatGender(g, labels);
+  const fmtApplicantStatus = (s: ApplicantStatusEnum): string => formatApplicantStatus(s, labels);
 
   const { data, loading, error } = useQuery<AdminUserDetailQuery, AdminUserDetailQueryVariables>(
     adminUserDetailQueryDocument,
@@ -229,13 +299,7 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
 
   const user = data.adminUserDetail;
   const role = user.role as unknown as Role;
-  const governance: Governance = user.isDeleted
-    ? "Deleted"
-    : user.isBlocked
-      ? "Blocked"
-      : user.suspended
-        ? "Suspended"
-        : "Active";
+  const governance: Governance = governanceOf(user);
   const isReactivate = user.isDeleted ?? false;
 
   return (
@@ -468,49 +532,13 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
           <Typography variant="h6" component="h2" gutterBottom>
             {labels.activity.title}
           </Typography>
-          {activityLoading && !activityData ? (
-            <Stack sx={{ alignItems: "center", py: 4 }}>
-              <CircularProgress size={24} />
-            </Stack>
-          ) : activityError ? (
-            <Alert severity="warning">{labels.errorState.title}</Alert>
-          ) : (activityData?.adminUserActivity.length ?? 0) === 0 ? (
-            <Typography variant="body2" sx={theme => ({ color: theme.palette.text.secondary, py: 2 })}>
-              {labels.activity.empty}
-            </Typography>
-          ) : (
-            <Stack
-              divider={<Divider component="div" />}
-              sx={{ maxHeight: 384, overflowY: "auto", pr: 1 }}
-              aria-label={labels.activity.title}
-            >
-              {activityData?.adminUserActivity.map(entry => (
-                <Stack key={entry.id} spacing={1} sx={{ py: 1.5, minWidth: 0 }}>
-                  <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
-                    <ActivityActionChip action={entry.actionType} labels={labels} />
-                    <Typography variant="body2" sx={theme => ({ color: theme.palette.text.secondary })}>
-                      {labels.activity.byActor} {entry.actorName} · {fmtTimestamp(entry.createdAt)}
-                    </Typography>
-                  </Stack>
-                  {entry.changedFields && entry.changedFields.length > 0 && (
-                    <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
-                      <Typography variant="caption" sx={theme => ({ color: theme.palette.text.secondary })}>
-                        {labels.activity.changedFields}
-                      </Typography>
-                      {entry.changedFields.map(field => (
-                        <Chip
-                          key={field}
-                          size="small"
-                          variant="outlined"
-                          label={localizeAuditFieldName(field, labels)}
-                        />
-                      ))}
-                    </Stack>
-                  )}
-                </Stack>
-              ))}
-            </Stack>
-          )}
+          {renderActivityTimeline({
+            activityLoading,
+            activityData,
+            activityError,
+            labels,
+            fmtTimestamp,
+          })}
         </CardContent>
       </Card>
 
@@ -573,7 +601,7 @@ interface FieldProps {
 function Field({ label, value }: FieldProps): ReactNode {
   return (
     <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-      <Typography variant="body2" color="text.secondary" sx={{ minWidth: 160 }}>
+      <Typography variant="body2" sx={theme => ({ color: theme.palette.text.secondary, minWidth: 160 })}>
         {label}:
       </Typography>
       <Box sx={{ flex: 1 }}>{typeof value === "string" ? <Typography variant="body2">{value}</Typography> : value}</Box>
@@ -582,16 +610,8 @@ function Field({ label, value }: FieldProps): ReactNode {
 }
 
 function RoleChip({ role, labels }: { role: Role; labels: AdminUsersLabels }): ReactNode {
-  const color =
-    role === "Admin" ? "error" : role === "Teacher" ? "secondary" : role === "Student" ? "primary" : "default";
-  const label =
-    role === "Admin"
-      ? labels.roleLabels.admin
-      : role === "Teacher"
-        ? labels.roleLabels.teacher
-        : role === "Student"
-          ? labels.roleLabels.student
-          : labels.roleLabels.parent;
+  const color = roleChipColor(role);
+  const label = roleChipLabel(role, labels);
   return (
     <Chip
       size="small"
@@ -692,4 +712,84 @@ function localizeAuditFieldName(field: string, labels: AdminUsersLabels): string
     default:
       return field;
   }
+}
+
+/**
+ * Renders the body of the per-user activity-timeline card. Extracted to a
+ * top-level function so the main `AdminUserDetailContainer` body uses
+ * early-return branches instead of a three-way nested ternary in JSX
+ * (sonarjs/no-nested-conditional).
+ *
+ * Renders in priority order:
+ *  - loading skeleton (initial load only — refresh keeps stale data)
+ *  - inline error alert (a timeline failure never blocks the detail)
+ *  - empty-state message (zero audit rows for this user)
+ *  - the newest-first list of audit entries
+ */
+interface ActivityTimelineProps {
+  readonly activityLoading: boolean;
+  readonly activityData: AdminUserActivityQuery | undefined;
+  readonly activityError: unknown;
+  readonly labels: AdminUsersLabels;
+  readonly fmtTimestamp: (raw: string | null | undefined) => string;
+}
+
+function renderActivityTimeline({
+  activityLoading,
+  activityData,
+  activityError,
+  labels,
+  fmtTimestamp,
+}: ActivityTimelineProps): ReactNode {
+  if (activityLoading && !activityData) {
+    return (
+      <Stack sx={{ alignItems: "center", py: 4 }}>
+        <CircularProgress size={24} />
+      </Stack>
+    );
+  }
+  if (activityError) {
+    return <Alert severity="warning">{labels.errorState.title}</Alert>;
+  }
+  const entries = activityData?.adminUserActivity ?? [];
+  if (entries.length === 0) {
+    return (
+      <Typography variant="body2" sx={theme => ({ color: theme.palette.text.secondary, py: 2 })}>
+        {labels.activity.empty}
+      </Typography>
+    );
+  }
+  return (
+    <Stack
+      divider={<Divider component="div" />}
+      sx={{ maxHeight: 384, overflowY: "auto", pr: 1 }}
+      aria-label={labels.activity.title}
+    >
+      {entries.map(entry => (
+        <Stack key={entry.id} spacing={1} sx={{ py: 1.5, minWidth: 0 }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+            <ActivityActionChip action={entry.actionType} labels={labels} />
+            <Typography variant="body2" sx={theme => ({ color: theme.palette.text.secondary })}>
+              {labels.activity.byActor} {entry.actorName} · {fmtTimestamp(entry.createdAt)}
+            </Typography>
+          </Stack>
+          {entry.changedFields && entry.changedFields.length > 0 && (
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+              <Typography variant="caption" sx={theme => ({ color: theme.palette.text.secondary })}>
+                {labels.activity.changedFields}
+              </Typography>
+              {entry.changedFields.map(field => (
+                <Chip
+                  key={field}
+                  size="small"
+                  variant="outlined"
+                  label={localizeAuditFieldName(field, labels)}
+                />
+              ))}
+            </Stack>
+          )}
+        </Stack>
+      ))}
+    </Stack>
+  );
 }

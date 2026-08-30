@@ -230,7 +230,7 @@ export function DeleteConfirmDialog({ labels, user, loading, onClose, onConfirm 
         <Stack spacing={2}>
           {selfDeactivationAlert && <Alert severity="warning">{labels.selfDeactivationAlert.message}</Alert>}
           <Typography>{isReactivate ? labels.reactivateConfirm.message : labels.deleteConfirm.message}</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={theme => ({ color: theme.palette.text.secondary })}>
             {isReactivate ? labels.reactivateConfirm.confirm : labels.deleteConfirm.consequences}
           </Typography>
         </Stack>

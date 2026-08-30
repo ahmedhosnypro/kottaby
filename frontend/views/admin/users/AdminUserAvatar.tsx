@@ -22,8 +22,12 @@ export type AdminSurfaceRole = "Admin" | "Teacher" | "Student" | "Parent";
  * falls back to a neutral surface tint — the default MUI grey lane has no
  * `.main`/`.contrastText` pair, so the avatar uses `action.selected` with
  * normal text for that role.
+ *
+ * Not exported — only the `UserAvatar` component and the `AdminSurfaceRole`
+ * type leave this module, which keeps `react-refresh/only-export-components`
+ * happy (fast refresh treats a module with mixed exports as non-refreshable).
  */
-export function rolePaletteKey(role: AdminSurfaceRole): "error" | "secondary" | "primary" | null {
+function rolePaletteKey(role: AdminSurfaceRole): "error" | "secondary" | "primary" | null {
   if (role === "Admin") return "error";
   if (role === "Teacher") return "secondary";
   if (role === "Student") return "primary";

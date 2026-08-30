@@ -98,21 +98,31 @@ export function extractFieldErrors(error: unknown): Record<string, string> {
     seen.add(current);
     const fields = extractFieldsArray(current);
     if (fields) {
-      const map: Record<string, string> = {};
-      for (const entry of fields) {
-        if (entry && typeof entry === "object") {
-          const field = (entry as { field?: unknown }).field;
-          const message = (entry as { message?: unknown }).message;
-          if (typeof field === "string" && typeof message === "string") {
-            map[field] = message;
-          }
-        }
-      }
+      const map = buildFieldErrorsMap(fields);
       if (Object.keys(map).length > 0) return map;
     }
     current = (current as { cause?: unknown }).cause;
   }
   return {};
+}
+
+/**
+ * Reduces a raw `extensions.fields` array (each entry: `{ field, code,
+ * message }`) into a `{ [fieldName]: message }` map. Entries that lack a
+ * string `field` or string `message` are silently skipped — the form can
+ * only project per-field inline errors when both halves are present.
+ */
+function buildFieldErrorsMap(fields: unknown[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const entry of fields) {
+    if (!entry || typeof entry !== "object") continue;
+    const field = (entry as { field?: unknown }).field;
+    const message = (entry as { message?: unknown }).message;
+    if (typeof field === "string" && typeof message === "string") {
+      map[field] = message;
+    }
+  }
+  return map;
 }
 
 /** Reads `errors[0].extensions.fields` or `extensions.fields` from an error. */
