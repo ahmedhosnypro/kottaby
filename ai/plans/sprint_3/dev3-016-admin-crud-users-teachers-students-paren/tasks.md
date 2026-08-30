@@ -354,18 +354,18 @@
 
 ### 5.1 GraphQL Permission-Matrix Integration Suite
 
-- [ ] **5.1 GraphQL integration tests (all five operations)**
+- [x] **5.1 GraphQL integration tests (all five operations)**
   - Create integration suite (e.g., `test/graphql/admin/admin-users.integration.test.ts` per repo convention) using `setupTestServerLifecycle` + `testClient` (REQ-076)
   - Assert via `expectMutationError(…, expectedCode)` / query equivalents the FULL §3.4 matrix: anonymous → `UNAUTHORIZED` on all five; student/parent/teacher (applicant AND certified fixtures) → `FORBIDDEN` on all five; admin happy paths on all five; tampered `role=admin` create → `ADMIN_ROLE_CREATION_FORBIDDEN`; self-delete → `USER_SELF_DEACTIVATION_FORBIDDEN`; unknown ids → `USER_NOT_FOUND`
   - Assert `id` present in every payload (Apollo normalization), zero `passwordHash` in any response (deep key walk), and denial responses occur with ZERO `audit_logs` writes (count delta — JR-C-1 at API tier)
   - Run: `bun run test/scripts/run-test.ts <path>`
   - _Requirements: REQ-030, REQ-032, REQ-050, REQ-076_
-  - [ ] 5.1.SR **Semantic Review**: assertions use typed codes, never raw message strings; fixtures via entity-setup discipline; no monkey-patched auth.
-  - [ ] 5.1.OUT **Outcome**: `outcome/5.1-outcome.md` with the matrix evidence table.
+  - [x] 5.1.SR **Semantic Review**: assertions use typed codes, never raw message strings; fixtures via entity-setup discipline; no monkey-patched auth.
+  - [x] 5.1.OUT **Outcome**: `outcome/5.1-outcome.md` with the matrix evidence table.
 
 ### 5.2 Chaos, Concurrency & Static-Assertion Gates
 
-- [ ] **5.2 Chaos suite + static scans + differential baseline**
+- [x] **5.2 Chaos suite + static scans + differential baseline**
   - Chaos (REQ-043, REQ-075) — service-tier proofs via `Promise.allSettled` (extending 2.4.TE into an explicit suite file): (a) double soft-delete → one success + one `USER_ALREADY_DELETED`; (b) delete ⚡ reactivate → one winner, state consistent with winner; (c) concurrent patches → last-write-wins documented behavior; (d) double-create same email → one success + one CONFLICT (23505); (e) forced-failure create → directory count unchanged; PLUS BFLA token probes and enum/ID fuzz failing closed pre-DB
   - Static assertion scans (record command + result for each):
     - `git diff --name-only backend/db/schema/** backend/db/migration/**` → EMPTY (REQ-044)
@@ -376,7 +376,7 @@
   - Differential guard (REQ-022): existing suites for `registerUser`/`login`/`refreshToken`/`me`/`myApplicantProfile`/plan ops/session lifecycle run GREEN unmodified
   - Quality gates: `bun tsgo` / `bun biome:check` / lint-service counts == Phase-0 baseline + 0 new (REQ-079); codegen no-unrelated-drift
   - _Requirements: REQ-021, REQ-022, REQ-035, REQ-043, REQ-044, REQ-075, REQ-079_
-  - [ ] 5.2.OUT **Outcome**: `outcome/5.2-outcome.md` with every scan command + exit code + baseline delta table.
+  - [x] 5.2.OUT **Outcome**: `outcome/5.2-outcome.md` with every scan command + exit code + baseline delta table.
 
 ---
 
