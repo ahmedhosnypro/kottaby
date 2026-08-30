@@ -101,6 +101,9 @@ prompt/
 *.txt
 .playwright-cli
 
+# Browser login artifacts from scripts/browser-login.ts (contain session cookies)
+.browser-auth/
+
 skills-lock.json
 .agent-canvas
 
@@ -140,6 +143,5 @@ tool-results/
 # Sandbox runtime SQLite artifact (DB_FILE_NAME)
 db/app.sqlite
 skills/
-node_modules/
 /.zscripts
 /agent-ctx

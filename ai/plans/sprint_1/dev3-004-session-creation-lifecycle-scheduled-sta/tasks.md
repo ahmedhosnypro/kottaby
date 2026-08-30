@@ -1,440 +1,435 @@
-# Implementation Tasks: DEV3-004 — Session Creation & Lifecycle (Scheduled → Started → Completed/Cancelled)
+# tasks.md — DEV3-004: Session Creation & Lifecycle (Scheduled → Started → Completed/Cancelled)
 
-> **Plan of record:** `ai/plans/dev3-004-session-creation-lifecycle/`
-> **Specification:** `specs.md` (REQ-001..REQ-083) · **Architecture:** `plan.md` (D1..D10)
-> **Execution mode:** Spec-driven 8-Phase Lifecycle with mandatory subtask pipelines and outcome documentation
-> **UI tasks:** This ticket ships **zero UI** (non-goal #11, REQ-066). Frontend work is limited to GraphQL documents. No Frontend Views/Pages/UI Components exist, therefore the `.BF`/`.BS` Agent-Browser subtask pipeline applies to no task in this plan; the no-UI boundary is enforced by static scan task **4.2** and verified in Phase 6 waves. The Agent-Browser dual-loop requirement binds to the Sprint-2 matching UI ticket (forward note).
+> **Plan of record:** `ai/plans/sprint_1/dev3-004-session-creation-lifecycle-scheduled-sta/`
+> **Specs:** `specs.md` REQ-001..REQ-083, REQ-J1..REQ-J6 · **Plan:** `plan.md` §1–§6
+> **Ticket:** [DEV3-004] Session Creation & Lifecycle · Dev 3 · Sprint 1 · 5 SP
 
 ---
 
-## Non-Negotiable Execution Protocol (applies to EVERY task)
+## Non-Negotiable Execution Protocol (BINDING FOR EVERY TASK)
 
-1. **Pre-Execution Outcome Knowledge Read**: Before starting any task, read ALL existing files in `ai/plans/dev3-004-session-creation-lifecycle/outcome/`. Carry-forward notes and deferred-item states are authoritative context.
-2. **Post-Edit Verification**: After every file edit, run the quality loop: `bun run scripts/health/sub-loop.ts <edited-file-path> --lifecycle duplicates` — MUST exit code 0 before proceeding.
-3. **Test Execution**: All DB-bound and integration tests run via the canonical runner. Verify the runner path in Phase 0 (expected: `bun run scripts/run-test/run-test.ts <test-path>`; protocol alias `bun run test/scripts/run-test.ts <test-path>`). Raw `bun test` against DB tests is PROHIBITED.
-4. **Semantic Review Self-Check** before marking any task `[x]`:
-   - Atomicity: every multi-write flow is one transaction; every transition is a single guarded `UPDATE … WHERE status=<expectedFrom> RETURNING`.
-   - Environment/config: no hardcoded values; no module-level mutable state (REQ-046).
-   - Zero dead code; zero unused exports/imports.
-   - No cross-layer imports (`shared/` never imports frontend/backend/app; repos never contain business logic).
-   - Enums used in runtime expressions are **value imports** with enum **members** (never `import type`, never string literals, never `as` narrowing).
-   - All errors are `DomainError` subclasses with localized messages (REQ-050/051).
-   - NO `{ ...input }` spreads into Drizzle insert/update (BOPLA; REQ-031).
-   - NO `console.*` anywhere (REQ-037).
-5. **Outcome Documentation**: After completing each task, write `ai/plans/dev3-004-session-creation-lifecycle/outcome/<task-id>-outcome.md` recording: files changed / NOT changed (with reasons), verification command outputs, deviations, carry-forward items.
-6. **Checkbox Tracking**: Flip `[ ]` → `[x]` only after the task's sub-pipeline (QL/TE/SEC/SR/IV) is green. Partially done tasks stay `[ ]` with a blocker note in the deferred-items ledger.
+1. **Pre-Execution outcome knowledge read:** before editing any file, read the relevant `AGENTS.md` layers and any prior `outcome/*-outcome.md` files pertaining to that layer (especially DEV1-004 guarded-decrement precedent, DEV1-005 guarded-update/probe precedent, DEV1-002 cause-chain pattern, DEV2-004 `$all` authScopes lesson).
+2. **Post-Edit verification:** after EVERY created/modified file, run `bun run scripts/health/sub-loop.ts <file-path> --lifecycle duplicates` — exit code 0 is mandatory before proceeding.
+3. **Test execution:** all test files run via `bun run test/scripts/run-test.ts <test-path>` (never raw `bun test` for DB suites); journey suites also verified with `bun run test/scripts/run-test.ts test/workflows` once the harness exists (raw `bun test test/workflows` misses `--env-file=.env.test` — see `docs/testing/workflow-journey-tests.md:101` and `test/workflows/AGENTS.md:48-56`).
+4. **Semantic self-review:** before marking any task complete, self-review against the semantic checklist (atomicity, env-config, zero dead code, no cross-layer imports, enums as VALUE imports, tx propagation, no `console.*`, no `...input` spreads).
+5. **Outcome documentation:** every task closes with `outcome/<task-id>-outcome.md` capturing what was built, decisions taken, gates passed, and any deferred items flagged.
+6. **Checkbox tracking:** mark `[ ]` → `[x]` only when the task AND all its subtasks are verified green.
 
 ---
 
 ## Phase 0: Pre-Implementation Baseline
 
-- [ ] 0.1 **Error Baseline Recording & Deferred-Items Ledger Initialization**
-  - Files: `ai/plans/dev3-004-session-creation-lifecycle/deferred-items.md` (create from `.agents/spec-process-guide/templates/deferred-items-template.md`); `ai/plans/dev3-004-session-creation-lifecycle/outcome/phase0-baseline-outcome.md`
-  - Commands to run and record verbatim: `bun tsgo`; `bun biome:check`; `bun run scripts/lint-service.ts --json --id baseline`; `git diff --name-only`; verify test runner path (`scripts/run-test/run-test.ts` vs `test/scripts/run-test.ts`) and record the canonical command
-  - Pre-seed forward notes (non-blocking, owning tickets attached): **F1** request/cancel notification wiring → DEV3-010/011; **F2** trial-session teacher-compensation semantics → DEV3-013/014; **F3** lane-assignment persistence refinement for hold accounting → DEV3-013; **F4** 24h auto-cancel sweeper → DEV3-012; **F5** explicit accept/decline handshake per B.16 → DEV3-011
-  - _Requirements: REQ-001_
-  - [ ] 0.1.QL **Quality Loop**: not applicable to Markdown (document as skipped in outcome); run `bun run scripts/health/sub-loop.ts` on any file added under scripts/ if needed
-  - [ ] 0.1.TE **Test Engineering**: Record baseline test-suite health (run one smoke DB test via the canonical runner to prove harness boots)
-  - [ ] 0.1.SEC **Security & Tenancy Audit**: N/A (documentation task) — assert no secrets/credentials recorded in the outcome file
-  - [ ] 0.1.SR **Semantic Review**: Baseline numbers are verbatim (no editing/rounding); ledger follows the template's enforcement rule for ❌/⚠️ items
-  - [ ] 0.1.IV **Instruction Verification**: Read `.agents/spec-process-guide/` protocol docs and `ai/plans/dev3-004-session-creation-lifecycle/specs.md` §2.7/2.8 before writing
+### 0.1 — Error Baseline Recording & Deferred-Items Ledger
 
-- [ ] 0.2 **Prerequisite & Dependency Guard Verification**
-  - Verify presence (record each as ✅/❌ with file evidence): DEV1-001 `session` table columns + `session_status`/`session_type`/`session_intent` enums (`backend/db/schema/classes/session.ts`, `backend/db/schema/enums.ts`, `backend/enum/scheduling/*.enum.ts`); DEV2-003 contracts (`backend/types/contracts/session-request.contract.types.ts`, `session-completion-escrow.contract.types.ts`, `contract-guards.ts`, `ContractErrorCodes`); DEV1-004 trial columns (`students.balanceTrial`, `trialGrantedAt` in `backend/db/schema/students/students.ts`); `StudentRepository` (`backend/db/repo/students/student.repository.ts`); `TeacherRepository` (`backend/db/repo/teachers/teacher.repository.ts`); DEV2-002 `role`/`authenticated` authScopes and verified `ctx.user`/`ctx.role`/verified `ctx.locale`; cache service port for idempotency (locate existing adapter/port); `entity-setup.ts` helpers inventory (verify whether `createTestCertifiedTeacher`-style helper exists; record exact signatures of existing helpers); `setupTestServerLifecycle` + `testClient` harness location
-  - IF any artifact is missing: record ❌ + targeted ❌ entry in `deferred-items.md` with owner ticket; consume ONLY documented fallbacks (paid-lane-only eligibility if trial columns absent; land `assertNotSuspended` in THIS ticket per DEV2-002 deferred-item D2 ownership). NEVER invent parallel substrates
-  - _Requirements: REQ-004_
-  - [ ] 0.2.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts ai/plans/dev3-004-session-creation-lifecycle/outcome/phase0-dependency-guard-outcome.md --lifecycle duplicates` if supported; else document skip
-  - [ ] 0.2.TE **Test Engineering**: Verify `runInRollback` utility import path and one existing repo test to lock conventions (`repo.method(params, tx)` signature positions)
-  - [ ] 0.2.SEC **Security & Tenancy Audit**: Confirm authScopes contract shape from DEV2-002 consumption guide (AND-composition of facets) is read and cited
-  - [ ] 0.2.SR **Semantic Review**: No duplicate creation of files that already exist; additive-only posture confirmed
-  - [ ] 0.2.IV **Instruction Verification**: Read root `AGENTS.md`, `backend/AGENTS.md`, `backend/db/AGENTS.md`, `backend/services/AGENTS.md`, `backend/graphql/AGENTS.md` and record applicable rules in the outcome
+- [ ] 0.1 [Record baseline and seed deferred-items ledger]
+  - Record baseline error counts: `bun tsgo`, `bun biome:check`, `bun run scripts/lint-service.ts --json --id baseline`, `git diff --name-only` → capture into `outcome/0.1-outcome.md` (per protocol #5).
+  - Initialize `ai/plans/sprint_1/dev3-004-session-creation-lifecycle-scheduled-sta/deferred-items.md` (the file already EXISTS in this plan dir as an empty template; plan.md — updated separately — defines D1–D5) by seeding the following non-blocking forward items into it:
+    - **D1** — session request/lifecycle event notifications → DEV3-010/DEV3-011
+    - **D2** — dual-confirmation student confirm + 24h auto-cancel sweeper + wallet credit → DEV3-012/DEV3-013
+    - **D3** — `is_online` availability assertion + directory wiring → DEV3-008/DEV2-011
+    - **D4** — student-facing booking UI over the directory → DEV3-009
+    - **D5** — INV-S6/S7/S8 + `disputed` state → DEV3-005/DEV2-013/DEV3-022
+  - _Requirements: REQ-001, REQ-083_
 
-- [ ] 0.3 **Plan-Review Gate (pre-implementation, MANDATORY)**
-  - Create `ai/plans/dev3-004-session-creation-lifecycle/outcome/plan-review-R1.md` covering: D1–D10 decision soundness; request-vs-accept reconciliation correctness vs the Drizzle schema ground truth; traceability matrix completeness (specs §4); scope-negative confirmation (non-goals 1–11)
-  - GATE: implementation tasks (Phase 1+) MUST NOT start until this gate file exists and marks the plan APPROVED
-  - _Requirements: REQ-082_
-  - [ ] 0.3.QL **Quality Loop**: documented as skipped (Markdown artifact)
-  - [ ] 0.3.TE **Test Engineering**: Cross-check every test requirement (REQ-070..079) has a mapped task in Phase 5
-  - [ ] 0.3.SEC **Security & Tenancy Audit**: Cross-check REQ-030..039 map to tasks 0.2, 2.2, 2.6, 3.x, 5.x
-  - [ ] 0.3.SR **Semantic Review**: No undocumented deviation between specs.md and plan.md
-  - [ ] 0.3.IV **Instruction Verification**: `@plan-review` protocol from the spec-process guide followed
+### 0.2 — Prerequisite Verification & Dependency Guard (READ-ONLY)
+
+- [ ] 0.2 [Verify dependency ground truth — read-only assertions]
+  - Verify `session` table shape in `backend/db/schema/classes/session.ts`: NOT NULL `teacherId`/`studentId` FKs, `status` default `'scheduled'`, `sessionType` default `'student_session'`, `fee`/`feeHeld`/deadline timestamps.
+  - Verify `sessionStatus`/`sessionType`/`sessionIntent` pgEnums exist in `backend/db/schema/enums.ts` (incl. `disputed`, `evaluation` members).
+  - Verify `students` balance lanes (`balanceTrial`/`balanceHifz`/`balanceTajweed` + CHECK ≥ 0) in `backend/db/schema/students/students.ts`.
+  - Verify `teacher.isApproved` in `backend/db/schema/teachers/teacher.ts`.
+  - **Collision check:** confirm NO existing `SessionRepository`/`SessionLifecycleService` anywhere in code (both absent — verify by grep; the `Lifecycle` suffix is chosen for naming clarity, NOT as a collision shield). Note the ground truth: NO auth `SessionService` exists in code either (`backend/services/auth/` holds only `auth.service.ts` + `registration.service.ts`; the `SessionService` name appears solely as a future-contract doc comment in `backend/types/contracts/session-request.contract.types.ts:3`), and NO `class_instances`/`ClassSessionService` subsystem pre-exists in code (docs/AGENTS.md prose only).
+  - Verify which of `SessionStatus`/`SessionIntent`/`SessionType` are ALREADY registered in `backend/graphql/pothos/shared/enum.pothos.ts` — ONLY missing ones will be registered in Phase 3.
+  - Verify `DUPLICATE_REQUEST` exists in the `ErrorCode` union; identify the exact custom-code construction facility DEV1-005/DEV2-004 used (`backend/lib/errors/`). Ground truth to confirm: `ConflictError` has a FIXED `"CONFLICT"` code (`backend/lib/errors.ts:159-163`) — only `ValidationError` ships an overloaded `(code, message)` ctor (`errors.ts:65-130`); custom 409 codes therefore REQUIRE the additive `ConflictError` extension scheduled as a prerequisite in 2.8.
+  - Verify `ctx.idempotencyKey` is captured by `createGraphQLContext` (read `docs/IDEMPOTENCY.md` + context builder).
+  - Verify `SessionRequestContract` in `@/backend/types/contracts` and its structural invariants.
+  - Verify `test/workflows/` existence and read `test/workflows/AGENTS.md`; check whether `test/workflows/helpers/` exists (scaffold gap lands in 2.1).
+  - IF any required artifact is missing: record a ❌ entry in `deferred-items.md` and block dependent tasks — NEVER patch another ticket's files inline.
+  - Write `outcome/0.2-outcome.md` with every verification result.
+  - _Requirements: REQ-003, REQ-004_
+
+### 0.3 — Phase-1.5 Plan-Review Gate (predates ALL implementation)
+
+- [ ] 0.3 [Run `@plan-review` against specs.md + plan.md]
+  - Invoke the plan-review gate; record its outcome to `outcome/0.3-outcome.md` (per protocol #5).
+  - Gate MUST predate any Phase 1+ file edit (REQ-083); resolve every blocking finding before proceeding.
+  - _Requirements: REQ-083_
 
 ---
 
 ## Phase 1: Types, Enums & Database Schema
 
-- [ ] 1.1 **Read-Only Schema Ground-Truth Verification (zero schema change)**
-  - Files (READ-ONLY verification): `backend/db/schema/classes/session.ts`, `backend/db/schema/enums.ts`, `backend/db/schema/teachers/teacher.ts`, `backend/db/schema/students/students.ts`, `backend/db/schema/billing/plans.ts`, `backend/db/schema/billing/subscriptions.ts`, `backend/db/schema/users/users.ts`
-  - Verify: session lifecycle columns (`status` default `'scheduled'`, `session_type` default `'student_session'`, `intent`, `fee numeric(10,2)`, `fee_held`, `started_at`, `ended_at`, `confirmation_deadline`, `confirmed_by_student_at`, `confirmed_by_teacher_at`, `teacher_id NOT NULL`, `student_id NOT NULL`); `disputed` enum value exists but must remain unreachable; `teacher.isApproved`/`isOnline`/`requestPreference`; students' balance lanes incl. DEV1-004 trial lane; `plans.price`/`sessionCount`; `subscriptions.status/startDate/endDate`; `users.suspended/suspendedAt/suspendedPeriodDays/isBlocked/isDeleted`
-  - Run `git diff --stat backend/db/schema/**` at task end (MUST be empty) — the Drizzle schema in `backend/db/schema/` is the sole structural ground truth
-  - _Requirements: REQ-047, REQ-011, REQ-012_
-  - [ ] 1.1.QL **Quality Loop**: N/A (no file edits) — record in outcome
-  - [ ] 1.1.TE **Test Engineering**: Evidence = empty diff captured in outcome
-  - [ ] 1.1.SEC **Security & Tenancy Audit**: Confirm NOT NULL ownership columns (INV-S4) and CHECK constraints on balances (INV-B1)
-  - [ ] 1.1.SR **Semantic Review**: NO schema patch, NO `db push`, NO migration files; any discovered gap goes to `deferred-items.md` targeting DEV3-013 / DEV1-001 owners
-  - [ ] 1.1.IV **Instruction Verification**: `docs/DATABASE_MIGRATIONS.md` read; `db reset`/`cleanGenerate` remain disabled
+### 1.1 — HeldBalanceLane TS Enum (provenance vocabulary)
 
-- [ ] 1.2 **Extend Canonical Session Types (additive only)**
-  - File: `backend/types/classes/session.types.ts` — add `SessionRequestSubmitInput` (`teacherId: number`, `intent: SessionIntent.Hifz | SessionIntent.Tajweed`, `idempotencyKey: string`), `SessionTransitionInput` (`sessionId: number`), `SessionReturnType = Omit<SessionSelectType, never>`; enum symbols imported as VALUE imports from `@/backend/enum/scheduling/*`; consume `SessionRequestContract`/`EscrowReleaseContract`/`ContractErrorCodes` from `@/backend/types/contracts` and `DBTransaction` from `@/backend/types` WITHOUT redefinition
-  - _Requirements: REQ-002, REQ-003_
-  - [ ] 1.2.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/types/classes/session.types.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 1.2.TE **Test Engineering**: Tier 1 type-level tests: compile-time assertions (e.g., `Expect<Equal<...>>` style or assignability tests per repo convention) proving whitelist shape; Tier 2 boundary: negative-safe-integer guard contract captured in type docs (runtime guard lands in 2.7/3.4)
-  - [ ] 1.2.SEC **Security & Tenancy Audit**: BOPLA — whitelist omits `studentId`, `status`, `fee`, `feeHeld`, timestamps, confirmation fields by construction
-  - [ ] 1.2.SR **Semantic Review**: composition-only from `SessionSelectType` (DEV2-003 REQ-011); NO new `.types.ts` anywhere under `backend/services/`; NO local types leaking into Pothos files later
-  - [ ] 1.2.IV **Instruction Verification**: `backend/types/AGENTS.md` (if present) + root type-discipline rules from DEV2-003 plan cited
+- [ ] 1.1 [Create `HeldBalanceLane` enum + type guard]
+  - **Files:** CREATE `backend/enum/scheduling/held-balance-lane.enum.ts` (`Trial`/`Hifz`/`Tajweed` string enum + `isHeldBalanceLane` guard); UPDATE `backend/enum/scheduling/index.ts` barrel.
+  - **Instructions:** `backend/enum/AGENTS.md`, ApplicantStatus varchar-enum precedent (DEV1-001/DEV2-004).
+  - _Requirements: REQ-013(a), REQ-045_
+  - [ ] 1.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/enum/scheduling/held-balance-lane.enum.ts --lifecycle duplicates` (exit 0)
+  - [ ] 1.1.TE **Test Engineering**: 4-Tier — Tier 1 branch coverage of guard (valid members, casing variants, empty string); Tier 2 boundary (unicode/RTL strings); Tier 3 chaos (symbol/object/null/undefined hostile fuzz); Tier 4 (guard can never coerce a non-string). Run via `bun run test/scripts/run-test.ts <path>`.
+  - [ ] 1.1.SEC **Security & Tenancy Audit**: vocabulary is app-layer only; no DB CHECK added (ApplicantStatus precedent); never accepted from client input anywhere.
+  - [ ] 1.1.SR **Semantic Review**: enum used via VALUE import only; zero dead exports; no cross-layer imports.
+  - [ ] 1.1.IV **Instruction Verification**: validate against `backend/enum/AGENTS.md`.
+  - Write `outcome/1.1-outcome.md`.
 
-- [ ] 1.3 **i18n Error-Key Registry (errors namespace, en/ar parity)**
-  - Files: `shared/locale/types/errors/index.ts`, `shared/locale/en/errors/index.ts`, `shared/locale/ar/errors/index.ts`
-  - Add keys (grouped per locale convention, e.g. `session` group): `sessionNotFound`, `sessionInvalidTransition`, `teacherNotCertified`, `teacherNotAvailable`, `insufficientSessionBalance`, `idempotencyKeyRequired`; reuse existing `duplicateRequest` (grep first — NO near-duplicate key); add/reuse `accountSuspended` for task 2.6 (reuse if present)
-  - _Requirements: REQ-002, REQ-051_
-  - [ ] 1.3.QL **Quality Loop**: run sub-loop on each edited locale file (exit code 0)
-  - [ ] 1.3.TE **Test Engineering**: `bun tsgo` MUST fail if en/ar parity breaks (MessageSchema compile gate) — run `bun tsgo` and record green
-  - [ ] 1.3.SEC **Security & Tenancy Audit**: Messages contain NO balances, wallet contents, or third-party governance flags (REQ-034 leak ban)
-  - [ ] 1.3.SR **Semantic Review**: `shared/` imports nothing from frontend/backend/app; NO `next-intl`; NO `getBackendTranslations`; server usage via `getServerTranslations(locale, "errors")` from `@/shared/locale/server-graphql` only
-  - [ ] 1.3.IV **Instruction Verification**: `shared/locale/AGENTS.md` (if present) + compile-time i18n platform rules
+### 1.2 — Schema Deltas (REQ-013, push-only)
+
+- [ ] 1.2 [Schema: `session.held_balance_lane` column + `session_request_idempotency` table]
+  - **Files:** UPDATE `backend/db/schema/classes/session.ts` (ADD `heldBalanceLane: varchar("held_balance_lane", { length: 20 }).$type<HeldBalanceLane>()` — nullable, no CHECK, no index); CREATE `backend/db/schema/classes/session-request-idempotency.ts` (`id` identity PK; `idempotencyKey varchar(128) NOT NULL` + unique; `userId → users.id ON DELETE CASCADE`; `sessionId → session.id ON DELETE SET NULL`; `createdAt defaultNow()`; user-id index); UPDATE `backend/db/schema/classes/index.ts` barrel.
+  - Apply via `bun run db push` ONLY — no custom SQL migration, no `db reset`/`cleanGenerate` (`docs/DATABASE_MIGRATIONS.md`).
+  - Verify `git diff backend/db/schema/** backend/db/migration/**` contains EXACTLY these two artifacts.
+  - _Requirements: REQ-013, REQ-045_
+  - [ ] 1.2.QL **Quality Loop**: sub-loop on both schema files (exit 0)
+  - [ ] 1.2.TE **Test Engineering**: Tier 1 — column presence/type round-trip (insert with/without lane; `$inferSelect` yields `HeldBalanceLane | null`); Tier 2 — key at 128-char boundary accepted, 129 rejected; Tier 3 — FK cascade/delete-set-null behavior probes; Tier 4 — nothing in schema is client-reachable. `runInRollback` discipline.
+  - [ ] 1.2.SEC **Security & Tenancy Audit**: claim table keyed by key + userId (key is opaque ≤128, never logged); FK cascade preserves INV-U4-adjacent cleanup; no oracle columns.
+  - [ ] 1.2.SR **Semantic Review**: sole-ground-truth discipline; `.$type<>()` flows enum into inference (zero downstream casts); no inline `--` in any `sql` (none present).
+  - [ ] 1.2.IV **Instruction Verification**: `backend/db/schema/AGENTS.md`, `docs/DATABASE_MIGRATIONS.md`.
+  - Write `outcome/1.2-outcome.md`.
+
+### 1.3 — Canonical Types Extensions
+
+- [ ] 1.3 [Extend session canonical types + create claim-table types]
+  - **Files:** UPDATE `backend/types/classes/session.types.ts` additive-only: `SessionReturnType` (= `SessionSelectType`), `SessionStudentIntentType` (Hifz|Tajweed), `SessionSubmitInput` (`{ teacherId, intent }` — closed BOPLA whitelist), `SessionListFilterInput`, `SessionPageReturnType`, `SessionTransitionProbeRowType`; CREATE `backend/types/classes/session-request-idempotency.types.ts` (Select/Insert from `$infer*`); UPDATE `backend/types/classes/index.ts` barrel.
+  - NO service-layer `.types.ts`; NO local types anywhere downstream; `DBTransaction` from `@/backend/types`.
+  - _Requirements: REQ-003_
+  - [ ] 1.3.QL **Quality Loop**: sub-loop on both type files (exit 0)
+  - [ ] 1.3.TE **Test Engineering**: compile-level conformance — a `satisfies`-pinned static test asserting the planned insert shape honors `SessionRequestContract` invariants (`feeHeld: true` literal, non-null fee/deadline, intent ⊆ Hifz|Tajweed, key present); structurally-closed input test (excess keys are type-errors).
+  - [ ] 1.3.SEC **Security & Tenancy Audit**: server-controlled fields structurally absent from `SessionSubmitInput` (id/status/sessionType/fee/feeHeld/deadlines/heldBalanceLane/confirmedBy*/studentId).
+  - [ ] 1.3.SR **Semantic Review**: additive-only diff on existing file; never redefines contract types (consumed from `@/backend/types/contracts`).
+  - [ ] 1.3.IV **Instruction Verification**: `backend/types/AGENTS.md`.
+  - Write `outcome/1.3-outcome.md`.
+
+### 1.4 — Shared Platform Fee Constants (B.3)
+
+- [ ] 1.4 [Create `shared/constants/session-fees.constants.ts`]
+  - **Files:** CREATE `shared/constants/session-fees.constants.ts` (`SESSION_FEE_HIFZ`/`SESSION_FEE_TAJWEED` decimal strings, `SESSION_FEE_CURRENCY = "EGP"`, `SESSION_CONFIRMATION_WINDOW_MS` = 24h); UPDATE `shared/constants/index.ts` barrel.
+  - Decimal STRINGS end-to-end (DEV1-005 money discipline); zero arithmetic on fees anywhere.
+  - **Rules:** `shared/` NEVER imports from `@/frontend`, `@/backend`, `@/app` — this file has ZERO imports.
+  - _Requirements: REQ-021_
+  - [ ] 1.4.QL **Quality Loop**: sub-loop (exit 0)
+  - [ ] 1.4.TE **Test Engineering**: Tier 1 — constant shape assertions (decimal-string format via regex, currency literal); Tier 2 — window constant equals exactly 86_400_000.
+  - [ ] 1.4.SEC **Security & Tenancy Audit**: fee is server-owned; input structurally cannot carry it (BOPLA tie-in with 1.3).
+  - [ ] 1.4.SR **Semantic Review**: purity (no imports, no env reads); zero dead constants.
+  - [ ] 1.4.IV **Instruction Verification**: `shared/AGENTS.md` if present.
+  - Write `outcome/1.4-outcome.md`.
+
+### 1.5 — i18n Registrations (errors grouping + new `sessions` UI namespace)
+
+- [ ] 1.5 [Add flat `ErrorsLabels` session keys + new `sessions` UI namespace]
+  - **(a) errors keys:** UPDATE `shared/locale/types/errors/index.ts`, `shared/locale/en/errors/index.ts`, `shared/locale/ar/errors/index.ts` — add the new codes as FLAT camelCase keys directly on the existing `ErrorsLabels` interface (flat prefixed convention, existing members at `shared/locale/types/errors/index.ts:8-47`; NO nested `sessions:` group): `sessionNotFound`, `sessionInvalidTransition`, `teacherNotCertified`, `insufficientBalance`, `idempotencyKeyRequired`, `invalidSessionIntent` — map `TEACHER_NOT_FOUND` onto the EXISTING `notFound` key and REUSE existing `duplicateRequest`/`validation`/`forbidden`/`unauthorized`/`internalServerError` (no near-duplicates).
+  - **(b) NEW `sessions` UI namespace:** full registration per the **Namespace Registration checklist in `shared/AGENTS.md`** (§Namespace Registration ~:236-241 — `shared/locale/AGENTS.md` is 33 lines and carries NO such checklist): `*Labels` interface in `shared/locale/types/sessions/index.ts`, `en` + `ar` implementations, entry on the top-level **`Translations`** interface (`shared/locale/types/message.ts:9`), namespace-path registration, and a `Sessions` **namespace handle const** via `defineNamespace` (`shared/locale/namespaces/define-namespace.ts:8-13` — NO `Translation` enum exists); keys per plan §2.7(b) (page titles, filter labels, column labels, status chips incl. `statusDisputed` for vocabulary stability, action copy, cancel-dialog copy, notice copy incl. `duplicateBookingInfo`, `holdReleasedNotice`, generic error copy).
+  - Compile gate: `bun tsgo` `Translations` parity (missing key = failure).
+  - _Requirements: REQ-002, REQ-051, REQ-065_
+  - [ ] 1.5.QL **Quality Loop**: sub-loop on every touched locale file (exit 0)
+  - [ ] 1.5.TE **Test Engineering**: Tier 1 — parity tests (en/ar key-set equality for both the error keys and the new namespace); Tier 2 — Arabic natural-phrasing review note recorded in outcome; Tier 3 — synchronous `getTranslations(locale)` resolution (warmed via `test/ui/components/translation-preload.ts`; the `readTranslation`/`translation-cache-store` helper documented there does NOT exist on this branch) for a sample of keys in both locales.
+  - [ ] 1.5.SEC **Security & Tenancy Audit**: error copy is generic-state only — never embeds other-party identity, lane values, governance flags (REQ-033/036).
+  - [ ] 1.5.SR **Semantic Review**: `Sessions` `defineNamespace` handle const registered and consumed as `useAppTranslation(Sessions)`; property-access convention preserved; no string-literal namespaces introduced.
+  - [ ] 1.5.IV **Instruction Verification**: `shared/AGENTS.md` Namespace Registration checklist.
+  - Write `outcome/1.5-outcome.md`.
 
 ---
 
-## Phase 2: Repositories & Backend Services
+## Phase 2: Repositories & Backend Services (Journeys TEST-FIRST)
 
-- [ ] 2.1 **Canonical Session State-Guard Module**
-  - Files to create: `backend/services/sessions/session-state-guard.helpers.ts`; `backend/services/sessions/index.ts` (barrel, may be completed in 2.7)
-  - Implement `SESSION_ALLOWED_TRANSITIONS` map exactly: `scheduled → [started, cancelled]`, `started → [completed, cancelled]`, `completed → []`, `cancelled → []`, `disputed → []`; implement `assertSessionTransition(from, to, tErrors)` throwing typed `SESSION_INVALID_TRANSITION` (`ValidationError`/`ConflictError` per REQ-052 mapping); VALUE imports of `SessionStatus` enum members only
-  - Applicable AGENTS.md: `backend/services/AGENTS.md`, root `AGENTS.md`
-  - _Requirements: REQ-022, REQ-023_
-  - [ ] 2.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/services/sessions/session-state-guard.helpers.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 2.1.TE **Test Engineering**: 4-Tier — Tier 1: unit test every allowed AND every forbidden pair of the 5×5 status matrix (statement+branch on the map); Tier 2: boundary on `disputed` source/target both rejected; Tier 3: chaos — null/undefined inputs fail closed; Tier 4: security — raw-string inputs never coerced; run via canonical test runner; 100% coverage on this module
-  - [ ] 2.1.SEC **Security & Tenancy Audit**: single source of truth (grep asserts no duplicate transition maps anywhere after Phase 3); terminal-state rejection cannot be bypassed by role
-  - [ ] 2.1.SR **Semantic Review**: pure function, zero side effects, zero DB access, zero module-level mutation, enum members not literals
-  - [ ] 2.1.IV **Instruction Verification**: `backend/services/AGENTS.md` conventions (namespace export style, DomainError usage, no local `.types.ts`)
+### 2.1 — Journey Harness Scaffold (`test/workflows/helpers/`)
 
-- [ ] 2.2 **`assertNotSuspended` Governance Helper (DEV2-002 D2 ownership — lands HERE)**
-  - File to create: `backend/services/auth/assert-not-suspended.ts`
-  - Pure function: `assertNotSuspended(user: { suspended, suspendedAt, suspendedPeriodDays }, locale): void` — active window compute (`suspended && suspendedAt && (suspendedPeriodDays == null || suspendedAt + days > now)`) ⇒ throw `ForbiddenError` with localized `accountSuspended`; lapsed/missing ⇒ allow; single `now` captured per call (REQ-048 discipline)
-  - Applicable AGENTS.md: `backend/services/AGENTS.md`
-  - _Requirements: REQ-033_
-  - [ ] 2.2.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/services/auth/assert-not-suspended.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 2.2.TE **Test Engineering**: Tier 1 branch coverage of all four truth-table states; Tier 2 boundary tests at the exact window edge (suspension expires NOW/-1ms/+1ms, `periodDays=null` indefinite); Tier 3 chaos: null `suspendedAt` with `suspended=true` fails closed or open per documented decision — record decision in outcome; Tier 4 security: verification no balance read happens pre-denial
-  - [ ] 2.2.SEC **Security & Tenancy Audit**: INV-U2/A.7 enforcement; denial is 403/FORBIDDEN semantics with localized message leaking nothing beyond the caller's own suspension
-  - [ ] 2.2.SR **Semantic Review**: pure and independently unit-testable; reusable by DEV1-006/DEV3-013 without modification; no DB coupling
-  - [ ] 2.2.IV **Instruction Verification**: DEV2-002 consumption guide deferred-item D2 shape matched exactly
+- [ ] 2.1 [Scaffold journey helper layer if absent]
+  - **Files:** CREATE `test/workflows/helpers/journey-fixtures.ts` (tracked-ID registry + FK-order-aware hard-delete cleanup); CREATE `test/workflows/helpers/session-cast.ts` (cast builders over `entity-setup.ts`: student-with-trial, student-with-paid-lane, student-with-both, zero-balance student, certified teacher, teacher applicant (applicants row ONLY — INV-TV1 by construction), second student/teacher, parent, admin fixtures with REAL role/permission rows); UPDATE `test/workflows/AGENTS.md` append-only with helpers guidance (no rewrite of existing rules).
+  - Rules: NO `runInRollback` in this layer; fixtures committed; permissions resolved by REAL membership rows — never monkey-patched; external side effects (none in this ticket) asserted by row-count deltas.
+  - _Requirements: REQ-077_
+  - [ ] 2.1.QL **Quality Loop**: sub-loop on both helper files (exit 0)
+  - [ ] 2.1.SR **Semantic Review**: helpers contain zero business logic; cleanup is total (two consecutive suite runs prove idempotent teardown).
+  - [ ] 2.1.IV **Instruction Verification**: `test/workflows/AGENTS.md`, `docs/testing/workflow-journey-tests.md`.
+  - Write `outcome/2.1-outcome.md`.
 
-- [ ] 2.3 **Session-Request Idempotency Guard (atomic cache claim)**
-  - File to create: `backend/services/sessions/session-request-idempotency.helpers.ts`
-  - Implement `claimSessionRequestKey(studentId: number, idempotencyKey: string): Promise<"claimed">` using cache port atomic SET-NX-EX on `session:req:<studentId>:<sha256(key)>` with 24h TTL; key cap ≤128 chars enforced BEFORE hashing; duplicate ⇒ throw `ConflictError` `DUPLICATE_REQUEST`; transient cache outage ⇒ throw `SERVICE_UNAVAILABLE`-class DomainError (fail-CLOSED, never proceed unprotected); `releaseSessionRequestKey(...)` for the post-5xx release path; NO GET+SET sequences, NO module-level state; adapter injectable/mockable
-  - Applicable AGENTS.md: `backend/services/AGENTS.md`, `docs/IDEMPOTENCY.md`
-  - _Requirements: REQ-017, REQ-046, REQ-054_
-  - [ ] 2.3.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/services/sessions/session-request-idempotency.helpers.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 2.3.TE **Test Engineering**: Tier 1: claim/duplicate/release branches with MOCKED adapter (REQ-078 — no live Redis); Tier 2: key length boundary (0 chars, 128, 129); Tier 3 chaos: adapter throws timeout ⇒ `SERVICE_UNAVAILABLE`; adapter throws on release ⇒ logged, surfacing safely; Tier 4 security: key hashing means raw key never appears in cache/log context
-  - [ ] 2.3.SEC **Security & Tenancy Audit**: cache outage can NEVER silently degrade to unprotected creation; hash-keyed naming prevents cross-student key collisions
-  - [ ] 2.3.SR **Semantic Review**: no `console.*`; expected rejects use `logger.logDomainError` at call-site (service), unexpected via `logger.error`
-  - [ ] 2.3.IV **Instruction Verification**: `docs/IDEMPOTENCY.md` trade terms (24h window, 409 semantics, 5xx releases key) matched verbatim; `docs/backend/login-cold-start-resilience.md` fail-closed precedent cited
+### 2.2 — Journey J1: Full Happy Lifecycle (TEST-FIRST)
 
-- [ ] 2.4 **SessionRepository (new subdir)**
-  - Files to create: `backend/db/repo/sessions/session.repository.ts`, `backend/db/repo/sessions/index.ts` (barrel)
-  - Methods (all accept `tx?: DBTransaction` and thread it via `queryDb(tx)` / `.transaction` conventions): `createFromContract(insert: SessionInsertType, tx?)` → INSERT RETURNING; `findById(sessionId: number, tx?)` → read; `transitionStatus(sessionId, expectedFrom: SessionStatus, patch, tx?)` → single guarded `UPDATE … WHERE id AND status=expectedFrom RETURNING` (returns null on zero rows — NO prepared statements on write path); `countActiveHolds(studentId, intent | null, tx?)` → count where `feeHeld=true AND status IN (scheduled, started)` with optional intent filter
-  - Applicable AGENTS.md: `backend/db/repo/AGENTS.md`, `docs/drizzle/prepared-statements.md`
-  - _Requirements: REQ-040, REQ-041, REQ-043_
-  - [ ] 2.4.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/repo/sessions/session.repository.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 2.4.TE **Test Engineering**: 4-Tier in `backend/db/test/logic/sessions/session.repository.test.ts` via `runInRollback`: Tier 1 — every method's happy/empty branches (100% statement+branch per REQ-070); Tier 2 — boundary: transitionStatus on wrong status returns null; countActiveHolds with/without intent filter; Tier 3 chaos — concurrent transitionStatus calls on the same row, exactly one winner (Promise.allSettled inside test tx discipline); Tier 4 security — no raw string concatenation, parameterized-only; EVERY repo call in tests receives `tx`; asserts via `expectRepoError` try/catch helper (NO `.rejects.toThrow()` inside `runInRollback`)
-  - [ ] 2.4.SEC **Security & Tenancy Audit**: repo contains ZERO business logic/permissions; `sql` templates contain NO inline `--` comments; all values parameterized
-  - [ ] 2.4.SR **Semantic Review**: enum members (not literals) in status comparisons; explicit patch typing (never `{ ...input }`); no messages/strings in repo layer
-  - [ ] 2.4.IV **Instruction Verification**: `backend/db/repo/AGENTS.md` + `docs/drizzle/prepared-statements.md` read branch / write path rules followed
+- [ ] 2.2 [Write Full Happy Lifecycle journey test — TEST-FIRST]
+  - **Create** `test/workflows/sessions/session-lifecycle.journey.test.ts` — one file for the J1 cross-actor workflow (written BEFORE the service surface exists; expected to fail red until 2.7 lands).
+  - Provision the actor cast via `test/workflows/helpers/session-cast.ts` (real permission-group membership rows — NEVER monkey-patch permission resolution): student A (trial + 1 hifz unit), student B (trial only), certified teacher T, applicant AP.
+  - Steps as sequential service calls with `actorUserId`:
+    1. Fixture commit in `beforeAll` → tracked ids.
+    2. *Student A* `createSession(T, Hifz, key K1)` → assert session `scheduled`, `feeHeld=true`, `heldBalanceLane=Trial` (trial-first), A.trial −1, fee/deadline correct; *Student B* `createSession(T, Hifz)` → his trial binds; B proves **trial lane consumed before paid lane** across the two bookings.
+    3. *Teacher T (observer)* `listMyTeacherSessions` ⇒ both sessions visible `scheduled` with platform fee + 24h deadline; *Student A (observer)* `listMyStudentSessions` ⇒ own only; all other roles observe NOTHING.
+    4. *Student A* replays K1 → `DUPLICATE_REQUEST`; zero new rows; balances static; T's list count stable.
+    5. *Teacher T* `startSession(A)` → `started`, `startedAt` set; *Student A (observer)* `getSessionById` ⇒ `started`.
+    6. *Teacher T* `completeSession(A)` → `completed`, `endedAt`, `confirmedByTeacherAt` set, `confirmationDeadline` byte-unchanged; *Student A* observes `completed`; assert ZERO wallet/teacher_transaction/notifications/audit rows (count deltas).
+    7. *Student B* `cancelSession(B)` → `cancelled`, `feeHeld=false`, **trial lane +1 exactly once**; *Teacher T* observes `cancelled` in his list.
+    8. *Teacher T* `cancelSession(completed id)` → `SESSION_INVALID_TRANSITION`; row byte-identical.
+    9. Teardown: tracked hard-delete in `afterAll`; **run the suite twice consecutively** — second run green proves zero residual state (REQ-J6).
+  - Assert cross-actor visibility after EVERY step AND denial via honest permission failure.
+  - Spy/count-delta notification assertion: NO external channels touched (REQ-019).
+  - Verify: `bun run test/scripts/run-test.ts test/workflows/sessions/session-lifecycle.journey.test.ts` green after implementation; then `bun run test/scripts/run-test.ts test/workflows` (never raw `bun test test/workflows` — it misses `--env-file=.env.test`).
+  - _Requirements: REQ-J1, REQ-J2, REQ-J3, REQ-J5, REQ-J6, REQ-077, REQ-012, REQ-017, REQ-042, REQ-071_
 
-- [ ] 2.5 **StudentRepository — additive `lockForUpdate`**
-  - File to modify: `backend/db/repo/students/student.repository.ts` (+ barrel re-export if applicable)
-  - Add `lockForUpdate(studentId: number, tx): Promise<StudentSelectType>` using Drizzle `.for("update")` — called only inside transactions
-  - _Requirements: REQ-040, REQ-014_
-  - [ ] 2.5.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/repo/students/student.repository.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 2.5.TE **Test Engineering**: Tier 1: locks and returns row inside `runInRollback` tx; Tier 2: nonexistent id ⇒ typed NotFound handled at service (repo returns null per convention — record behavior); Tier 3 chaos: two serialized parallel calls prove blocking semantics; Tier 4: parameters only, no injection surface
-  - [ ] 2.5.SEC **Security & Tenancy Audit**: lock scope = per-student serialization only; cannot be abused to lock other tenants' rows (id parameter is caller-derived at service layer)
-  - [ ] 2.5.SR **Semantic Review**: additive-only diff; no existing method signatures changed
-  - [ ] 2.5.IV **Instruction Verification**: method signature matches repo convention discovered in 0.2.TE
+### 2.3 — Journey J2: Hostile & Boundary Legs (TEST-FIRST)
 
-- [ ] 2.6 **TeacherRepository — additive availability/eligibility methods**
-  - File to modify: `backend/db/repo/teachers/teacher.repository.ts`
-  - Add: `findEligibility(teacherId, tx?) → { isApproved, isOnline } | null` (read via `queryDb(tx)` pattern); `setOnline(teacherId, online: boolean, tx?)`; `setOnlineIfApproved(teacherId, online: false, tx?)` — guarded `UPDATE … WHERE id=? AND isApproved=true RETURNING` (start-side acquisition, REQ-042)
-  - _Requirements: REQ-019, REQ-028, REQ-042_
-  - [ ] 2.6.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/repo/teachers/teacher.repository.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 2.6.TE **Test Engineering**: Tier 1: each method inside `runInRollback` with tx threading; Tier 2: `setOnlineIfApproved` on decertified teacher ⇒ zero rows (returns null); Tier 3 chaos: lock toggle rolled back fully on forced service failure (joint commit-proven in 5.3); Tier 4: no side-channel reads of `requestPreference` (B.16 — out of scope flag, never consumed here)
-  - [ ] 2.6.SEC **Security & Tenancy Audit**: toggle ONLY via service-authorized flows; no standalone public toggle path created (INV-A1 surface belongs to DEV2-011)
-  - [ ] 2.6.SR **Semantic Review**: additive-only; guarded form used for acquisition (REQ-042 "SHOULD" honored as MUST here per plan)
-  - [ ] 2.6.IV **Instruction Verification**: `backend/db/repo/AGENTS.md` — no business logic, no permissions in repo
+- [ ] 2.3 [Write Hostile & Denials journey test — TEST-FIRST]
+  - **Create** `test/workflows/sessions/session-lifecycle-denials.journey.test.ts`.
+  - Legs:
+    1. *Student* targets applicant AP → `TEACHER_NOT_FOUND`; caller balances untouched (INV-TV1).
+    2. *Zero-balance student* `createSession` → `INSUFFICIENT_BALANCE`; zero writes in `session`/`students`/claim table; **same idempotency key succeeds in a later funded attempt** (key-rollback proof).
+    3. *Second student* `cancelSession(others' id)` → `SESSION_NOT_FOUND`; `getSessionById(others' id)` → `null` — indistinguishable from nonexistent (REQ-J4 oracle pairing).
+    4. *Applicant AP* `startSession(any)` → `SESSION_NOT_FOUND` (no session can ever exist for him).
+    5. *Student* `createSession` with `intent=evaluation` → `VALIDATION` pre-DB; assert no `teacher_evaluation` row can be produced by the surface.
+    6. *Admin & Parent* callers → `FORBIDDEN`/`SESSION_NOT_FOUND` per REQ-064; zero audit-log rows (count delta); admin has NO bypass.
+  - Committed fixtures in `beforeAll` + tracked hard-delete in `afterAll`; NO `runInRollback`; real role fixtures only.
+  - Verify: `bun run test/scripts/run-test.ts test/workflows/sessions/session-lifecycle-denials.journey.test.ts`, then `bun run test/scripts/run-test.ts test/workflows` (never raw `bun test test/workflows` — it misses `--env-file=.env.test`).
+  - _Requirements: REQ-J4, REQ-J5, REQ-030, REQ-032, REQ-033, REQ-064, REQ-077, REQ-071_
 
-- [ ] 2.7 **Billing Read for Fee Resolution (additive)**
-  - First verify existence: `backend/db/repo/billing/subscription.repository.ts` (created in DEV1-006/007 lineage — check in 0.2); IF present, ADD method; IF repo file absent, follow the documented DEV1-006/008 location created by that stream; IF truly missing, record ❌/targeted ledger entry and select the minimal repo-surface fallback WITHOUT inventing a parallel billing schema — outcome must record the choice
-  - Add `findActiveWithPlan(userId: number, now: Date, tx?) → { price, sessionCount, endDate } | null`: SELECT joining `subscriptions`/`plans` where `status=active`, `startDate<=now`, `endDate>=now`, ordered `endDate ASC` LIMIT 1 (earliest-expiring determinism); single scalar params (no `inArray`+placeholder prohibited pattern); read-only
-  - _Requirements: REQ-015, REQ-004_
-  - [ ] 2.7.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts <edited-billing-repo-file> --lifecycle duplicates` (exit code 0)
-  - [ ] 2.7.TE **Test Engineering**: Tier 1: active-within-window returns earliest-expiring among multiple actives (two-subscription fixture); expired/future subscriptions excluded; none ⇒ null; Tier 2: `numeric(10,2)` passthrough verified for `price`; Tier 3: tx threading proven under `runInRollback`; Tier 4: parameterized only
-  - [ ] 2.7.SEC **Security & Tenancy Audit**: read scoped strictly to `userId` parameter (derived at service from `ctx.user.id`); no cross-user subscription leakage via input
-  - [ ] 2.7.SR **Semantic Review**: NO fee math in repo (division/rounding is service-layer); earliest-expiry determinism documented
-  - [ ] 2.7.IV **Instruction Verification**: DEV1-006/007/008 conventions from their `ai/plans/*/outcome/` files consulted if present
+### 2.4 — StudentRepository: Guarded Lane Debit & Refund (additive)
 
-- [ ] 2.8 **SessionService — creation, transitions, participant read**
-  - Files: `backend/services/sessions/session.service.ts` (new), `backend/services/sessions/index.ts` (barrel completed)
-  - `SessionService` namespace; every method takes `outerTx?: DBTransaction` last and composes `withTransaction(outerTx)` SAVEPOINT-aware pattern:
-    - `requestSession(callerStudentId, input, locale, outerTx?)`: boundary validation FIRST (enum guard on `intent` — hifz/tajweed only; positive-safe-integer `teacherId`; idempotencyKey non-empty ≤128) BEFORE any DB read → idempotency claim (2.3) → tx: load caller user governance row → `assertNotSuspended` (2.2) → `StudentRepository.lockForUpdate` → teacher eligibility via `findEligibility` (`isApproved` ⇒ else `TEACHER_NOT_CERTIFIED` 422; `isOnline` ⇒ else `TEACHER_NOT_AVAILABLE` 409) → effective capacity `max(0, balanceTrial - holdsAll) + max(0, balance<Intent> - holdsIntent)` via `countActiveHolds` (zero ⇒ `INSUFFICIENT_BALANCE` 422) → fee resolution (`findActiveWithPlan` ⇒ `price/sessionCount` rounded to numeric(10,2) scale; trial path ⇒ `0.00`) → explicit literal `SessionInsertType` mapping (`status=SessionStatus.Scheduled`, `sessionType=SessionType.StudentSession`, `feeHeld=true`, `confirmationDeadline=now+24h` app-time, one `now` captured) → `SessionRepository.createFromContract(..., tx)` → `SessionReturnType`. On any inner failure: release idempotency key only on 5xx-class path per REQ-017, then rethrow (full rollback)
-    - `startSession(callerTeacherId, sessionId, locale, outerTx?)`: tx: `findById` anchor inside tx ⇒ participant check (non-owner ⇒ `SESSION_NOT_FOUND`); teacher eligibility re-assert (`isApproved` — REQ-019); state-guard fast-path; `transitionStatus(Scheduled → {status: Started, startedAt: now})` zero-rows ⇒ `SESSION_INVALID_TRANSITION`; `setOnlineIfApproved(teacherId, false, tx)` same tx
-    - `completeSession(callerTeacherId, sessionId, locale, outerTx?)`: anchor + participant check; state-guard; `transitionStatus(Started → {status: Completed, endedAt: now})`; `setOnline(teacherId, true, tx)` same tx (INV-A4)
-    - `cancelSession(callerId, sessionId, locale, outerTx?)`: anchor + participant-on-either-side check (else `SESSION_NOT_FOUND`); guard via allowed map (`scheduled|started → cancelled`); `transitionStatus(expectedFrom → {status: Cancelled, endedAt: now, feeHeld: false})`; IF source was `started` ⇒ `setOnline(teacherId, true, tx)` same tx; ZERO wallet/`teacher_transaction`/payment writes (structurally absent)
-    - `getSessionForParticipant(callerId, sessionId, callerRole, locale)`: `findById` ⇒ absent or foreign (non-participant, non-admin) ⇒ `SESSION_NOT_FOUND` (REQ-024/034); admin passthrough via DEV2-002 role value
-    - Expected rejections logged via `logger.logDomainError` with `{ code, entity: "session", entityId }`; unexpected via `logger.error`; explicit BOPLA literal mapping (grep-verified no spreads)
-  - Applicable AGENTS.md: `backend/services/AGENTS.md`, `docs/IDEMPOTENCY.md`, `docs/graphql/domain-error-extensions-code.md`
-  - _Requirements: REQ-010..REQ-028, REQ-030..REQ-034, REQ-036..REQ-046, REQ-048..REQ-050, REQ-053..REQ-055_
-  - [ ] 2.8.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/services/sessions/session.service.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 2.8.TE **Test Engineering**: 4-Tier in `backend/services/sessions/session.service.test.ts` with cache adapter MOCKED (REQ-078; DB-bound scenarios live in `backend/db/test/logic/sessions/`): Tier 1 — every acceptance-signal branch (422/409/403/404 maps); Tier 2 — boundary matrix of validation rules (REQ-054) all failing BEFORE DB write (assert repo spies never called); Tier 3 chaos — forced mid-tx exception ⇒ `rollback` observed, no partial effects, key released only on 5xx path; Tier 4 — BOLA probes (foreign-session caller ids) ⇒ `SESSION_NOT_FOUND`; BOPLA probe (extra fields on input object) ⇒ ignored at explicit-mapping layer
-  - [ ] 2.8.SEC **Security & Tenancy Audit**: identity exclusively from caller params wired to `ctx.user.id` at resolver (never input); transitions compare `session.teacherId/studentId`; oracle-resistance vocabulary enforced (REQ-034); no balance/wallet values in thrown messages; suspension gate precedes balance-lane consumption
-  - [ ] 2.8.SR **Semantic Review**: ONE tx per flow; state-guard module is the ONLY transition map; NO `confirmationDeadline` READS anywhere (REQ-027); NO notification-row writes (F1 boundary); NO recitation writes (C.5 barrier); NO module-level state
-  - [ ] 2.8.IV **Instruction Verification**: service exports/namespace match `backend/services/AGENTS.md`; DEV1-002 atomicity precedent (`withTransaction(outerTx)`) pattern verified against existing implementation file
+- [ ] 2.4 [Add `decrementLaneIfAvailable` + `incrementLane` to existing `StudentRepository`]
+  - **Files:** UPDATE `backend/db/repo/students/student.repository.ts` ONLY (additive; never fork/re-implement).
+  - `decrementLaneIfAvailable(studentId: number, lane: HeldBalanceLane, tx?: DBTransaction): Promise<boolean>` — ONE guarded conditional UPDATE per lane (`UPDATE students SET balance_<lane> = balance_<lane> - 1, updated_at = now() WHERE id = $1 AND balance_<lane> > 0`), lane column resolved from a frozen `{ HeldBalanceLane → column }` map keyed by enum members (never caller strings); returns row-match boolean.
+  - `incrementLane(studentId: number, lane: HeldBalanceLane, tx?: DBTransaction): Promise<void>` — unguarded `+1` refund (no upper bound exists; CHECK ≥ 0 cannot trip on `+1`).
+  - **Instructions:** `backend/db/repo/AGENTS.md`; DEV1-004 `grantFreeTrialOnce` guarded-decrement precedent.
+  - _Requirements: REQ-012, REQ-017, REQ-042, REQ-044, REQ-071_
+  - [ ] 2.4.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/repo/students/student.repository.ts --lifecycle duplicates` (exit 0)
+  - [ ] 2.4.TE **Test Engineering**: 4-Tier — Tier 1: every lane branch (trial/hifz/tajweed hit + miss → boolean correctness, `runInRollback`, `tx` passed); Tier 2: balance exactly 1 → 0; balance 0 → miss; Tier 3: concurrent decrements on one row via `Promise.allSettled` → exactly one crosses; CHECK never tripped; Tier 4: lane-column map cannot be reached by caller string injection. Run via `bun run test/scripts/run-test.ts <path>`; failures asserted via `expectRepoError`-class helpers on translated substrings; NEVER `rejects.toThrow()` inside `runInRollback`.
+  - [ ] 2.4.SEC **Security & Tenancy Audit**: BOLA — studentId always server-derived (verified at service layer); BOPLA — no spread; guarded predicate prevents negative-balance writes (INV-B1).
+  - [ ] 2.4.SR **Semantic Review**: zero business logic in repo; `tx` LAST parameter on both methods; enum VALUE import; no `inArray`; no `sql` with `--` comments.
+  - [ ] 2.4.IV **Instruction Verification**: `backend/db/repo/AGENTS.md`, `docs/drizzle/prepared-statements.md` (N/A — writes).
+  - Write `outcome/2.4-outcome.md`.
 
-- [ ] 2.M **Mid-Point Review Gate (MANDATORY before Phase 3)**
-  - Create `ai/plans/dev3-004-session-creation-lifecycle/outcome/midpoint-review-M1.md`: verify 2.1–2.8 outcomes all green; re-run `bun tsgo`, `bun biome:check`, lint counts vs baseline (MUST be +0); run all Phase-2 test files via canonical runner (green); grep-scan repo/service layer for prohibited patterns (`{ ...input`, `console.`, literal status strings, duplicate transition maps, `wallet`/`teacher_transaction`/`recitation`/`notifications` writes)
-  - GATE: Phase 3 MUST NOT begin while any ❌ exists in the scan list; failures loop back to the owning 2.x task
-  - _Requirements: REQ-079, REQ-082, REQ-074(partial)_
+### 2.5 — TeacherRepository: Certification Lock (NEW repo)
+
+- [ ] 2.5 [Create `TeacherRepository` with `lockForCertificationCheck`]
+  - **Files:** CREATE `backend/db/repo/teachers/teacher.repository.ts` with a NEW `TeacherRepository` namespace — it does NOT exist today (`backend/db/repo/teachers/` holds only `applicant.repository.ts` (`ApplicantRepository`) + `index.ts`; no `TeacherRepository` symbol exists anywhere); UPDATE `backend/db/repo/teachers/index.ts` barrel (`export * from "./teacher.repository"`).
+  - `lockForCertificationCheck(teacherId: number, tx: DBTransaction): Promise<{ id: number; isApproved: boolean | null } | null>` — `SELECT id, is_approved FROM teacher WHERE id = $1 FOR UPDATE` via Drizzle `.for("update")`; write-path → NO prepared statement.
+  - _Requirements: REQ-011, REQ-044 (D4)_
+  - [ ] 2.5.QL **Quality Loop**: sub-loop (exit 0)
+  - [ ] 2.5.TE **Test Engineering**: Tier 1 — existing approved row returns `{id, isApproved:true}`; unapproved returns flag false; nonexistent returns null; Tier 4 — the lock is observable: two interleaved txs serialize on the same teacher row (locked-read assertion under concurrent tx pair).
+  - [ ] 2.5.SEC **Security & Tenancy Audit**: parameterized id only; lock scope = transaction (no cross-tx leakage); applicant user-id resolves to null (INV-TV1 honest failure).
+  - [ ] 2.5.SR **Semantic Review**: returns minimal projection; no i18n/logger imports in repo.
+  - [ ] 2.5.IV **Instruction Verification**: `backend/db/repo/AGENTS.md`.
+  - Write `outcome/2.5-outcome.md`.
+
+### 2.6 — SessionRepository (NEW)
+
+- [ ] 2.6 [Implement `SessionRepository`]
+  - **File:** CREATE `backend/db/repo/classes/session.repository.ts` (namespace `SessionRepository`; every method `tx?: DBTransaction` LAST).
+  - Methods per plan §4.2: `insertSession` (INSERT … RETURNING); `findById`; `startSessionOnce` (`WHERE id ∧ teacher_id ∧ status='scheduled'` sets `startedAt/updatedAt`); `completeSessionOnce` (`status='started'` + fused `EXISTS(SELECT 1 FROM teacher WHERE teacher.id = session.teacher_id AND is_approved)` sets `completed/endedAt/confirmedByTeacherAt`); `cancelSessionOnce` (`id ∧ (student_id=? ∨ teacher_id=?) ∧ status IN ('scheduled','started')` sets `cancelled`, `feeHeld=false`); `findTransitionProbe` (Pick-projection cold probe ONLY); `listForStudent`/`listForTeacher` + `countForStudent`/`countForTeacher` sharing ONE module-scope predicate builder (`ORDER BY created_at DESC, id DESC`, bound LIMIT/OFFSET).
+  - Reads use `queryDb(tx)` pattern; NO prepared statements; NO `inArray`; NO `--` comments in any `sql`.
+  - **Instructions:** `backend/db/repo/AGENTS.md`; DEV1-005 guarded-update + probe precedent.
+  - _Requirements: REQ-010, REQ-015, REQ-016, REQ-017, REQ-020, REQ-041, REQ-044, REQ-047, REQ-071_
+  - [ ] 2.6.QL **Quality Loop**: sub-loop (exit 0)
+  - [ ] 2.6.TE **Test Engineering**: 4-Tier — Tier 1: every method's hit/miss branch (`runInRollback`, `tx` everywhere, `entity-setup.ts` fixtures only); Tier 2: pagination edges (page 1 exact-size, page beyond range → empty items + honest totalCount); Tier 3: guarded transitions under `Promise.allSettled` duplication → exactly one winner per transition; Tier 4: status filter validated BEFORE reaching query (service-boundary test tie-in); constraint probes prove INV-S4 NOT NULL rejection.
+  - [ ] 2.6.SEC **Security & Tenancy Audit**: every mutation predicate carries ownership+state atomically (TOCTOU = 0); probe is classification-only and never influences writes; participant predicate is SQL-side, never input-derived.
+  - [ ] 2.6.SR **Semantic Review**: zero business logic; shared predicate helper guarantees list/count coherence; no dead methods; `SessionStatus` enum VALUE import in predicates — never string literals.
+  - [ ] 2.6.IV **Instruction Verification**: `backend/db/repo/AGENTS.md`, `docs/drizzle/prepared-statements.md`.
+  - Write `outcome/2.6-outcome.md`.
+
+### 2.7 — SessionRequestIdempotencyRepository (NEW)
+
+- [ ] 2.7 [Implement `SessionRequestIdempotencyRepository`]
+  - **File:** CREATE `backend/db/repo/classes/session-request-idempotency.repository.ts`.
+  - Methods: `insertClaim(insert, tx?)` (raw INSERT; 23505 bubbles to service cause-chain handler); `updateClaimSessionId(claimId, sessionId, tx?)` (phase-4 backfill); `findByKey(key, tx?)` (replay-branch join).
+  - _Requirements: REQ-013(b), REQ-014, REQ-071_
+  - [ ] 2.7.QL **Quality Loop**: sub-loop (exit 0)
+  - [ ] 2.7.TE **Test Engineering**: Tier 1 — insert/find/backfill round-trip inside `runInRollback`; Tier 2 — 128-char key accepted; Tier 3 — duplicate insert surfaces 23505 with the PG cause chain intact (DEV1-002 cycle-safe traversal fixture — assert via `isUniqueViolation`-style helper); Tier 4 — key never coerced/truncated silently.
+  - [ ] 2.7.SEC **Security & Tenancy Audit**: key is opaque bound parameter; never logged; userId FK cascade correct.
+  - [ ] 2.7.SR **Semantic Review**: minimal surface (3 methods); zero cross-domain imports.
+  - [ ] 2.7.IV **Instruction Verification**: `backend/db/repo/AGENTS.md`, `docs/IDEMPOTENCY.md`.
+  - Write `outcome/2.7-outcome.md`.
+
+### 2.8 — SessionLifecycleService (NEW — the state machine core)
+
+- [ ] 2.8 [Implement `SessionLifecycleService`]
+  - **File:** CREATE `backend/services/classes/session-lifecycle.service.ts` (namespace export; signatures per plan §4.1).
+  - **Error-construction prerequisite (additive change to `backend/lib/errors.ts`):** extend `ConflictError` with an overloaded `(code, message)` constructor mirroring the `ValidationError` precedent (`errors.ts:65-130`) — today `ConflictError` has a FIXED `"CONFLICT"` code (`errors.ts:159-163`), so custom 409 codes (`TEACHER_NOT_CERTIFIED`, `SESSION_INVALID_TRANSITION`, …) are unconstructible otherwise; alternatively construct `DomainError(code, message)` directly. Map all custom 409 codes through whichever construction lands.
+  - **Tx-helper prerequisite:** `withTransaction(outerTx)` is module-private in `backend/services/auth/registration.service.ts:128-136` — extract it to a shared services helper (or locally re-implement it) BEFORE this service uses it.
+  - **`createSession`** — pre-DB boundary validation (REQ-054): non-empty ≤128 idempotency key (`idempotencyKeyRequired`); positive-safe-integer guards for `teacherId`/`studentId` (NO `as number`); intent ∈ {`SessionIntent.Hifz`, `SessionIntent.Tajweed`} else `VALIDATION`+`invalidSessionIntent`; capture ONE `now` (REQ-046). Then `withTransaction(outerTx)` with EXACT four-phase order (REQ-040): (1) teacher lock + certification assert (null → `NotFoundError("TEACHER", …)`; `isApproved=false` → `ConflictError("TEACHER_NOT_CERTIFIED", …)` via the extended ctor above); (2) guarded debit ladder trial → intent lane, all-miss → `INSUFFICIENT_BALANCE` (rollback-only cleanup); (3) claim insert with 23505 → cycle-safe cause chain → `DUPLICATE_REQUEST` replay branch returning the already-created session (success-equivalent); (4) session insert with server-side defaults (status/type/fee from constants/feeHeld=true/deadline = now+24h) + claim `sessionId` backfill.
+  - **`startSession`/`completeSession`/`cancelSession`** — single guarded UPDATE via repo; zero rows → ONE cold probe → class disambiguation (`SESSION_NOT_FOUND` / `SESSION_INVALID_TRANSITION` / complete-only `TEACHER_NOT_CERTIFIED`); probe NEVER influences writes (D5). Cancel refunds the returned row's `heldBalanceLane` lane by +1 in the same tx (trial→trial, paid→paid); cancelled keeps `startedAt`, leaves `endedAt` NULL; `reason` validated ≤500 then DISCARDED (documented, DEV3-005 owns persistence).
+  - **Reads** — `getSessionById` oracle-safe (null for nonexistent AND non-participant); lists: validated page bounds (page ≥ 1, pageSize 1..50, default 25), pre-DB `SessionStatus` guard on filter, honest `{items,totalCount,page,pageSize}`.
+  - **Contracts consumed:** `getServerTranslations(locale)` (SINGLE-arg — it returns the full translations tree, `shared/locale/server-graphql.ts:3-5`) for `errors` messages; `logger.logDomainError` with `{code, entity:"session", entityId?}` only; ZERO imports of notifications/audit/wallet/transaction/reports modules (REQ-018/019).
+  - **Instructions:** `backend/services/AGENTS.md`; DEV1-002 `withTransaction(outerTx)` SAVEPOINT pattern; DEV1-005 probe pattern.
+  - _Requirements: REQ-010..REQ-023 (incl. REQ-022 deadline contract), REQ-030..REQ-036 (incl. REQ-035 abuse posture), REQ-040..REQ-047, REQ-050..REQ-054, REQ-071, REQ-073_
+  - [ ] 2.8.QL **Quality Loop**: sub-loop (exit 0)
+  - [ ] 2.8.TE **Test Engineering**: 4-Tier on REAL repos inside `runInRollback` — Tier 1: 100% statement/branch (every debit-ladder branch trial-hit/hifz-hit/tajweed-hit/total-miss; every probe-classification branch; replay branch; every validation guard); Tier 2: deadline = now+24h EXACTLY; boundary pagination; 500-char reason; Tier 3: rollback proof — forced insert-failure leaves ZERO rows in all three tables AND the key is reusable (REQ-040); REQ-042 double-cancel refunds EXACTLY once; REQ-043 chaos `Promise.allSettled` scenarios (a)–(e); REQ-072 full 4×3 legality matrix + trial-first ordering proof (student with both lanes books twice: trial then paid); INV-S4 constraint probes; Tier 4: every denial path typed per REQ-050; `intent=evaluation` rejected pre-DB. `bun test --coverage` evidence; run via `bun run test/scripts/run-test.ts <path>`.
+  - [ ] 2.8.SEC **Security & Tenancy Audit**: BOLA — all identity from `ctx.user.id` chain; participant predicate row-side; BOPLA — field-by-field mapping, grep-proof ZERO `{ ...input }` spreads; BFLA — no admin bypass path exists in code; oracle-ruling — foreign ≡ nonexistent on reads and mutation denials; REQ-036 log hygiene (no keys/payloads/other-party data); no LIKE/ILIKE surface (REQ-034 documents injection N/A for this slice; `escapeLikeWildcards` does NOT exist in code — it remains a to-be-created utility, NOT an importable symbol).
+  - [ ] 2.8.SR **Semantic Review**: atomicity (one tx per mutation flow); zero module-level mutable state; zero swallowed catches (REQ-053); enums as VALUE imports; no cross-layer imports; NO `console.*`; no financial-ledger write imports (grep-level assertion included in the test suite).
+  - [ ] 2.8.IV **Instruction Verification**: `backend/services/AGENTS.md`, `docs/IDEMPOTENCY.md`, `docs/graphql/domain-error-extensions-code.md`.
+  - Write `outcome/2.8-outcome.md` (record the DUPLICATE_REQUEST construction mechanism actually used per REQ-052).
+
+### 2.M — Mid-Point Review Gate
+
+- [ ] 2.M [Mid-point review: backend core]
+  - Compile/lint delta vs Phase-0 baseline = 0 on touched files; sub-loop green on 2.4–2.8 outputs.
+  - Re-run journey suites J1/J2 — now expected GREEN; run the full new DB/service suites; confirm 100% coverage instrumentation on new code paths.
+  - Review ledger: no new ❌/⚠️ beyond D1–D5; record any emergent gap with owner.
+  - Write `outcome/2.M-midpoint-outcome.md`; block Phase 3 until green.
+  - _Requirements: REQ-070, REQ-076, REQ-083_
 
 ---
 
 ## Phase 3: GraphQL Resolvers & API Handlers
 
-- [ ] 3.1 **Pothos Enum Registration (once, canonical)**
-  - File to modify: `backend/graphql/pothos/shared/enum.pothos.ts` — register `SessionStatus`, `SessionType`, `SessionIntent` using enum-object form (`gqlSchemaBuilder.enumType(SessionStatus, ...)`) as exported refs (e.g., `SessionStatusPothosEnum`); NO `values: [...]` literals, NO duplicate registration anywhere
-  - Applicable AGENTS.md: `backend/graphql/AGENTS.md` (CRITICAL RULE)
-  - _Requirements: REQ-061_
-  - [ ] 3.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/graphql/pothos/shared/enum.pothos.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 3.1.TE **Test Engineering**: Tier 1: schema snapshot/print check includes the three enums with canonical member sets incl. `Disputed` present-but-unreachable; Tier 2: boundary — duplicate-registration scan asserts exactly one definition per enum in generated SDL
-  - [ ] 3.1.SEC **Security & Tenancy Audit**: enum exposure adds no input surface beyond `intent` on creation; `status`/`sessionType` never accepted as input
-  - [ ] 3.1.SR **Semantic Review**: enums backed by canonical `@/backend/enum/scheduling/*` objects; NO inline enum definitions in domain pothos files
-  - [ ] 3.1.IV **Instruction Verification**: `backend/graphql/AGENTS.md` enum CRITICAL RULE and task-template Pothos function-reference conventions
+### 3.1 — Pothos Enum & Object Registration
 
-- [ ] 3.2 **Canonical Session Object & RequestSessionInput**
-  - Files to create: `backend/graphql/pothos/sessions/session.pothos.ts`, `backend/graphql/pothos/sessions/index.ts` (barrel); modify `backend/graphql/pothos/index.ts` (wire subdir barrel)
-  - `SessionPothosObject` via `gqlSchemaBuilder.objectRef<SessionReturnType>("Session")` with `id` FIRST, then `studentId`, `teacherId`, `status`, `sessionType`, `intent`, `fee` (string-serialized numeric, nullable), `feeHeld`, `startedAt`, `endedAt`, `confirmationDeadline`, `confirmedByStudentAt`, `confirmedByTeacherAt`, `createdAt` (existing DateTime scalar convention); `RequestSessionInput` input ref exposing ONLY `teacherId`, `intent`, `idempotencyKey`; `SessionReturnType` imported from canonical types (REQ-003); NO local types in the pothos file
+- [ ] 3.1 [Register missing enums + `Session` / `SessionPage` canonical objects]
+  - **Files:** UPDATE `backend/graphql/pothos/shared/enum.pothos.ts` — register ONLY the missing of `SessionStatus`/`SessionIntent`/`SessionType` via enum-object form (`gqlSchemaBuilder.enumType(SessionStatus, { name: "SessionStatus" })`); re-registration and literal-array forms are BOTH runtime/Rule violations. CREATE `backend/graphql/pothos/classes/session.pothos.ts` — single canonical `SessionPothosObject` backed by `SessionReturnType` (`id` FIRST; `teacherId`/`studentId` exposed per REQ-060; `heldBalanceLane` DELIBERATELY ABSENT) + `SessionPage` wrapper (the sanctioned list-wrapper exception).
+  - `heldBalanceLane` must NOT appear in SDL.
   - _Requirements: REQ-060, REQ-031_
-  - [ ] 3.2.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/graphql/pothos/sessions/session.pothos.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 3.2.TE **Test Engineering**: Tier 1: generated-SDL assertion that input type physically omits forbidden fields (`studentId`, `status`, `fee`, `feeHeld`, timestamps); Tier 2: `id` present (Apollo normalization precondition) verified in generated schema
-  - [ ] 3.2.SEC **Security & Tenancy Audit**: BOPLA structural absence proven at schema level; NO governance/wallet/balance fields exposed
-  - [ ] 3.2.SR **Semantic Review**: exactly ONE session-shaped object in the whole `backend/graphql/pothos/` tree (grep-verified); no resolver-side transformations
-  - [ ] 3.2.IV **Instruction Verification**: CRITICAL type-registration rules from root AGENTS.md + `backend/graphql/AGENTS.md` cited
+  - [ ] 3.1.QL **Quality Loop**: sub-loop on both files (exit 0)
+  - [ ] 3.1.TE **Test Engineering**: SDL snapshot test — `Session` shape parity vs plan §3.1; enum registered exactly once (builder construction does not throw); schema builds cleanly.
+  - [ ] 3.1.SEC **Security & Tenancy Audit**: internal provenance column unreachable from SDL; no `disputed` producer surface exists.
+  - [ ] 3.1.SR **Semantic Review**: NO local types (canonical `SessionReturnType` only); enum VALUE imports.
+  - [ ] 3.1.IV **Instruction Verification**: `backend/graphql/AGENTS.md`, `docs/graphql/api-gateway-and-routing.md`.
+  - Write `outcome/3.1-outcome.md`.
 
-- [ ] 3.3 **Session Mutation Resolvers & AuthScopes**
-  - File to create: `backend/graphql/mutation/session.mutation.ts`; register in the mutation aggregation entry per existing pattern
-  - Fields: `requestSession(input: RequestSessionInput!): Session!` scope `{ authenticated: true, role: [UserRole.Student] }`; `startSession(sessionId: ID!)` / `completeSession(sessionId: ID!)` scope `{ authenticated: true, role: [UserRole.Teacher] }`; `cancelSession(sessionId: ID!)` scope `{ authenticated: true, role: [UserRole.Student, UserRole.Teacher] }`; resolver bodies THIN: positive-safe-integer ID parsing (type guard — malformed ⇒ `ValidationError` before DB), top-level static imports ONLY (Bun ESM — no `await import()`), locale propagation (`ctx.locale`), delegate to `SessionService` with `ctx.user.id`; NO error mapping/catching (DomainError propagates per DEV3-002 boundary)
-  - _Requirements: REQ-032, REQ-039, REQ-052, REQ-062, REQ-063_
-  - [ ] 3.3.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/graphql/mutation/session.mutation.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 3.3.TE **Test Engineering**: Tier 1: each scope matrix cell (anonymous ⇒ `UNAUTHORIZED`; parent/other-role ⇒ FORBIDDEN/`SESSION_NOT_FOUND` per REQ-034) — integration-tier in 5.6; Tier 2: ID boundary fuzz (0, -1, `2^53+1`, non-numeric) ⇒ `VALIDATION` pre-DB (service spy never invoked)
-  - [ ] 3.3.SEC **Security & Tenancy Audit**: exact REQ-032 scope matrix; NO public surface; NO admin-only scope added; NO `grantRole*`/elevation surface
-  - [ ] 3.3.SR **Semantic Review**: thin bodies (locale + id parse + delegation); NO business rules in resolvers; NO local types
-  - [ ] 3.3.IV **Instruction Verification**: DEV2-002 authScope contract (AND-composition) + existing `auth.mutation.ts` pattern followed
+### 3.2 — Query Resolvers
 
-- [ ] 3.4 **Session Query Resolver — `session(id)`**
-  - File to create: `backend/graphql/query/session.query.ts`; register in query aggregation per existing pattern
-  - `session(id: ID!): Session` scope `{ authenticated: true }`; delegate to `SessionService.getSessionForParticipant(ctx.user.id, parsedId, ctx.role, ctx.locale)`; participant-or-admin visibility, else `SESSION_NOT_FOUND`
-  - _Requirements: REQ-024, REQ-062, REQ-063_
-  - [ ] 3.4.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/graphql/query/session.query.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 3.4.TE **Test Engineering**: Tier 1: participant ✓ / non-participant ✗ / admin ✓ / anonymous ⇒ `UNAUTHORIZED` (integration-tier in 5.6); Tier 2: malformed ID ⇒ `VALIDATION` pre-service
-  - [ ] 3.4.SEC **Security & Tenancy Audit**: oracle-resistance (`NOT_FOUND` not `FORBIDDEN`) for non-participants; parent tokens (INV-P2) get `SESSION_NOT_FOUND`
-  - [ ] 3.4.SR **Semantic Review**: single-row op ⇒ NO DataLoader needed (documented); NO N+1 surface introduced
-  - [ ] 3.4.IV **Instruction Verification**: `docs/graphql/dataloader-batching.md` contingency noted as N/A with forward note for DEV3-010+
+- [ ] 3.2 [Implement session query resolvers]
+  - **File:** CREATE `backend/graphql/query/classes/session-lifecycle.query.ts` — `sessionById` (`{ authenticated: true }`, nullable payload), `myStudentSessions` / `myTeacherSessions` (`{ $all: { authenticated: true, role: [UserRole.Student|Teacher] } }`).
+  - Thin delegation: boundary id/pagination/filter validation forwarded to `SessionLifecycleService` with `ctx.user.id` + `ctx.locale`; ZERO business logic; ZERO repo calls; top-level static imports ONLY (gate A1: no `await import(`).
+  - _Requirements: REQ-020, REQ-032, REQ-061, REQ-064_
+  - [ ] 3.2.QL **Quality Loop**: sub-loop (exit 0)
+  - [ ] 3.2.TE **Test Engineering**: integration tier via `setupTestServerLifecycle` + `testClient` — role matrix cells for the three queries from REQ-064 (incl. anonymous `UNAUTHORIZED`, wrong-role `FORBIDDEN`, oracle-null pairings); filter coherence (`totalCount` matches filtered list).
+  - [ ] 3.2.SEC **Security & Tenancy Audit**: `$all` conjunction (plain key-map is ANY-semantics — known-wrong); governance denial for deleted/blocked/suspended users happens ONLY at login (`backend/services/auth/auth.service.ts:78-81`) and SSR (`frontend/lib/auth/server-auth.ts:97-99`) — `createGraphQLContext`/`UserRepository.findById` carry NO governance filter; the REQ-023 verification asserts login/SSR denial plus the plan's service-layer governance re-check if plan.md adds one (REQ-023).
+  - [ ] 3.2.SR **Semantic Review**: `UserRole` VALUE import; `ctx.t("errors")` usage only where resolver-level construction occurs (none expected); zero logic duplication of service rules.
+  - [ ] 3.2.IV **Instruction Verification**: `backend/graphql/AGENTS.md`, `docs/auth/jwt-authentication-service.md` scopes contract.
+  - Write `outcome/3.2-outcome.md`.
 
-- [ ] 3.5 **Schema Build Wiring & Codegen Sync**
-  - Verify schema builder entry (`backend/graphql/schema.ts` / builder index per 0.2 findings) pulls the new pothos/query/mutation modules; run `bun run generate:gqlSchema && bun codegen`; commit ALL generated artifacts (generated `graphql.ts`, schema SDL) in the same change set; run `bun tsgo`, `bun biome:check`
-  - _Requirements: REQ-064_
-  - [ ] 3.5.QL **Quality Loop**: run sub-loop on each hand-written file touched; generated artifacts excluded (record exclusion rationale)
-  - [ ] 3.5.TE **Test Engineering**: smoke — dev/test server boots and serves `/api/graphql` (used by 5.6 lifecycle harness)
-  - [ ] 3.5.SEC **Security & Tenancy Audit**: depth probe on new `Session` object stays trivially bounded (flat fields, no recursion — REQ-038)
-  - [ ] 3.5.SR **Semantic Review**: generated diff contains ONLY session-domain additions (no unrelated drift); baseline gates still +0
-  - [ ] 3.5.IV **Instruction Verification**: `backend/graphql/AGENTS.md` codegen conventions followed
+### 3.3 — Mutation Resolvers
+
+- [ ] 3.3 [Implement lifecycle mutation resolvers]
+  - **File:** CREATE `backend/graphql/mutation/classes/session-lifecycle.mutation.ts` — `createSession` (`$all{authenticated, role:[Student]}`; passes `ctx.idempotencyKey`), `startSession`/`completeSession` (`$all{authenticated, role:[Teacher]}`), `cancelSession` (`{ authenticated: true }` + service-side participant predicate).
+  - Thin delegation only; boundary id-shape validation at service; resolvers carry NO branching beyond delegation.
+  - _Requirements: REQ-014, REQ-015, REQ-016, REQ-017, REQ-032, REQ-061_
+  - [ ] 3.3.QL **Quality Loop**: sub-loop (exit 0)
+  - [ ] 3.3.TE **Test Engineering**: integration tier — every REQ-064 mutation cell with `expectMutationError`-class helpers asserting `extensions.code` exactly per REQ-050 (incl. missing idempotency key → `VALIDATION`; `DUPLICATE_REQUEST` replay; terminal regression → `SESSION_INVALID_TRANSITION`; decertified complete → `TEACHER_NOT_CERTIFIED`; foreign → `SESSION_NOT_FOUND` oracle pairing).
+  - [ ] 3.3.SEC **Security & Tenancy Audit**: NO admin bypass; allowlist untouched (assert byte-unchanged); idempotency key consumed propagation-only (never re-derived, never authorization-relevant).
+  - [ ] 3.3.SR **Semantic Review**: no `await import(`; no local types; no inline strings (errors flow from service translations); no BOPLA leakage in input mapping.
+  - [ ] 3.3.IV **Instruction Verification**: `backend/graphql/AGENTS.md`, `docs/IDEMPOTENCY.md`.
+  - Write `outcome/3.3-outcome.md`.
+
+### 3.4 — Registration, Codegen & Structural Gates
+
+- [ ] 3.4 [Register barrels, run codegen, assert structural gates]
+  - **Files:** UPDATE query/mutation domain barrels with side-effect imports per gateway Rule 8; run `bun run generate:gqlSchema && bun codegen`; commit generated artifacts in the SAME change set (zero unrelated drift).
+  - Gates: allowlist-coverage gate green (public-operations byte-unchanged); gate A1 scan (zero `await import(` in resolver trees); gate A2 (zero literal-array enum registrations); SDL diff contains ONLY this ticket's seven operations + two types + enum registrations.
+  - _Requirements: REQ-060, REQ-061, REQ-074, REQ-076_
+  - [ ] 3.4.QL **Quality Loop**: sub-loop on barrel files (exit 0)
+  - [ ] 3.4.TE **Test Engineering**: SDL snapshot parity test committed; allowlist gate suite run.
+  - [ ] 3.4.SR **Semantic Review**: generated code never hand-edited; barrel changes strictly additive.
+  - [ ] 3.4.IV **Instruction Verification**: `docs/graphql/api-gateway-and-routing.md` Rule 8.
+  - Write `outcome/3.4-outcome.md`.
 
 ---
 
 ## Phase 4: Frontend GraphQL Documents, Stores & UI Views
 
-- [ ] 4.1 **Session GraphQL Documents (documents only — zero UI)**
-  - Files to create: `frontend/graphql/sharedDocuments/sessions/session.documents.ts`, `frontend/graphql/sharedDocuments/sessions/index.ts` (subdir barrel `export * from "./session.documents";`); modify `frontend/graphql/sharedDocuments/index.ts` (top-level barrel `export * from "./sessions";`)
-  - Documents: `requestSessionMutationDocument`, `startSessionMutationDocument`, `completeSessionMutationDocument`, `cancelSessionMutationDocument`, `sessionQueryDocument` — each `gql` `TypedDocumentNode<…>` importing `gql`/`TypedDocumentNode` from `@apollo/client` (NEVER `/core`) and generated types from `@/frontend/graphql/generated/gql/graphql` only (no inline literals, no indexed-access workarounds); `id` selected in EVERY `Session` object selection; NO `useLazyQuery` anywhere
-  - Applicable AGENTS.md: `frontend/AGENTS.md`, `frontend/graphql/AGENTS.md` (if present)
-  - _Requirements: REQ-065, REQ-068_
-  - [ ] 4.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts frontend/graphql/sharedDocuments/sessions/session.documents.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 4.1.TE **Unit / Component Tests**: consumed exclusively by the integration harness in 5.6 via `testClient` (REQ-065) — add a static document-shape test (operation names, `id` in selections) if a convention exists; no Apollo `MockedProvider`/form-submit tests apply (no components/forms exist in this ticket)
-  - [ ] 4.1.BF **Agent-Browser Functional Self-Loop**: N/A BY DESIGN — no page/route/component ships in this ticket (REQ-066); recorded explicitly in outcome; equivalent functional loop = `setupTestServerLifecycle` + `testClient` end-to-end flows executed in 5.6 (request → start → complete, both cancel paths, error-toast-adjacent `extensions.code` assertions)
-  - [ ] 4.1.BS **Agent-Browser Visual & Styling Self-Loop (Screenshot Analysis)**: N/A BY DESIGN — no visual surface, no MUI `sx` tokens, no viewports/locales to capture; recorded explicitly in outcome; binds to the Sprint-2 matching UI ticket
-  - [ ] 4.1.SR **Semantic Review**: barrel chain correct; sharedDocuments naming conventions; NO views/stores/components created (scan in 4.2)
-  - [ ] 4.1.IV **Instruction Verification**: `frontend/graphql` document rules + `frontend/AGENTS.md` verified
+### 4.1 — Frontend GraphQL Documents
 
-- [ ] 4.2 **No-UI Boundary Static Enforcement**
-  - Files: scan-only (no edits expected); record results in `ai/plans/dev3-004-session-creation-lifecycle/outcome/task-4.2-outcome.md`
-  - Grep-scan the change set: NO new files under `app/*/`, `frontend/views/`, `frontend/components/`, `frontend/store/`; NO `page.tsx`/`layout.tsx` modifications; NO `withPageAuth`/`requireRoleForPage` call-site additions; NO Zustand persistence additions; NO route-table changes
-  - _Requirements: REQ-066_
-  - [ ] 4.2.QL **Quality Loop**: N/A (scan task) — record commands + outputs in outcome
-  - [ ] 4.2.TE **Test Engineering**: scan commands reproducible and captured verbatim
-  - [ ] 4.2.SEC **Security & Tenancy Audit**: confirms no unauthorized UI attack surface crept in
-  - [ ] 4.2.SR **Semantic Review**: zero-diff result on UI trees; any hit ⇒ revert + ledger ❌ entry
-  - [ ] 4.2.IV **Instruction Verification**: REQ-066 wording enforced literally
+- [ ] 4.1 [Implement `session.documents.ts` shared documents]
+  - **Files:** CREATE the `frontend/graphql/sharedDocuments/scheduling/` subtree FROM SCRATCH — it does NOT exist today (`sharedDocuments/` holds only `auth/`, `teachers/`, `documents.contract.test.ts`, `index.ts`; no `class-session.documents.ts` exists anywhere): CREATE `frontend/graphql/sharedDocuments/scheduling/session.documents.ts`; CREATE `frontend/graphql/sharedDocuments/scheduling/index.ts` sub-barrel; UPDATE the top-level `frontend/graphql/sharedDocuments/index.ts` barrel with `export * from "./scheduling"`.
+  - Seven documents per plan §5.4 (`sessionByIdQueryDocument`, `myStudentSessionsQueryDocument`, `myTeacherSessionsQueryDocument`, `createSessionMutationDocument`, `startSessionMutationDocument`, `completeSessionMutationDocument`, `cancelSessionMutationDocument`) — `gql` + `TypedDocumentNode` from `@apollo/client`; codegen types from `@/frontend/graphql/generated/gql/graphql` ONLY; `id` in EVERY `Session` selection; hooks from `@apollo/client/react` in consumers; NO `useLazyQuery`.
+  - **Instructions:** `frontend/graphql/sharedDocuments/AGENTS.md`.
+  - _Requirements: REQ-062_
+  - [ ] 4.1.QL **Quality Loop**: sub-loop (exit 0)
+  - [ ] 4.1.TE **Test Engineering**: compile-level selection-set conformance (every `Session` selection carries `id`); codegen type-resolves with zero inline literals or mapping layers.
+  - [ ] 4.1.SR **Semantic Review**: hooks from `@apollo/client/react`; no `/core` imports; zero dead exports.
+  - [ ] 4.1.IV **Instruction Verification**: `frontend/graphql/sharedDocuments/AGENTS.md`.
+  - Write `outcome/4.1-outcome.md`.
+
+### 4.2 — Student Sessions Page (`/student/sessions`)
+
+- [ ] 4.2 [Implement Student Sessions page + container]
+  - **Files:** CREATE `app/(dashboard)/student/sessions/page.tsx` (Server Component: `withPageAuth({ roles: [UserRole.Student], redirectTo: "/student/sessions" })`, `await getTranslations(locale)` single-arg, delegate to client container); CREATE `frontend/views/student/sessions/` client components (`StudentSessionsContainer`, `SessionStatusFilterChips`, `SessionList`/`SessionRow`, `CancelSessionConfirmDialog` — reason field ≤500 with helper text + `aria-invalid`, submit disabled while pending); **nav:** RETARGET the EXISTING student nav item in `frontend/views/dashboard/navItems.ts` (`route: "/sessions"`, `labelKey: "sessions"`, `SchoolOutlined` icon — the `sessions` `DashboardLabels` key already exists, currently resolving to the single-segment `[feature]` ComingSoon page) to `/student/sessions`; keep the existing icon/label key; drop any new `EventNoteOutlined`/`EventAvailableOutlined` icons; NO mobile "bottom nav" work (no bottom-nav component exists — mobile uses the temporary MUI `Drawer` in `frontend/views/dashboard/DashboardLayout.tsx:44-59`).
+  - Behavior: `useAppTranslation(Sessions)` (`Sessions` handle const — NO `Translation` enum) property access; `useQuery(myStudentSessionsQueryDocument)` stateful; status chips via `Record<string, …>` theme-token lookup; fee rendered verbatim + currency label; deadline via locale date formatter; cancel mutation payload normalizes Apollo cache by `id` (no refetch); `mapGraphQLErrorByCode` branching (`DUPLICATE_REQUEST` → success-equivalent info notice; `SESSION_NOT_FOUND` → snackbar + row removal; `SESSION_INVALID_TRANSITION` → inline row alert; masked `INTERNAL_SERVER_ERROR` → generic toast + requestId); denial surfaces use `PermissionDeniedFallback` (never bare `null`); NO new Zustand store; NO persistence.
+  - **Instructions:** `frontend/AGENTS.md`, `app/AGENTS.md` (the applicable frontend AGENTS.md files under `frontend/` here; neither `frontend/views/AGENTS.md` nor `frontend/components/ui/AGENTS.md` exists).
+  - _Requirements: REQ-063, REQ-064, REQ-065, REQ-075_
+  - [ ] 4.2.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts <each created file> --lifecycle duplicates` (exit 0)
+  - [ ] 4.2.TE **Unit / Component Tests**: Happy DOM + Apollo `MockedProvider` + `test/ui/components/translation-preload.ts` (warm via synchronous `getTranslations(locale)` + `TestWrapper locale`; the `readTranslation`/`translation-cache-store` helper documented there does NOT exist on this branch — `translation-preload.ts:4-8`) — empty/loading/error/populated states; status chip mapping per `SessionStatus`; cancel confirm flow (submit via `React.SubmitEvent`, disabled-while-pending); localized inline errors for `SESSION_NOT_FOUND`/`SESSION_INVALID_TRANSITION`/`DUPLICATE_REQUEST`/masked 500; en + ar rendering; ZERO hardcoded strings; run via `bun run test/scripts/run-test.ts <path>`.
+  - [ ] 4.2.BF **Agent-Browser Functional Self-Loop**: launch dev server, connect via agent-browser (Playwright); anonymous `/student/sessions` → redirect `/login?redirect=…`; parent login → redirect to `roleDashboardPath(UserRole.Parent)` (NEVER bare `/dashboard` — it is a forbidden redirect target per `frontend/lib/auth/roleDashboardRoute.ts:15-23`; wrong-role handling at `frontend/lib/auth/withPageAuth.ts:81-87`); student login → empty state → (fixture-driven populated state) filter chips apply → cancel opens dialog → confirm flips chip to cancelled + `holdReleasedNotice` snackbar → assert GraphQL request payloads (filter/page variables, `X-Idempotency-Key` n/a on reads) and cache-driven row removal on `SESSION_NOT_FOUND`; iterate patch-and-retest until clean.
+  - [ ] 4.2.BS **Agent-Browser Visual & Styling Self-Loop (Screenshot Analysis)**: capture high-res screenshots at 1440×900 / 768×1024 / 375×812 × en(LTR)/ar(RTL), light+dark; inspect for MUI v9 theme-palette compliance (no hardcoded hex/rgb anywhere), typography hierarchy, padding/margin rhythm, skeleton-geometry match, chip-token consistency, text truncation/overflow, RTL mirroring (actions, dialog, logical properties ONLY), ≥44px touch targets on mobile action buttons; loop: defect → patch `sx` theme-callback tokens → re-capture → repeat until polished.
+  - [ ] 4.2.SR **Semantic Review**: zero direct style props (sx only); `theme.palette.*` via theme-callback exclusively; `*Outlined` icons only; `React.SubmitEvent` (never `FormEvent`); `useAppTranslation(Sessions)` handle const + property access; `aria-invalid` on error fields; frontend failures via `@/frontend/lib/logger` — no `console.*`.
+  - [ ] 4.2.IV **Instruction Verification**: `frontend.instructions.md`, `mobile-desktop.instructions.md`, layer AGENTS.md files.
+  - Write `outcome/4.2-outcome.md`.
+
+### 4.3 — Teacher Sessions Page (`/teacher/sessions`)
+
+- [ ] 4.3 [Implement Teacher Sessions page + container]
+  - **Files:** CREATE `app/(dashboard)/teacher/sessions/page.tsx` (`withPageAuth({ roles: [UserRole.Teacher], redirectTo: "/teacher/sessions" })`); CREATE `frontend/views/teacher/sessions/` client container (`TeacherSessionsContainer` + shared list/filter primitives composed per frontend conventions — reuse session row/filter components via the ui layer if extracted in 4.2, extending rather than duplicating); **nav:** RETARGET the EXISTING teacher nav item in `frontend/views/dashboard/navItems.ts` to `/teacher/sessions` (keep the existing `SchoolOutlined` icon + `sessions` label key; no new icons).
+  - Row-level actions: **Start** on `scheduled`, **Complete** on `started`, **Cancel** on `scheduled`/`started` — each disabled while its own mutation is in flight; terminal rows render NO action affordances; applicant teacher (no teacher row) sees the localized EMPTY state (never an error).
+  - Same translation, error-code mapping, cache-normalization, and no-store discipline as 4.2.
+  - **Instructions:** `frontend/AGENTS.md`, `app/AGENTS.md` (neither `frontend/views/AGENTS.md` nor `frontend/components/ui/AGENTS.md` exists).
+  - _Requirements: REQ-063, REQ-064, REQ-065, REQ-075_
+  - [ ] 4.3.QL **Quality Loop**: sub-loop on every created/modified file (exit 0)
+  - [ ] 4.3.TE **Unit / Component Tests**: Happy DOM + Apollo mocks + translation preload via `test/ui/components/translation-preload.ts` (synchronous `getTranslations(locale)`; no `readTranslation` helper exists) — Start/Complete/Cancel action visibility matrix per status; in-flight disabled states; applicant EMPTY state; typed error rendering (`TEACHER_NOT_CERTIFIED` on complete; `SESSION_INVALID_TRANSITION`; `SESSION_NOT_FOUND` row removal); en + ar locales; zero hardcoded strings.
+  - [ ] 4.3.BF **Agent-Browser Functional Self-Loop**: agent-browser flows — anonymous → `/login?redirect=…`; wrong-role (parent/student) → `roleDashboardPath(ctx.role)` redirect (never bare `/dashboard`) per REQ-064; certified-teacher login → list renders student-booked sessions → Start flips chip to started (payload asserted) → Complete flips to completed with `confirmedByTeacherAt` rendered → terminal row exposes no actions → cancel path with optional reason → iterate until clean.
+  - [ ] 4.3.BS **Agent-Browser Visual & Styling Self-Loop (Screenshot Analysis)**: 3 viewports × 2 locales × light/dark; action-column mirroring in RTL; chip tokens; empty-state composition; dialog geometry; overflow menu on tablet; iterate screenshot→patch→recapture until polished.
+  - [ ] 4.3.SR **Semantic Review**: sx-only styling; palette tokens; `*Outlined` icons; `React.SubmitEvent`; property-access translations; `PermissionDeniedFallback` for defense-in-depth denials.
+  - [ ] 4.3.IV **Instruction Verification**: `frontend.instructions.md`, `mobile-desktop.instructions.md`, layer AGENTS.md.
+  - Write `outcome/4.3-outcome.md`.
 
 ---
 
 ## Phase 5: Integration & Differential Testing
 
-- [ ] 5.1 **Creation Matrix Suite (REQ-072)**
-  - File: `backend/db/test/logic/sessions/creation-guards.test.ts` (new; inside `runInRollback`, `entity-setup.ts` helpers only — add `createTestCertifiedTeacher`-style helper to `entity-setup.ts` ONLY if absent, with verified signature)
-  - Assert: REQ-011 defaults bit-exact (`Scheduled`, `StudentSession`, `feeHeld=true`, `startedAt/endedAt/confirmedBy*=NULL`, `confirmationDeadline ≈ now+24h` within tolerance, `studentId` = caller); INV-S4 both-FK NOT NULL; uncertified teacher ⇒ `TEACHER_NOT_CERTIFIED`; offline teacher ⇒ `TEACHER_NOT_AVAILABLE`; `intent=evaluation` boundary reject; zero-balance student ⇒ `INSUFFICIENT_BALANCE`; trial-lane student eligible when DEV1-004 columns present; fee resolution paid vs trial + earliest-expiry determinism (two-subscription fixture); BOPLA smuggled-field object ⇒ ignored; balance-invariance pre/post creation (REQ-016 — NO decrement)
-  - Assert messages via `expectRepoError`-style helper on translated-message SUBSTRINGS; run via canonical test runner; record coverage in outcome
-  - _Requirements: REQ-071, REQ-072_
-  - [ ] 5.1.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/test/logic/sessions/creation-guards.test.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 5.1.TE **Test Engineering**: IS this task (4-Tier content above); 100% statement+branch on `SessionService` creation path evidenced via `bun test --coverage` output
-  - [ ] 5.1.SEC **Security & Tenancy Audit**: every negative case asserts exact `extensions.code`-equivalent DomainError code; no message leaks third-party state
-  - [ ] 5.1.SR **Semantic Review**: `tx` threaded to EVERY repo call; NO seed queries; NO `.rejects.toThrow()` inside `runInRollback`
-  - [ ] 5.1.IV **Instruction Verification**: DEV1-002/DEV1-004 test conventions cross-checked
+- [ ] 5.1 [Lifecycle chaos & concurrency differential suite]
+  - Consolidate/rerun REQ-043 `Promise.allSettled` scenarios end-to-end against REAL DB: (a) double-start; (b) start⚡cancel race (refund iff cancel wins); (c) double-complete (timestamp written once); (d) two creations vs single unit (exactly one session, lanes never negative, CHECKs intact); (e) N-way same-key replay (one session, one debit, N−1 `DUPLICATE_REQUEST`).
+  - REQ-042 exact-refund-once across double-cancel; REQ-040 forced-failure rollback + key reuse.
+  - Run via `bun run test/scripts/run-test.ts <path>`; outcomes capture final-state assertions.
+  - _Requirements: REQ-040, REQ-042, REQ-043, REQ-073_
+  - [ ] 5.1.SR **Semantic Review**: no timing sleeps (synchronization via barriers/latches); deterministic assertions only.
+  - Write `outcome/5.1-outcome.md`.
 
-- [ ] 5.2 **Transition Matrix Suite (REQ-073) — exhaustive allowed & forbidden edges**
-  - File: `backend/db/test/logic/sessions/transitions.test.ts`
-  - ALLOWED: `scheduled→started` (sets `startedAt`, `is_online=false` after commit); `started→completed` (sets `endedAt`, `is_online=true`); `scheduled→cancelled` (`feeHeld=false`, `endedAt`, no lock change needed); `started→cancelled` (`feeHeld=false`, `endedAt`, `is_online=true`)
-  - FORBIDDEN (each ⇒ `SESSION_INVALID_TRANSITION` + ZERO writes verified via post-state re-read): `completed→started`, `completed→scheduled`, `completed→cancelled`, `cancelled→started`, `cancelled→scheduled`, `cancelled→completed`, `cancelled→cancelled`, `scheduled→completed` direct, any→`disputed`
-  - INV-S3/INV-W4 structural assertion: NO `teacher_transaction`/wallet mutation rows exist after cancel paths
-  - _Requirements: REQ-073, REQ-019, REQ-020, REQ-021, REQ-022_
-  - [ ] 5.2.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/test/logic/sessions/transitions.test.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 5.2.TE **Test Engineering**: IS this task; table-driven forbidden matrix ensures no missed pair (5×5 minus allowed edges covered between 5.1/5.2)
-  - [ ] 5.2.SEC **Security & Tenancy Audit**: wrong-teacher/wrong-participant probes on each transition ⇒ `SESSION_NOT_FOUND` before state change
-  - [ ] 5.2.SR **Semantic Review**: post-state assertions prove zero partial writes; lock consistency asserted after each winning transition
-  - [ ] 5.2.IV **Instruction Verification**: Workflow-03 transition set matches the canonical transition graph one-for-one
+- [ ] 5.2 [GraphQL integration matrix — full REQ-064 grid]
+  - `setupTestServerLifecycle` + `testClient`: assert EVERY cell of the REQ-064 matrix with `extensions.code` exactness (anonymous/wrong-role/participant/applicant/parent/admin rows × seven operations + two routes); oracle shape-constancy pairings (foreign id ≡ nonexistent id — identical shapes and near-identical timing envelopes); filter coherence; SDL snapshot parity; allowlist untouched; zero unauthenticated session-create surface.
+  - _Requirements: REQ-064, REQ-074, REQ-030, REQ-033_
+  - [ ] 5.2.SR **Semantic Review**: fixtures via `entity-setup.ts`; translation-substring error assertions (never raw keys).
+  - Write `outcome/5.2-outcome.md`.
 
-- [ ] 5.3 **Concurrency & Chaos Suite (REQ-074 / REQ-045)**
-  - File: `backend/db/test/logic/sessions/concurrency-chaos.test.ts`
-  - (a) two parallel `requestSession` (Promise.allSettled) with capacity=1 ⇒ exactly ONE success; (b) same-key duplicate replay ⇒ one row + DUPLICATE_REQUEST; (c) `startSession` ⚡ `cancelSession` ⇒ exactly one winner, loser typed conflict, `is_online` consistent with winner; (d) `completeSession` ⚡ `cancelSession` ⇒ exactly one winner, cancelled NEVER yields side effects, completed terminal; (e) duplicate `startSession`/duplicate `completeSession` ⇒ second call `SESSION_INVALID_TRANSITION`, no drift; PLUS forced mid-transaction failure (throw after lock acquired) ⇒ FULL rollback proven (zero residual rows, teacher lock unchanged); PLUS fuzz series (unicode/oversized idempotency keys, negative/overflow IDs, unknown intent strings) all fail closed with typed codes
-  - Determinism gate: suite MUST pass two consecutive runs (REQ-079)
-  - _Requirements: REQ-045, REQ-074_
-  - [ ] 5.3.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts backend/db/test/logic/sessions/concurrency-chaos.test.ts --lifecycle duplicates` (exit code 0)
-  - [ ] 5.3.TE **Test Engineering**: IS this task; record both consecutive run outputs in outcome
-  - [ ] 5.3.SEC **Security & Tenancy Audit**: race losers never mutate governance/lock state; fuzz inputs never reach raw SQL
-  - [ ] 5.3.SR **Semantic Review**: assertions prove single-commit-unit semantics (REQ-044); no flaky sleeps used for synchronization (use barriers/controlled sequencing)
-  - [ ] 5.3.IV **Instruction Verification**: race-matrix anchors REQ-045(a)–(e) mapped one-to-one to test names
-
-- [ ] 5.4 **Idempotency Suite (REQ-075)**
-  - Files: `backend/services/sessions/session-request-idempotency.test.ts` (mocked adapter — REQ-078); duplicate-replay assertions at logic/integration level inside the 5.3(b)/5.6 flows
-  - Prove: same-key replay ⇒ single row + `DUPLICATE_REQUEST`; different-keys same-student ⇒ independent outcomes under capacity rules; transient cache failure ⇒ `SERVICE_UNAVAILABLE` + NO creation; post-5xx same-key retry ⇒ allowed (key released); TTL window set to 24h; raw key never logged
-  - _Requirements: REQ-017, REQ-075_
-  - [ ] 5.4.QL **Quality Loop**: run sub-loop on new test file (exit code 0)
-  - [ ] 5.4.TE **Test Engineering**: IS this task; adapter mock contract asserted (SET-NX-EX call shape)
-  - [ ] 5.4.SEC **Security & Tenancy Audit**: outage can never silently degrade to unprotected booking; hashed key material only in logs
-  - [ ] 5.4.SR **Semantic Review**: zero module-level state; error taxonomy exact (`DUPLICATE_REQUEST` 409-family, `SERVICE_UNAVAILABLE` 503-family)
-  - [ ] 5.4.IV **Instruction Verification**: `docs/IDEMPOTENCY.md` trade terms matched; retry-guidance doc note for clients (REQ-025) prepared for Phase-7 doc
-
-- [ ] 5.5 **Security & Authorization Suite (REQ-076)**
-  - File: `backend/db/test/logic/sessions/security-authorization.test.ts` (+ assertions folded into 5.6 where GraphQL-level)
-  - Prove: non-participant mutation/read ⇒ `SESSION_NOT_FOUND`; wrong-role ⇒ FORBIDDEN (403 semantics); unauthenticated ⇒ `UNAUTHORIZED` (401 semantics); suspended student request within ACTIVE window ⇒ FORBIDDEN, within LAPSED window ⇒ allowed (boundary-date matrix from task 2.2); teacher-applicant targeting ⇒ `TEACHER_NOT_CERTIFIED`; parent tokens on all four ops ⇒ rejected before any write (assert zero session-row deltas); GraphQL depth probe bounded; status-override/fee-override BOPLA probes physically unresolvable at schema level
-  - _Requirements: REQ-030..REQ-034, REQ-076_
-  - [ ] 5.5.QL **Quality Loop**: run sub-loop on new test file (exit code 0)
-  - [ ] 5.5.TE **Test Engineering**: IS this task (Tier 4 surface); permission-matrix §3.4 cells each mapped to a test
-  - [ ] 5.5.SEC **Security & Tenancy Audit**: IS this task — BOLA/BOPLA/BFLA trio explicitly named per test
-  - [ ] 5.5.SR **Semantic Review**: oracle-resistance verified by code-equal assertions (`SESSION_NOT_FOUND`, never FORBIDDEN to non-participants)
-  - [ ] 5.5.IV **Instruction Verification**: DEV2-002 consumption guide §5.6 role↔certification boundary test-named explicitly
-
-- [ ] 5.6 **GraphQL Integration Suite (REQ-077 — M1 Gate Evidence)**
-  - File (placed per `setupTestServerLifecycle`/`testClient` harness convention discovered in 0.2): e.g. `backend/graphql/test/sessions/session-lifecycle.integration.test.ts`; consumes the Phase-4 documents EXCLUSIVELY via `testClient`
-  - M1 happy path end-to-end: student `requestSession` ⇒ payload asserts defaults → teacher `startSession` (`startedAt`, status) → teacher `completeSession` (`endedAt`); both cancellation variants via real mutation calls asserting `feeHeld=false`; negative assertions through `CombinedGraphQLErrors` / `expectMutationError(…, expectedCode)` per REQ-068: `TEACHER_NOT_CERTIFIED`, `TEACHER_NOT_AVAILABLE`, `INSUFFICIENT_BALANCE`, `SESSION_INVALID_TRANSITION`, `SESSION_NOT_FOUND`, `DUPLICATE_REQUEST`; authScope cells (anonymous/student/teacher/parent) asserted at HTTP-harness level
-  - _Requirements: REQ-029, REQ-077, REQ-068_
-  - [ ] 5.6.QL **Quality Loop**: run sub-loop on new integration file (exit code 0)
-  - [ ] 5.6.TE **Test Engineering**: IS this task; executed via canonical runner; outputs archived as M1 evidence in outcome
-  - [ ] 5.6.SEC **Security & Tenancy Audit**: assertions branch on `extensions.code` NEVER on HTTP status for GraphQL errors
-  - [ ] 5.6.SR **Semantic Review**: harness uses ONLY the canonical documents (REQ-065); NO inline literal queries
-  - [ ] 5.6.IV **Instruction Verification**: `setupTestServerLifecycle` lifecycle conventions mirrored from an existing integration suite
-
-- [ ] 5.7 **Static Anti-Pattern Assertion Suite (plan §6.6)**
-  - File: `backend/db/test/logic/sessions/static-assertions.test.ts` (DEV2-003 REQ-073 discipline)
-  - Scans the change set for: `{ ...input` adjacent to drizzle calls; `console.`; string-literal status/type/intent values; `import type` on runtime enums; writes to `recitation`/`teacher_transaction`/`wallet`/`student_payments`/`notifications` tables; module-level mutable `Map/Set/[]`; any READ of `confirmationDeadline`; new route/view files outside Phase-4 scope; `next-intl`/`getBackendTranslations` imports
-  - Any hit = fail CI-quality posture; violations loop back to owning task, NOT patched silently
-  - _Requirements: REQ-027, REQ-046, REQ-031, REQ-021(plan §6.6), REQ-002_
-  - [ ] 5.7.QL **Quality Loop**: sub-loop on the new static-assertion test file
-  - [ ] 5.7.TE **Test Engineering**: IS this task
-  - [ ] 5.7.SEC **Security & Tenancy Audit**: IS this task's negative registry
-  - [ ] 5.7.SR **Semantic Review**: scan patterns derive from plan §6.6 verbatim (no invent/weaken)
-  - [ ] 5.7.IV **Instruction Verification**: DEV2-003 static-assertion precedent file read and reused where applicable
-
-- [ ] 5.8 **Coverage & Baseline Delta Gate**
-  - Run `bun test --coverage` scoped to new modules: 100% statement + branch on `session.repository.ts`, `session.service.ts`, `session-state-guard.helpers.ts`, `assert-not-suspended.ts`, `session-request-idempotency.helpers.ts` (REQ-070); re-run full `bun tsgo` / `bun biome:check` / `bun run scripts/lint-service.ts` vs REQ-001 baseline ⇒ delta = +0 (REQ-079); `git diff backend/db/schema/**` empty (REQ-047); codegen artifacts committed (REQ-064)
-  - _Requirements: REQ-070, REQ-079, REQ-047, REQ-064_
-  - [ ] 5.8.QL **Quality Loop**: all remaining edited files re-looped one final time
-  - [ ] 5.8.TE **Test Engineering**: coverage snapshot archived in outcome
-  - [ ] 5.8.SEC **Security & Tenancy Audit**: 5.7 scan re-run at gate time (final-state enforcement)
-  - [ ] 5.8.SR **Semantic Review**: ANY gate failure blocks Phase 6
-  - [ ] 5.8.IV **Instruction Verification**: ALL commands executed EXACTLY as named in baseline outcome (same runner path)
+- [ ] 5.3 [Gates: coverage, journeys, baseline delta]
+  - `bun test --coverage` — 100% statement/branch evidence on ALL new service/repo/helper code (archive in outcomes).
+  - Journey suites J1 + J2 green TWICE consecutively (`bun run test/scripts/run-test.ts test/workflows` — never raw `bun test`) — REQ-J6 honest-cleanup proof.
+  - Final `bun tsgo` / `bun biome:check` / `bun run scripts/lint-service.ts --json --id final` — delta vs Phase-0 baseline = 0 new errors; codegen artifacts committed with zero unrelated drift; REQ-045 schema-diff evidence attached.
+  - _Requirements: REQ-070, REQ-076, REQ-045, REQ-J6, REQ-071_
+  - Write `outcome/5.3-outcome.md`.
 
 ---
 
-## Phase 6: Post-Implementation Review Waves (parallel)
+## Phase 6: Post-Implementation Review Waves (Parallel)
 
-- [ ] 6.1 **Review Wave: Types**
-  - Scope: canonical type purity (composition-only, no local types anywhere, enum value-imports, no `as` narrowing), i18n key parity (types/en/ar), contract-consumption fidelity (DEV2-003 guards used, no redefinitions)
-  - Output: `ai/plans/dev3-004-session-creation-lifecycle/outcome/review-wave-types.md` with findings → owning-task loopback
-  - _Requirements: REQ-002, REQ-003, REQ-051, REQ-067_
-
-- [ ] 6.2 **Review Wave: Backend**
-  - Scope: atomicity (single tx per flow, SAVEPOINT-aware `withTransaction(outerTx)`), guarded-transition exclusivity (single state map, no read-then-write), `tx` propagation everywhere, hold-accounting formula vs REQ-014/049, fee resolution determinism, idempotency fail-closed semantics, logger discipline, no-dead-code
-  - Output: `outcome/review-wave-backend.md` with findings → owning-task loopback
-  - _Requirements: REQ-040..REQ-049, REQ-053, REQ-055_
-
-- [ ] 6.3 **Review Wave: Frontend**
-  - Scope: documents-only boundary (4.2 scan re-verified), sharedDocuments conventions (`@apollo/client` imports, TypedDocumentNode, `id` in every selection, no useLazyQuery, barrel chain)
-  - Output: `outcome/review-wave-frontend.md` with findings → owning-task loopback
-  - _Requirements: REQ-065, REQ-066_
-
-- [ ] 6.4 **Review Wave: Pentester**
-  - Scope: BOLA/IDOR (oracle-resistance honored), BOPLA (structural + mapping-layer whitelist), BFLA (scope matrix exact; parent probes; applicant-vertical probe; suspension window math), injection/ID-channel safety (positive-safe-int guards; N/A `escapeLikeWildcards` recorded explicitly so absence is NOT flagged), disclosure vocabulary (REQ-034 sanctioned reasons only), log hygiene (no balances/tokens), depth bounded
-  - Output: `outcome/review-wave-pentester.md` with findings → owning-task loopback
-  - _Requirements: REQ-030..REQ-039, REQ-076_
-
-- [ ] 6.5 **Deferred-Items Ledger Completion Check**
-  - Run: `grep -c "❌\|⚠️" ai/plans/dev3-004-session-creation-lifecycle/deferred-items.md` ⇒ MUST be `0` for ALL non-forward items; F1–F5 forward notes each carry explicit owning ticket (DEV3-010/011, DEV3-013/014, DEV3-013, DEV3-012, DEV3-011) + non-blocking status
-  - Output: `outcome/review-wave-deferred-items.md`
-  - _Requirements: REQ-083_
+- [ ] 6.1 [Launch parallel review waves + deferred-items check]
+  - **review-types wave**: canonical-type discipline (no local Pothos types, no service `.types.ts`, contract types consumed-not-redefined, additive-only diffs on existing type files).
+  - **review-backend wave**: four-phase create ordering; guarded single-statement transitions; probe classification-only; `tx` propagation audit on EVERY new/changed repo method; zero cross-layer imports; REQ-019 grep gates (zero notifications/audit/wallet/transaction/report/recitation imports or writes in the slice); REQ-031 zero-`...input` grep gate; REQ-036 log-hygiene scan (no `console.*`, no keys/payloads in log context).
+  - **review-frontend wave**: MUI v9 sx-only compliance; palette-token exclusivity; `*Outlined` icons; `React.SubmitEvent`; translation `defineNamespace` handle-const property access (no `Translation` enum exists); no `useLazyQuery`; codegen-types-only; nav conventions.
+  - **pentester wave**: BOLA oracle-safety (foreign≡nonexistent), BOPLA closed inputs, BFLA scope exactness + no admin bypass, INV-S1/S2 structural terminality, INV-S5 TOCTOU-free certification, idempotency-claim abuse review, REQ-034 injection N/A attestation.
+  - **Deferred-items check**: `grep -c "❌\|⚠️"` on the ledger = EXACTLY the pre-seeded D1–D5 (each owner-referenced, non-blocking).
+  - Every wave finding either fixed-in-pass or recorded with owner; blocking findings loop back to the owning phase.
+  - _Requirements: REQ-018, REQ-019, REQ-030..REQ-036, REQ-041, REQ-076, REQ-083_
+  - Write `outcome/6.1-review-waves-outcome.md` (one subsection per wave).
 
 ---
 
 ## Phase 7: Knowledge Propagation & Documentation
 
-- [ ] 7.1 **Canonical Documentation — `docs/sessions/session-lifecycle.md` (NEW)**
-  - Required sections (REQ-080): Why (revenue-bearing atom; INV-S/B.4 protection surface); request-vs-accept reconciliation (D1 — Drizzle schema ground truth in `backend/db/schema/`, Contract 1); creation pipeline diagram (lock → guard → insert); guarded-transition pattern (`UPDATE … WHERE status RETURNING`); hold/release accounting formula + conservative mixed-intent approximation + refinement owner DEV3-013 (REQ-049); idempotency contract + client retry guidance (REQ-025: treat typed conflict after committed 5xx as success-equivalent); security matrix (permission table from plan §3.4); anti-patterns (NO read-then-write transitions; NO client fee; NO decrement on cancel; NO ad-hoc transition maps); consumption guide for DEV3-011/012/013/014/021/022 and DEV2-006 (REQ-026 primitives-only); related documents (Workflows 02/03, `docs/specs/state-machine-invariants.md`, `docs/IDEMPOTENCY.md`, `docs/auth/user-registration.md`, `docs/auth/qiraah-selection-and-c5.md`, `docs/graphql/domain-error-extensions-code.md`)
-  - _Requirements: REQ-080_
-  - [ ] 7.1.QL **Quality Loop**: documented as skipped (Markdown); internal heading/style conventions of `docs/` checked
-  - [ ] 7.1.TE **Test Engineering**: doc claims trace-checked against actual test names (each invariant claim cites a suite from Phase 5)
-  - [ ] 7.1.SEC **Security & Tenancy Audit**: doc records `escapeLikeWildcards` N/A explicitly and the sanctioned error vocabulary
-  - [ ] 7.1.SR **Semantic Review**: NO code dumps; rules/decisions + structure only; no contradictions with specs.md
-  - [ ] 7.1.IV **Instruction Verification**: docs-style conventions from neighboring `docs/*` files mirrored
+- [ ] 7.1 [Canonical doc: `docs/sessions/session-lifecycle.md`]
+  - Structure: Why → State machine + guarded-transition pattern → four-phase creation invariant → hold-as-debit ruling & B.4 reconciliation (supersedes TEAM_ALLOCATION Contract-1 phrasing) → trial-first ladder + same-lane refund → idempotency claim design → **oracle ruling contrast-with-plans + anti-copy-paste warning** (sessions sensitive ⇒ collapse; plans public ⇒ NOT_FOUND fine) → `is_online` deferral note (D3) → consumer-guidance table for DEV3-005/006/011/012/013/021 + DEV2-016 → Rollout summary → Related Documents.
+  - Bind invariants: INV-S1..S8 (S6/S7/S8 explicitly DEV3-005-owned), INV-B1/B4/B8, INV-W3/W4, INV-U2/U5, INV-TV1; decisions A.8/A.10/B.2/B.3/B.4/B.18/C.5.
+  - _Requirements: REQ-080, REQ-081_
+  - Write `outcome/7.1-outcome.md`.
 
-- [ ] 7.2 **Layer AGENTS.md Propagation**
-  - Files to modify: `backend/services/AGENTS.md` (1–2 line session-lifecycle rule: single canonical state guard + guarded transitions + doc reference); `backend/db/repo/AGENTS.md` (guarded-transition pattern one-liner + doc reference); `backend/graphql/AGENTS.md` (session-domain convention line IF a new convention emerged — otherwise record skip); root `AGENTS.md` (Important References gains `docs/sessions/session-lifecycle.md`)
-  - Content policy: rules/decisions only — NO code dumps in AGENTS files
+- [ ] 7.2 [Decisions addendum + state-machine cross-reference]
+  - Append addendum to `docs/specs/open-decisions-and-gaps.md`: (i) hold-as-debit + same-lane refund ruling; (ii) interim constant fees (forward: plan-linked pricing → DEV3-013); (iii) `is_online` assertion deferral (owners DEV3-008/DEV2-011); (iv) `session_request_idempotency` table + 24h-sweeper deferral; (v) sessions-are-sensitive oracle ruling (contrast DEV1-005).
+  - `docs/specs/state-machine-invariants.md`: cross-reference line ONLY — zero renumbering.
   - _Requirements: REQ-081_
-  - [ ] 7.2.QL **Quality Loop**: documented as skipped (Markdown)
-  - [ ] 7.2.TE **Test Engineering**: N/A — record
-  - [ ] 7.2.SEC **Security & Tenancy Audit**: N/A — record
-  - [ ] 7.2.SR **Semantic Review**: additions are 1–2 lines each; no duplication of existing lines; references path-correct
-  - [ ] 7.2.IV **Instruction Verification**: each AGENTS file read fully before editing (append-only edits)
+  - Write `outcome/7.2-outcome.md`.
 
-- [ ] 7.3 **Final Outcome Synthesis & Completion Gate**
-  - Create `ai/plans/dev3-004-session-creation-lifecycle/outcome/dev3-004-completion-outcome.md` consolidating: ALL task outcomes (0.1–7.2) with checkbox state 100% `[x]`; gate evidence (baseline delta = +0; empty schema diff; codegen artifacts committed; coverage snapshot; two consecutive chaos-run results; M1 GraphQL evidence from 5.6); ledger closure (`grep -c "❌\|⚠️" = 0` for non-forward items, F1–F5 intact with owners); carry-forward traceability note for consumer tickets (DEV3-006/007/011/012/013/014/021/022, DEV2-006) citing REQ ranges per specs §4 note
-  - Final verification commands re-run and pasted: `bun tsgo`, `bun biome:check`, lint-service, canonical runner over the full session suite, `git diff --name-only` filtered to expected files
-  - _Requirements: REQ-082, REQ-083, REQ-029_
-  - [ ] 7.3.QL **Quality Loop**: N/A (synthesis) — record
-  - [ ] 7.3.TE **Test Engineering**: full-suite final run transcript archived
-  - [ ] 7.3.SEC **Security & Tenancy Audit**: pentester wave findings all closed or explicitly waived-with-justification (any waiver ⇒ ❌ ledger entry ⇒ gate FAILS until resolved)
-  - [ ] 7.3.SR **Semantic Review**: every checkbox in this tasks.md is `[x]`; no `...` placeholders anywhere; forward notes non-blocking
-  - [ ] 7.3.IV **Instruction Verification**: completion gate criteria from REQ-083 verified item-by-item inline in the outcome
+- [ ] 7.3 [AGENTS.md propagation — rule-only one-liners]
+  - `backend/services/AGENTS.md` — SessionLifecycleService + hold-ordering rule + zero-notification rule (pointer to canonical doc).
+  - `backend/db/repo/AGENTS.md` — guarded transition pattern + provenance column note + `FOR UPDATE` certification lock note.
+  - `backend/graphql/AGENTS.md` — participant-scoped ops + `$all` reuse pattern note.
+  - Root `AGENTS.md` — Important References entry for `docs/sessions/session-lifecycle.md`.
+  - Rules/pointers ONLY — never code.
+  - _Requirements: REQ-082_
+  - Write `outcome/7.3-outcome.md`.
 
----
-
-## Task Index & Requirement Coverage Quick-Map
-
-| Task | Phase | Primary REQs |
-|---|---|---|
-| 0.1–0.3 | 0 | REQ-001, REQ-004, REQ-082 |
-| 1.1 | 1 | REQ-047, REQ-011, REQ-012 |
-| 1.2 | 1 | REQ-002, REQ-003 |
-| 1.3 | 1 | REQ-002, REQ-051 |
-| 2.1–2.8 | 2 | REQ-010..REQ-028, REQ-030..REQ-034, REQ-036..REQ-050, REQ-053..REQ-055 |
-| 3.1–3.5 | 3 | REQ-032, REQ-038, REQ-039, REQ-052, REQ-060..REQ-064 |
-| 4.1–4.2 | 4 | REQ-065, REQ-066, REQ-068 |
-| 5.1–5.8 | 5 | REQ-070..REQ-079, REQ-029, REQ-067 |
-| 6.1–6.5 | 6 | REQ-079, REQ-083 + security family re-verification |
-| 7.1–7.3 | 7 | REQ-080..REQ-083, REQ-025, REQ-049 |
+- [ ] 7.4 [Outcome synthesis & final gate]
+  - Verify every task has its `outcome/<id>-outcome.md`; synthesize `outcome/final-outcome.md` (what shipped, gates evidence, journey twice-green proof, coverage proof, baseline delta = 0, ledger state: only D1–D5 remain ⚠️-free forward items).
+  - Final assertion run: baseline diff = 0 new errors; `git diff backend/db/schema/** backend/db/migration/**` = EXACTLY REQ-013's two artifacts.
+  - _Requirements: REQ-076, REQ-083_
+  - Write `outcome/7.4-final-outcome.md`.

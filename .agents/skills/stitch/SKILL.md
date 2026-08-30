@@ -74,9 +74,10 @@ When asked to "create a prototype for a plan" (e.g. `.ai/plans/<feature>/specs.m
 6. **After each generation, immediately capture** the new screen's `name`/`id`/title from the response (grep the temp output file if needed — see Ground Rules). Do **not** rely on `list_screens` for fresh screens.
 7. **Save artifacts locally** under `<plan-dir>/prototype/`:
    - `mkdir -p <plan-dir>/prototype`
-   - Per screen: `curl -sL -o <kebab-case-name>.html "<htmlCode.downloadUrl>"` and `curl -sL -o <kebab-case-name>.png "<screenshot.downloadUrl>=s0"` (note the `=s0`).
+   - Per screen: `curl -sL -o <kebab-case-name>.png "<screenshot.downloadUrl>=s0"` (note the `=s0`).
+   - **Do NOT download HTML by default.** Only fetch `.html` files (`curl -sL -o <kebab-case-name>.html "<htmlCode.downloadUrl>"`) when the user explicitly asks for HTML artifacts/code. PNG screenshots are the default deliverable.
    - Re-fetch URLs with `get_screen` for any screen not in a fresh `list_screens` result.
-   - Verify: `file *.html *.png` → HTML/PNG, sizes >1KB, PNG dimensions match the render (2560×2048 desktop).
+   - Verify: `file *.png` → PNG, sizes >1KB, PNG dimensions match the render (2560×2048 desktop). If HTML was requested, also verify `file *.html` → HTML.
 8. **Report**: list saved files + the Stitch project resource name so the user can iterate via `edit_screens` / `generate_variants`.
 
 ---
@@ -150,7 +151,8 @@ Responses are huge (40–410KB) and the saved `/tmp/…-copilot-tool-output-*.tx
 - **ALWAYS** use numeric/alphanumeric IDs (without `projects/` or `screens/` prefix) for `generate_screen_from_text`, `edit_screens`, `get_screen`, `generate_variants`, and `apply_design_system`.
 - **ALWAYS** pass only `id` and `sourceScreen` in `selectedScreenInstances` for `apply_design_system` (omit coordinates and dimensions).
 - **ALWAYS** record screen IDs and title→ID mapping from generation responses; never rely solely on `list_screens` for recently generated screens.
-- **ALWAYS** verify downloaded files exist, have non-trivial size, and are valid HTML/PNG before declaring success.
-- **ALWAYS** save artifacts with meaningful, kebab-case names derived from the screen title (e.g. `add-payment-form.html`), not raw IDs.
+- **ALWAYS** verify downloaded files exist, have non-trivial size, and are valid PNG (or HTML, if HTML was requested) before declaring success.
+- **ALWAYS** save artifacts with meaningful, kebab-case names derived from the screen title (e.g. `add-payment-form.png`), not raw IDs.
+- **NEVER** download HTML files by default — PNG screenshots are the default artifact. Only download `.html` files when the user explicitly asks for HTML output/code.
 - **NEVER** spam `generate_screen_from_text` on timeout; wait and verify with `get_screen`.
 - **NEVER** delete projects without explicit confirmation from the user.

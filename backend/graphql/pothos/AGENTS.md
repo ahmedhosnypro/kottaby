@@ -2,6 +2,10 @@
 
 This file governs all files under `backend/graphql/pothos/`. It complements the parent `backend/graphql/AGENTS.md`.
 
+## Custom Scalar Registration Pattern
+
+Custom GraphQL scalars are registered ONCE in `backend/graphql/pothos/shared/scalar.pothos.ts` via `gqlSchemaBuilder.addScalarType(...)`, backed by resolvers from `graphql-scalars` (e.g. `DateTime` ← `DateTimeResolver`). The scalar's TypeScript types are declared on the builder's `Scalars` slot in `backend/graphql/pothos/builder.ts` — keep BOTH sides in sync (registration + typing). Domain Pothos files reference the scalar by name (`t.expose("createdAt", { type: "DateTime" })`) — never re-register a scalar in a domain file (runtime error). `DateTime` serializes `Date` to ISO-8601 UTC; frontend codegen maps it to `string` (`codegen.ts`). After adding a scalar, run `bun run generate:gqlSchema` then `bun codegen`, and pin the new type name in `backend/graphql/test/schema-surface.test.ts`.
+
 ## Pothos Enum Registration Pattern (CRITICAL RULE)
 
 GraphQL enums MUST be backed by a real TypeScript `enum` defined in `backend/enum/`. **Hardcoding enum value literal arrays inside any `*.pothos.ts` file is PROHIBITED** — it bypasses the single-source-of-truth enum definition and drifts away from the backend layer.

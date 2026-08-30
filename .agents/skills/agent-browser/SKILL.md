@@ -84,16 +84,26 @@ Choose the right tool based on the core task:
   agent-browser screenshot --screenshot-dir scratch/screenshots
   ```
 
-### 5. Authenticated Pages (Siraj) — NEVER type credentials
+### 5. Authenticated Pages (Kottaby) — NEVER type credentials
 
 - **Gotcha**: The AI layer redacts real email addresses from prompts (they arrive as `[EMAIL_REDACTED]`-style tokens), so typing the super-admin credentials into the login form always fails the server's Email-scalar validation.
 - **Fix**: Use `scripts/browser-login.ts` — it reads `ADMIN_EMAIL`/`ADMIN_PASSWORD` from `.env` itself, performs the GraphQL login, and injects the session cookies directly into your browser session. Secrets never pass through the agent context.
   ```bash
   agent-browser session id --scope worktree --prefix verify      # create/save session name first
   AGENT_BROWSER_SESSION=<session> bun run scripts/browser-login.ts --inject
-  agent-browser open http://localhost:3000/profile               # already authenticated
+  agent-browser open http://localhost:3000/dashboard             # already authenticated
   ```
 - Cookie/state artifacts live in git-ignored `.browser-auth/` (mode 600). Playwright paths use the same script — see `test/ui/AGENTS.md` ("Agent Browser Login").
+- The login mutation here takes top-level args (`login(email, password)`, NOT `login(input: ...)`), and the site keeps `accessToken` in React memory — the httpOnly `refresh_token` + `session_id` cookies are what authenticate subsequent page loads, which is why cookie injection alone works.
+
+### 5a. URLs are NOT locale-prefixed (Kottaby)
+
+- **Gotcha**: Kottaby has NO `app/[locale]/` segment — i18n is cookie/header-driven (`NEXT_LOCALE`), so every route is unprefixed (`/dashboard`, `/notifications`, `/admin/dashboard`). Navigating to `/en/...` or `/ar/...` hits a non-existent route.
+- **Rule**: Always use unprefixed URLs (`http://localhost:3000/notifications`, never `http://localhost:3000/en/notifications`). If a full page says "Page not found" while the shell looks normal, check the URL for a locale prefix first.
+- To inspect a page in a specific locale, set the `NEXT_LOCALE` cookie (or switch via the header language menu) instead of changing the path:
+  ```bash
+  agent-browser cookies set NEXT_LOCALE ar --domain localhost   # then reload the SAME unprefixed URL
+  ```
 
 ### 6. Screenshot & Visual Inspection Context Isolation (CRITICAL)
 
@@ -107,4 +117,3 @@ Choose the right tool based on the core task:
 ## Observability Dashboard
 
 The dashboard runs independently of browser sessions on port 4848 and can also be opened through a proxied or forwarded URL such as `https://dashboard.agent-browser.localhost`. Agents should stay on the dashboard origin: session tabs, status, and stream traffic are proxied internally, so session ports do not need to be exposed.
-

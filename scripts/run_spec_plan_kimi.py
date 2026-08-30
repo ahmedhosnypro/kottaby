@@ -81,6 +81,27 @@ DEFAULT_INCLUDE_PATTERNS = (
     "backend/enum/**,"
     "backend/db/schema/**,"
     "shared/constants/**,"
+    # Ground-truth CODE below — bundled so the model can VERIFY existence/shape
+    # of every symbol, helper, directory and API signature it cites (docs and
+    # AGENTS.md prose describe future state too; only code proves presence):
+    "backend/lib/errors.ts,"
+    "backend/lib/gateway/**,"
+    "backend/lib/auth/**,"
+    "backend/db/repo/**,"
+    "backend/db/test/test-utils.ts,"
+    "backend/db/test/entity-setup.ts,"
+    "backend/services/**,"
+    "backend/graphql/**,"
+    "shared/locale/**,"
+    "frontend/lib/**,"
+    "frontend/components/**,"
+    "frontend/providers/apollo/**,"
+    "frontend/graphql/sharedDocuments/**,"
+    "frontend/views/dashboard/**,"
+    "test/scripts/**,"
+    "test/helpers/**,"
+    "codegen.ts,"
+    "package.json,"
     "ai/plans/**/specs.md,"
     "ai/plans/**/plan.md"
 )
@@ -114,19 +135,22 @@ The Kottab stack: Next.js 16 App Router, React 19, MUI v9, Apollo Client v4, Pot
    - Icon naming: `*Outline` -> `*Outlined` (e.g. `ErrorOutline` -> `ErrorOutlined`).
    - `FormEvent` is removed -> use `React.SubmitEvent` or `React.SyntheticEvent<HTMLFormElement>`.
    - NO hardcoded colors -> use `theme.palette.*`.
-5. **i18n & Localization**:
+5. **i18n & Localization (verify signatures against bundled `shared/locale/` code)**:
    - All user-facing strings and errors must use compile-time i18n in `shared/locale/`.
-   - Server components: `getTranslations(locale, "namespace")` from `@/shared/locale/server`.
-   - Client components: `useAppTranslation("namespace")` from `@/shared/locale/client`.
+   - Server components: `getTranslations(locale)` — ONE argument, returns the full `Translations` tree; access namespaces via property (`.errorsTranslations`, ...). The two-arg `getTranslations(locale, "namespace")` form does NOT exist.
+   - Services / scripts / API routes: `getServerTranslations(locale)` from `@/shared/locale/server-graphql` — ONE argument, same tree-returning contract.
+   - Client components: `useAppTranslation(<NamespaceHandle>)` — the argument is a `defineNamespace` handle CONST (e.g. `useAppTranslation(Applicant)`), NOT a string and NOT a `Translation.<X>` enum member (no `Translation` enum exists). The top-level interface is named `Translations`; `ErrorsLabels` is FLAT with domain-prefixed keys (e.g. `applicantNotFound`) — never invent nested namespace groupings.
    - Resolvers: `ctx.t("namespace")`.
+   - Namespace registration checklist lives in `shared/AGENTS.md` (NOT `shared/locale/AGENTS.md`).
    - Never import `next-intl` (removed).
 6. **Logging**:
-   - NEVER use `console.*`. Use `logger` from `@/backend/lib/logger` or `@/frontend/utils/logger`.
+   - NEVER use `console.*`. Use `logger` from `@/backend/lib/logger` (backend) or `@/frontend/lib/logger` (frontend) — `@/frontend/utils/logger` does NOT exist.
 7. **Security & Defenses**:
    - BOLA / IDOR Defense: Assert caller ownership (`ctx.user.id`), verify tenant isolation (`tenantId`).
    - BOPLA Defense: Strict DTO mapping; ensure no `{{ ...input }}` spread into DB updates/inserts.
    - BFLA Defense: Verify role/permission checks on mutations.
-   - Input Sanitization: Ensure search queries escape wildcards (`escapeLikeWildcards`).
+   - Input Sanitization: search queries must escape LIKE wildcards — NOTE: no `escapeLikeWildcards` helper exists in code today (doc-only name); if a plan needs it, the plan MUST include creating it as a new shared utility.
+   - Governance defense-in-depth: `createGraphQLContext` and `UserRepository.findById` apply NO isDeleted/isBlocked/suspended filter — governance denial happens ONLY at login (`backend/services/auth/auth.service.ts`) and SSR (`frontend/lib/auth/server-auth.ts`). NEVER claim the GraphQL context boundary is fail-closed for governed users; if a ticket needs request-time governance, plan a service-layer re-check explicitly.
 8. **System Decisions & Specification Ground Truth (MANDATORY)**:
    - Always consult and adhere to `docs/specs/open-decisions-and-gaps.md` (33 resolved decisions A.1–C.5).
    - Always enforce invariants from `docs/specs/state-machine-invariants.md` (Session INV-S1..S8, Teacher Verification INV-TV1..TV7, Student/Parent INV-B1..B5, Wallet/Escrow INV-W1..W8, Payment INV-PAY1..PAY4).
@@ -142,6 +166,24 @@ The Kottab stack: Next.js 16 App Router, React 19, MUI v9, Apollo Client v4, Pot
    - `runInRollback` is FORBIDDEN for journey tests (services spawn their own transactions): fixtures are committed in `beforeAll` and hard-deleted in `afterAll` with tracked IDs; side effects (notifications/email/SMS) are spied, never sent.
    - Journey tests are written TEST-FIRST, before the service surface is implemented.
    - If `test/workflows/` does not exist in the packaged context, the plan MUST include tasks to scaffold it (helpers + `test/workflows/AGENTS.md`) following these rules.
+11. **GraphQL Custom Scalars**:
+   - `DateTime` IS registered (in `shared/scalar.pothos.ts` via `DateTimeResolver` from `graphql-scalars`, typed on the builder's `Scalars` slot as `{ Input: Date; Output: Date | string }`; codegen maps it to `string`). Timestamp fields in SDL/Pothos objects MUST use `type: "DateTime"` — do NOT hand-serialize with `toISOString()` into `String` fields (the pre-scalar workaround).
+   - New scalars: register ONCE in `shared/scalar.pothos.ts`, add builder `Scalars` typing, then `bun run generate:gqlSchema` + `bun codegen`, and pin the new type name in `backend/graphql/test/schema-surface.test.ts` (its baseline inventory freeze must be updated for ANY new schema surface).
+12. **Dashboard Navigation Reality**:
+   - Per-role nav items live in `frontend/views/dashboard/navItems.ts` (some may already exist pointing at the `[feature]` catch-all ComingSoon page — RETARGET those, don't add duplicates).
+   - Wrong-role page access redirects to the role-specific dashboard via `roleDashboardPath(ctx.role)` (e.g. `/student/dashboard`) — bare `/dashboard` is FORBIDDEN as a redirect target.
+   - There is NO mobile bottom-nav component (mobile nav = temporary MUI `Drawer`); do not plan bottom-nav slot work.
+
+## Verification-First Ground-Truth Rules (HARD GATE — learned from past plan defects)
+
+Docs and AGENTS.md prose sometimes describe FUTURE or RETIRED modules. The bundled CODE is the only ground truth for what EXISTS. Before any "EXISTING"/"UPDATE"/"extend" claim in specs/plan/tasks:
+
+1. **Verify-then-claim**: for every symbol, file, helper, component, or directory the plan cites as existing, it MUST be locatable in the bundled code. If it appears only in docs/AGENTS.md prose, it is PROSE-ONLY — treat it as not implemented and mark the plan item CREATE, not UPDATE.
+   Worked examples of prose-only phantoms found in past plans: auth `SessionService`, `ClassSessionService`/`class_instances` subsystem, `TeacherRepository`, `escapeLikeWildcards`, `Translation` enum, `frontend/views/AGENTS.md`, `frontend/components/ui/AGENTS.md`, mobile bottom-nav component.
+2. **Verify constructor/facility shapes against code** before assigning error classes or helper calls (example: `ConflictError` has a FIXED `"CONFLICT"` code; only `ValidationError` has an overloaded `(code, message)` constructor — if a plan needs custom-domain codes, it must plan the additive overload or use `DomainError(code, message)` directly).
+3. **Cite instruction files that exist**: only reference AGENTS.md / `.instructions.md` paths present in the bundle; `scripts/health/sub-loop.ts` prints its own per-file instruction discovery — mirror that mapping.
+4. **Anchor every claim**: cite `path:line` from the bundled code for load-bearing facts (schema columns, existing helpers, context fields). If the anchor can't be produced from the bundle, downgrade the claim or scope it as NEW work.
+5. **Self-path discipline**: the plan's own directory path appears verbatim in headers, task 0.1, and the deferred-items ledger — it is injected in the stage prompts as the EXACT plan directory; never paraphrase or shorten it.
 """
 
 
@@ -456,14 +498,14 @@ def slugify(text: str) -> str:
 
 
 def create_deferred_items_ledger(plan_dir: Path, feature_slug: str):
-    """Creates the standard deferred-items.md file."""
+    """Creates the standard deferred-items.md file (paths tied to the REAL plan dir)."""
     deferred_file = plan_dir / "deferred-items.md"
     if not deferred_file.exists():
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         content = f"""# Deferred Items Ledger
 
 **Feature:** `{feature_slug}`  
-**Plan Directory:** `ai/plans/{feature_slug}/`  
+**Plan Directory:** `{plan_dir}`  
 **Created:** `{today}`
 
 ---
@@ -487,8 +529,23 @@ This ledger tracks all work deferred from one task to another to ensure no defer
 - ⚠️ **Partial** — Partially completed, needs follow-up work
 - ❌ **Blocked** — Not resolved, plan cannot complete until addressed
 - 🔄 **In Progress** — Currently being worked on
+- 📅 **Forward** — Pre-seeded forward item owned by a later ticket; non-blocking for this plan
 """
         deferred_file.write_text(content, encoding="utf-8")
+
+
+def is_retryable_llm_error(exc: Exception) -> bool:
+    """Returns True for transient API errors worth retrying (5xx, timeouts, connection issues)."""
+    if isinstance(exc, (openai.APIConnectionError, openai.APITimeoutError, openai.RateLimitError)):
+        return True
+    if isinstance(exc, openai.APIStatusError):
+        return exc.status_code >= 500 or exc.status_code in (408, 409, 429)
+    # Bare openai.APIError without a status (e.g. "[504]: ... retrying on a fresh socket")
+    if isinstance(exc, openai.APIError):
+        return True
+    if isinstance(exc, (ConnectionError, TimeoutError)):
+        return True
+    return False
 
 
 def call_llm_stream(
@@ -500,8 +557,14 @@ def call_llm_stream(
     temperature: float,
     thinking: str,
     stage_name: str,
+    max_retries: int = 5,
+    retry_delay: float = 5.0,
 ) -> str:
-    """Invokes the LLM with streaming output and returns the full generated text."""
+    """Invokes the LLM with streaming output and returns the full generated text.
+
+    Retries the whole request on transient API errors (e.g. 5xx, timeouts,
+    connection resets) up to `max_retries` attempts with exponential backoff.
+    """
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
@@ -525,38 +588,66 @@ def call_llm_stream(
     print(f"📡 Generating [{stage_name}] via {model} (max_tokens={max_tokens})...")
     print(f"=======================================================\n")
 
-    response = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        stream=True,
-        stream_options={"include_usage": True},
-        extra_body=extra_body if extra_body else None,
-    )
-
-    collected_chunks = []
-    try:
-        for chunk in response:
-            delta = chunk.choices[0].delta.content if chunk.choices and chunk.choices[0].delta else ""
-            if delta:
-                collected_chunks.append(delta)
-                sys.stdout.write(delta)
-                sys.stdout.flush()
-    except KeyboardInterrupt:
-        print("\n\n⚠️ Generation interrupted by user (Ctrl+C).")
+    last_error: Optional[Exception] = None
+    for attempt in range(1, max_retries + 1):
+        response = None
         try:
-            response.close()
-        except Exception:
-            pass
-        sys.exit(130)
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                stream=True,
+                stream_options={"include_usage": True},
+                extra_body=extra_body if extra_body else None,
+            )
 
-    print("\n")
-    return "".join(collected_chunks).strip()
+            collected_chunks = []
+            for chunk in response:
+                delta = chunk.choices[0].delta.content if chunk.choices and chunk.choices[0].delta else ""
+                if delta:
+                    collected_chunks.append(delta)
+                    sys.stdout.write(delta)
+                    sys.stdout.flush()
+
+            print("\n")
+            return "".join(collected_chunks).strip()
+
+        except KeyboardInterrupt:
+            print("\n\n⚠️ Generation interrupted by user (Ctrl+C).")
+            if response is not None:
+                try:
+                    response.close()
+                except Exception:
+                    pass
+            sys.exit(130)
+        except Exception as exc:
+            last_error = exc
+            if response is not None:
+                try:
+                    response.close()
+                except Exception:
+                    pass
+            if not is_retryable_llm_error(exc) or attempt == max_retries:
+                break
+            backoff = retry_delay * (2 ** (attempt - 1))
+            print(
+                f"\n\n⚠️ [{stage_name}] transient API error on attempt {attempt}/{max_retries}: "
+                f"{type(exc).__name__}: {exc}\n"
+                f"🔁 Retrying in {backoff:.0f}s (restarting this stage from scratch)...\n"
+            )
+            time.sleep(backoff)
+
+    raise RuntimeError(
+        f"❌ [{stage_name}] failed after {max_retries} attempt(s). Last error: "
+        f"{type(last_error).__name__}: {last_error}"
+    ) from last_error
 
 
-def build_specs_prompt(packed_xml: str, ticket_text: str) -> Tuple[str, str]:
+def build_specs_prompt(packed_xml: str, ticket_text: str, plan_dir: Path) -> Tuple[str, str]:
     system_prompt = f"""{SYSTEM_BASE_PROMPT}
+
+**Plan directory (verbatim — every header, ledger path, and self-reference in specs.md MUST use this exact string): `{plan_dir}`**
 
 You are generating **Phase 1: Requirements & Specification (`specs.md`)** for the given ticket.
 Follow the official `requirements-template.md` and standard Kottab specifications (like DEV1-001 and DEV1-002).
@@ -577,8 +668,8 @@ Group requirements logically into numbered subsections:
 - 2.1 Baseline & Foundational Preparation (MANDATORY):
   • **REQ-001 (Pre-Implementation Baseline & Ledger)**: WHEN implementation begins THEN system SHALL record baseline error counts (`tsgo`, `biome:check`, `lint-service`) and initialize `ai/plans/<feature-slug>/deferred-items.md` from template.
   • **REQ-002 (Type-Safe i18n & Enum Value Imports Compliance)**:
-    - Client components MUST use `useAppTranslation(Translation.<Namespace>)` with Translation enum and property access (`t.property`), never string literals or function calls `t('key')`.
-    - Server components MUST use `await getTranslations(locale)` (single argument) and property access.
+    - Client components MUST use `useAppTranslation(<NamespaceHandle>)` with `defineNamespace` handle consts (e.g. `Applicant`) and property access (`t.property`), never string literals, never a `Translation` enum (it does not exist), never function calls `t('key')`.
+    - Server components MUST use `getTranslations(locale)` (single argument, returns the full `Translations` tree) and property access.
     - GraphQL resolvers MUST use `ctx.t("namespace")`.
     - All enum usages in runtime expressions/casts MUST use value imports (not `import type`), and enum members instead of raw string literals.
   • **REQ-003 (Canonical Types Discipline)**: Entity types MUST come from `backend/types/<domain>/<entity>.types.ts` (`{{Entity}}SelectType`, `{{Entity}}InsertType`, `{{Entity}}ReturnType`, `{{Entity}}SubmitInput`), no local type definitions in Pothos resolvers.
@@ -618,8 +709,10 @@ Generate the exhaustive, production-grade `specs.md` following all EARS requirem
     return system_prompt, user_prompt
 
 
-def build_plan_prompt(packed_xml: str, ticket_text: str, specs_content: str) -> Tuple[str, str]:
+def build_plan_prompt(packed_xml: str, ticket_text: str, specs_content: str, plan_dir: Path) -> Tuple[str, str]:
     system_prompt = f"""{SYSTEM_BASE_PROMPT}
+
+**Plan directory (verbatim — every header, ledger path, and self-reference in plan.md MUST use this exact string): `{plan_dir}`**
 
 You are generating **Phase 2: Technical Architecture & Implementation Design (`plan.md`)** for the given ticket.
 You have access to the approved `specs.md`. Follow `design-template.md` and existing gold-standard designs.
@@ -661,7 +754,7 @@ You have access to the approved `specs.md`. Follow `design-template.md` and exis
 
 ## 5. Frontend UX & Navigation Specification
 - **Routes & URLs Table**: Path, purpose, required permission, allowed roles.
-- **Sidebar & Navigation Integration**: Group name, parent item, order, mobile bottom nav.
+- **Sidebar & Navigation Integration**: Group name, parent item, order. VERIFY first: `frontend/views/dashboard/navItems.ts` may ALREADY contain the item (pointing at the `[feature]` catch-all ComingSoon page) — retarget instead of duplicating; there is NO mobile bottom-nav component (mobile uses a temporary MUI `Drawer`).
 - **Per-Audience Rendering Table**: Differences between Student, Parent, Teacher, Supervisor, Admin.
 - **Apollo GraphQL Documents & UI Components**: Component tree, hooks (`useAppTranslation`, `useMutation`), MUI v9 `sx` tokens.
 - **Visual Design & Responsive Specifications**:
@@ -695,8 +788,10 @@ Generate the exhaustive, production-grade `plan.md` implementing every requireme
     return system_prompt, user_prompt
 
 
-def build_tasks_prompt(packed_xml: str, ticket_text: str, specs_content: str, plan_content: str) -> Tuple[str, str]:
+def build_tasks_prompt(packed_xml: str, ticket_text: str, specs_content: str, plan_content: str, plan_dir: Path) -> Tuple[str, str]:
     system_prompt = f"""{SYSTEM_BASE_PROMPT}
+
+**Plan directory (verbatim — every header, ledger path, outcome path, and self-reference in tasks.md MUST use this exact string): `{plan_dir}`**
 
 You are generating **Phase 3: Trackable Implementation Tasks (`tasks.md`)** for the given ticket.
 You have access to the approved `specs.md` and `plan.md`. Follow `tasks-template.md` and `spec-implementation` skill rules.
@@ -735,7 +830,7 @@ You have access to the approved `specs.md` and `plan.md`. Follow `tasks-template
   - Committed fixtures in `beforeAll` + tracked hard-delete in `afterAll` — NEVER `runInRollback` (services spawn their own transactions)
   - Spy notification dispatch; NEVER hit real email/SMS/push channels
   - If `test/workflows/` does not exist yet, this task also scaffolds the layer (helpers + `test/workflows/AGENTS.md`) per Architectural Invariant 10
-  - Verify: `bun run test/scripts/run-test.ts <path>` green, then `bun test test/workflows`
+  - Verify: `bun run test/scripts/run-test.ts test/workflows` green (never raw `bun test` — it skips `--env-file=.env.test`)
   - _Requirements: REQ-XXX (the journey's cross-actor EARS criteria)_
 ```
 
@@ -758,7 +853,7 @@ UI tasks MUST include 2 dedicated agent-browser self-loops (functional loop and 
 ```markdown
 - [ ] X.Y [Implement Frontend View / Component]
   - [Files to modify/create with exact paths under frontend/views/, frontend/components/ui/, app/]
-  - [Applicable AGENTS.md paths: frontend/AGENTS.md, frontend/views/AGENTS.md, frontend/components/ui/AGENTS.md]
+  - [Applicable AGENTS.md paths — VERIFY existence from the bundled tree before citing; e.g. `frontend/AGENTS.md`, `app/AGENTS.md`, `frontend/graphql/AGENTS.md` exist, but `frontend/views/AGENTS.md` and `frontend/components/ui/AGENTS.md` do NOT]
   - _Requirements: REQ-XXX_
   - [ ] X.Y.QL **Quality Loop**: `bun run scripts/health/sub-loop.ts <file-path> --lifecycle duplicates` (exit code 0)
   - [ ] X.Y.TE **Unit / Component Tests**: Happy DOM + Apollo MockedProvider component tests, form submit tests (React.SubmitEvent), validation error rendering
@@ -772,7 +867,7 @@ UI tasks MUST include 2 dedicated agent-browser self-loops (functional loop and 
     • Visually inspect and analyze screenshots for: MUI v9 theme palette compliance (no hardcoded hex/rgb), typography hierarchy, padding/margin rhythm, text truncation/overflows, RTL mirroring alignments, dark/light contrast
     • Iterative self-loop: inspect screenshot -> identify UI defect -> patch MUI `sx` tokens -> re-capture screenshot -> repeat until visually polished
   - [ ] X.Y.SR **Semantic Review**: Verify zero direct style props (sx only), no hardcoded strings/colors, useAppTranslation property access, *Outlined icons
-  - [ ] X.Y.IV **Instruction Verification**: Validate against frontend.instructions.md, mobile-desktop.instructions.md, and layer AGENTS.md
+  - [ ] X.Y.IV **Instruction Verification**: Validate against `.agents/instructions/frontend.instructions.md` + layer AGENTS.md (the ONLY instruction files are `.agents/instructions/{frontend,backend,tests}.instructions.md` — nothing else exists)
 ```
 
 Do NOT omit subtasks. Do NOT use `...` placeholders. Provide the complete, exhaustive task breakdown."""
@@ -806,7 +901,9 @@ def validate_plan_against_rules(plan_dir: Path) -> List[str]:
 
     if tasks_file.exists():
         t_content = tasks_file.read_text(encoding="utf-8")
-        if "..." in t_content or "TODO" in t_content:
+        # Ellipsis inside BOPLA spread references (`{ ...input }`, `...input`)
+        # is a legitimate pattern citation, not an unfinished placeholder.
+        if re.search(r"(?<!\{ )\.{3}(?!\s*input)", t_content) or re.search(r"\bTODO\b", t_content):
             violations.append("tasks.md contains incomplete placeholders ('...' or 'TODO')")
         if "X.Y.QL" not in t_content and ".QL" not in t_content:
             violations.append("tasks.md is missing mandatory Quality Loop (.QL) subtasks")
@@ -830,6 +927,15 @@ def validate_plan_against_rules(plan_dir: Path) -> List[str]:
                     "specs.md captures cross-actor journeys but tasks.md has no "
                     "test/workflows/ journey test tasks (test-first per Architectural Invariant 10)"
                 )
+        # Traceability gap: every REQ id DEFINED in specs.md must be cited by
+        # at least one task in tasks.md (`_Requirements:` lines or prose).
+        defined_reqs = set(re.findall(r"\b(REQ-[A-Z]?\d+)(?!\d)", s_content))
+        cited_reqs = set(re.findall(r"\b(REQ-[A-Z]?\d+)(?!\d)", t_content))
+        orphaned = sorted(defined_reqs - cited_reqs)
+        if orphaned:
+            violations.append(
+                "specs.md defines REQs never cited in tasks.md (traceability gap): " + ", ".join(orphaned)
+            )
 
     if plan_file.exists():
         p_content = plan_file.read_text(encoding="utf-8")
@@ -846,6 +952,73 @@ def validate_plan_against_rules(plan_dir: Path) -> List[str]:
                     f"{artifact.name} references DBML — external schema-definition files were retired; "
                     "backend/db/schema/ (Drizzle) is the sole structural ground truth"
                 )
+
+    # Known-bad pattern sweep (each was a real defect found by manual plan
+    # fact-checking — keep this list in sync with the Verification-First
+    # Ground-Truth Rules in SYSTEM_BASE_PROMPT). Patterns are negation-aware:
+    # a match inside a corrective note ("X does NOT exist", "never raw …")
+    # does NOT count as a violation.
+    NEGATION_MARKERS = (
+        "not exist", "do not", "does not", "doesn't", "don't", "never",
+        " no ", "no `", "neither", "not a ", "unimplemented", "not implemented",
+        "no such", "absent", "phantom", "fictional", "prose-only", "false",
+        "doc-only", "to-be-created", "correct", "fixed", "stale", "wrong",
+    )
+
+    def find_unnegated(pattern: str, content: str) -> bool:
+        for m in re.finditer(pattern, content, re.IGNORECASE):
+            window = content[max(0, m.start() - 160):m.end() + 160].lower()
+            if not any(marker in window for marker in NEGATION_MARKERS):
+                return True
+        return False
+
+    known_bad_patterns = [
+        (r"Translation\.[A-Z]", "uses a `Translation` enum — no such enum exists; i18n uses `defineNamespace` handle consts (e.g. `useAppTranslation(Applicant)`)"),
+        (r"getTranslations\(\s*locale\s*,", "uses two-arg `getTranslations(locale, ...)` — real signature is one-arg, returning the full `Translations` tree"),
+        (r"getServerTranslations\(\s*locale\s*,", "uses two-arg `getServerTranslations(locale, ...)` — real signature is one-arg"),
+        (r"@/frontend/utils/logger", "references `@/frontend/utils/logger` — the frontend logger is `@/frontend/lib/logger`"),
+        (r"scripts/run-test/", "references `scripts/run-test/` — the test runner is `test/scripts/run-test.ts`"),
+        (r"\bbun test test/workflows", "uses raw `bun test test/workflows` — must run via `bun run test/scripts/run-test.ts test/workflows` (needs `--env-file=.env.test`)"),
+        (r"frontend/views/AGENTS\.md", "cites `frontend/views/AGENTS.md` — that file does not exist"),
+        (r"frontend/components/ui/AGENTS\.md", "cites `frontend/components/ui/AGENTS.md` — that file does not exist"),
+        (r"mobile-desktop\.instructions\.md", "cites `mobile-desktop.instructions.md` — only `.agents/instructions/{frontend,backend,tests}.instructions.md` exist"),
+        (r"\bmobile bottom.nav\b", "plans mobile bottom-nav work — no bottom-nav component exists (mobile nav is a temporary MUI Drawer)"),
+        (r"auth.{0,30}SessionService\b", "claims an auth-layer `SessionService` exists — it does not (prose-only name; auth has `AuthService`/`RegistrationService`)"),
+        (r"existing `?TeacherRepository`?", "claims an existing `TeacherRepository` — it does not exist; the file must be CREATED"),
+        (r"escapeLikeWildcards", "uses `escapeLikeWildcards` as if it exists — it is a doc-only name; plan its creation if needed"),
+        (r"existing `?class_instances|ClassSessionService", "claims a pre-existing `class_instances`/`ClassSessionService` subsystem — it is docs/AGENTS.md prose only, not code"),
+        (r"NO `?DateTime`? scalar", "claims `DateTime` scalar is absent — it IS registered in `backend/graphql/pothos/shared/scalar.pothos.ts` (DateTimeResolver from graphql-scalars); use `type: \"DateTime\"` for timestamps"),
+    ]
+    for artifact in (specs_file, plan_file, tasks_file):
+        if not artifact.exists():
+            continue
+        a_content = artifact.read_text(encoding="utf-8")
+        for pattern, message in known_bad_patterns:
+            if find_unnegated(pattern, a_content):
+                violations.append(f"{artifact.name} {message}")
+
+    # Self-path consistency: every artifact must reference the REAL plan dir verbatim.
+    ledger_file = plan_dir / "deferred-items.md"
+    plan_dir_str = str(plan_dir)
+    # Ticket-id hint (e.g. "dev3-004") derived from the slug to detect
+    # self-paths that are ALMOST right (missing sprint segment, truncated slug).
+    id_match = re.match(r"^(dev\d+-\d+)", plan_dir.name.lower())
+    ticket_id_hint = id_match.group(1) if id_match else None
+    for artifact in (specs_file, plan_file, tasks_file, ledger_file):
+        if artifact.exists():
+            a_content = artifact.read_text(encoding="utf-8")
+            if plan_dir_str not in a_content:
+                violations.append(f"{artifact.name} never references its own plan directory `{plan_dir_str}`")
+            if ticket_id_hint:
+                for m in re.findall(r"ai/plans/[\w\-/]+", a_content):
+                    sibling = m.rstrip("/.,)`")
+                    # Descedant references (files INSIDE the plan dir, e.g.
+                    # `<plan_dir>/deferred-items.md`) are legitimate:
+                    if sibling == plan_dir_str or sibling.startswith(plan_dir_str + "/"):
+                        continue
+                    if ticket_id_hint in sibling:
+                        violations.append(f"{artifact.name} references wrong self-path `{sibling}` (expected `{plan_dir_str}`)")
+                        break
 
     return violations
 
@@ -866,6 +1039,7 @@ def main():
     parser.add_argument("--sprint", default=None, help="Sprint identifier (e.g. '0', '1'); nests the plan directory under ai/plans/sprint_<value>/")
     parser.add_argument("--repomix-output", type=Path, default=Path("/tmp/kottab_spec_plan_repomix.xml"))
     parser.add_argument("--max-tokens", type=int, default=32768)
+    parser.add_argument("--max-retries", type=int, default=5, help="Max retry attempts per stage on transient API errors (default: 5)")
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--context-limit", type=int, default=1000000)
     parser.add_argument("--single-pass", action="store_true", help="Run monolithic single-pass generation instead of multi-stage")
@@ -976,7 +1150,7 @@ def main():
         print("\n🚀 Executing 3-Stage Sequential Generation (specs.md -> plan.md -> tasks.md)...")
 
         # Stage 1: specs.md
-        sys_p1, user_p1 = build_specs_prompt(context_code, ticket_text)
+        sys_p1, user_p1 = build_specs_prompt(context_code, ticket_text, plan_dir)
         specs_content = call_llm_stream(
             client=client,
             model=resolved_model,
@@ -986,12 +1160,13 @@ def main():
             temperature=args.temperature,
             thinking=args.thinking,
             stage_name="Stage 1/3: specs.md",
+            max_retries=args.max_retries,
         )
         (plan_dir / "specs.md").write_text(f"{specs_content}\n", encoding="utf-8")
         print(f"💾 Saved -> {plan_dir / 'specs.md'}")
 
         # Stage 2: plan.md
-        sys_p2, user_p2 = build_plan_prompt(context_code, ticket_text, specs_content)
+        sys_p2, user_p2 = build_plan_prompt(context_code, ticket_text, specs_content, plan_dir)
         plan_content = call_llm_stream(
             client=client,
             model=resolved_model,
@@ -1001,12 +1176,13 @@ def main():
             temperature=args.temperature,
             thinking=args.thinking,
             stage_name="Stage 2/3: plan.md",
+            max_retries=args.max_retries,
         )
         (plan_dir / "plan.md").write_text(f"{plan_content}\n", encoding="utf-8")
         print(f"💾 Saved -> {plan_dir / 'plan.md'}")
 
         # Stage 3: tasks.md
-        sys_p3, user_p3 = build_tasks_prompt(context_code, ticket_text, specs_content, plan_content)
+        sys_p3, user_p3 = build_tasks_prompt(context_code, ticket_text, specs_content, plan_content, plan_dir)
         tasks_content = call_llm_stream(
             client=client,
             model=resolved_model,
@@ -1016,6 +1192,7 @@ def main():
             temperature=args.temperature,
             thinking=args.thinking,
             stage_name="Stage 3/3: tasks.md",
+            max_retries=args.max_retries,
         )
         (plan_dir / "tasks.md").write_text(f"{tasks_content}\n", encoding="utf-8")
         print(f"💾 Saved -> {plan_dir / 'tasks.md'}")
@@ -1046,6 +1223,7 @@ Generate all 3 files separated by:
             temperature=args.temperature,
             thinking=args.thinking,
             stage_name="Single-Pass Plan Generation",
+            max_retries=args.max_retries,
         )
         file_blocks = re.findall(r"<<<FILE:\s*(.*?)>>>([\s\S]*?)(?:<<<END_FILE>>>|(?=<<<FILE:)|\Z)", full_text)
         if file_blocks:

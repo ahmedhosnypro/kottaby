@@ -66,6 +66,13 @@ import { getServerTranslations } from "@/shared/locale/server-graphql";
 export const gqlSchemaBuilder = new SchemaBuilder<{
   Context: Context;
   Defaults: "v3";
+  Scalars: {
+    /** Custom scalars registered in `shared/scalar.pothos.ts` (via
+     *  `addScalarType`). `DateTime` is backed by `DateTimeResolver` from
+     *  `graphql-scalars` (ISO-8601 UTC serialization; Date out, accepts
+     *  pre-serialized ISO strings pass-through). */
+    DateTime: { Input: Date; Output: Date | string };
+  };
   AuthScopes: {
     /** Caller must have a verified `ctx.user` (401 otherwise). */
     authenticated: boolean;
