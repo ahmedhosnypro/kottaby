@@ -21,7 +21,20 @@
 // (the non-Turbopack Next.js dev path) cannot resolve `node:` URIs and
 // Turbopack polyfills `process.env` already. Using the global `process`
 // (polyfilled by Next.js for the browser) keeps both bundlers happy.
-const env: NodeJS.ProcessEnv = typeof process !== "undefined" && process.env ? process.env : ({} as NodeJS.ProcessEnv);
+// When `process` is genuinely absent (rare edge-case; webpack polyfills
+// `process.env` so the fallback is rarely reached in practice), supply an
+// explicit `NODE_ENV: "development"` fallback. Next.js's
+// `node_modules/next/types/global.d.ts` augments `NodeJS.ProcessEnv` to make
+// `NODE_ENV` REQUIRED, so a bare `{}` literal is not assignable to the type —
+// and `{} as NodeJS.ProcessEnv` would trip `oxlint(no-unsafe-type-assertion)`.
+// Declaring the fallback as an explicitly-typed const makes the ternary
+// resolve to `ProcessEnv | ProcessEnv` (collapses to `ProcessEnv`) — no `as`
+// cast, no type error. The fallback value `"development"` preserves the
+// original runtime behaviour: `env.NODE_ENV === "production"` is false (was
+// `undefined === "production"` = false), so `isProduction` stays false in
+// the fallback case (same as before).
+const EMPTY_ENV: NodeJS.ProcessEnv = { NODE_ENV: "development" };
+const env: NodeJS.ProcessEnv = typeof process !== "undefined" && process.env ? process.env : EMPTY_ENV;
 
 /** Metadata attached to every log call — identifies the originating module. */
 export interface LogMeta {

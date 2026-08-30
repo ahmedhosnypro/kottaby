@@ -76,6 +76,34 @@ const ANONYMOUS_ACTOR_ID = 0;
 /** Test credential — weak fixture, never reused in production paths. */
 const TEST_DEFAULT_CREDENTIAL = "testPassword123";
 
+/**
+ * Counts every `audit_logs` row visible inside the supplied transaction.
+ * Hoisted to module scope (was duplicated as a local closure inside two
+ * `describe` blocks — `unicorn/consistent-function-scoping` flags functions
+ * that don't capture parent scope: they should live at module scope so
+ * they're not re-created on every test run.
+ */
+async function countAllAuditRows(tx: DBTransaction): Promise<number> {
+  const result = await tx.select({ count: sql<number>`count(*)::int` }).from(auditLogs);
+  return result[0]?.count ?? 0;
+}
+
+/**
+ * Type-guard / assertion helper: narrows a caught `Error` to `ValidationError`
+ * via a real `instanceof` runtime check. The `no-unsafe-type-assertion`-safe
+ * alternative to `error as ValidationError`. Throws when the runtime value
+ * is not a `ValidationError` (the surrounding test will fail with a clear
+ * message rather than silently accessing `.fields` on an unrelated error).
+ */
+function asValidationError(error: Error): ValidationError {
+  if (!(error instanceof ValidationError)) {
+    throw new Error(
+      `expected a ValidationError instance, got ${error.constructor?.name ?? "unknown"}: ${error.message}`
+    );
+  }
+  return error;
+}
+
 /** Domain log spy family share this stubbed signature. */
 type DomainLogSpy = ReturnType<typeof spyOn>;
 
@@ -357,12 +385,6 @@ describe("AdminUserManagementService.listDirectory", () => {
 });
 
 describe("AdminUserManagementService.getStats", () => {
-  /** Counts every `audit_logs` row visible inside the tx. */
-  async function countAllAuditRows(tx: DBTransaction): Promise<number> {
-    const result = await tx.select({ count: sql<number>`count(*)::int` }).from(auditLogs);
-    return result[0]?.count ?? 0;
-  }
-
   test("happy path — admin reads the overview counters; role counters partition totalCount exactly", async () => {
     await runInRollback(async tx => {
       const admin = await provisionAdminActor(tx);
@@ -435,12 +457,6 @@ describe("AdminUserManagementService.getStats", () => {
 });
 
 describe("AdminUserManagementService.getUserActivity", () => {
-  /** Counts every `audit_logs` row visible inside the tx. */
-  async function countAllAuditRows(tx: DBTransaction): Promise<number> {
-    const result = await tx.select({ count: sql<number>`count(*)::int` }).from(auditLogs);
-    return result[0]?.count ?? 0;
-  }
-
   test("happy path — create + update audit rows surface newest-first with parsed changedFields + actorName", async () => {
     await runInRollback(async tx => {
       const admin = await provisionAdminActor(tx);
@@ -853,7 +869,7 @@ describe("AdminUserManagementService.createUser", () => {
       expect(error.message).toContain(tAuth.nameRequired);
       // The fields payload names every failed field — one entry per field,
       // never duplicates.
-      const fields = (error as ValidationError).fields;
+      const fields = asValidationError(error).fields;
       expect(Array.isArray(fields)).toBe(true);
       if (!Array.isArray(fields)) throw new Error("expected a fields payload");
       const byField = new Map(fields.map(entry => [entry.field, entry.code]));
@@ -877,7 +893,7 @@ describe("AdminUserManagementService.createUser", () => {
       const input = { ...makeCreateInput(), email: "bad-email" };
       const error = await expectRepoError(() => AdminUserManagementService.createUser(input, admin.id, LOCALE, tx));
       expect(error).toBeInstanceOf(ValidationError);
-      const fields = (error as ValidationError).fields;
+      const fields = asValidationError(error).fields;
       if (fields?.length !== 1) throw new Error("expected exactly one field entry");
       expect(fields[0].field).toBe("email");
       expect(fields[0].code).toBe("EMAIL_INVALID");
@@ -1019,7 +1035,7 @@ describe("AdminUserManagementService.updateUser", () => {
       expect(error).toBeInstanceOf(ValidationError);
       // Field-payload projection: the entry names the offending field so the
       // edit dialog can project inline helperText under the date input.
-      const fields = (error as ValidationError).fields;
+      const fields = asValidationError(error).fields;
       if (fields?.length !== 1) throw new Error("expected exactly one field entry");
       expect(fields[0].field).toBe("dateOfBirth");
       expect(fields[0].code).toBe("DATE_OF_BIRTH_INVALID");
@@ -1045,7 +1061,7 @@ describe("AdminUserManagementService.updateUser", () => {
       );
       expect(error).toBeInstanceOf(ValidationError);
       expect(error.message).toContain(tErrors.validation);
-      const fields = (error as ValidationError).fields;
+      const fields = asValidationError(error).fields;
       expect(Array.isArray(fields)).toBe(true);
       if (!Array.isArray(fields)) throw new Error("expected a fields payload");
       const byField = new Map(fields.map(entry => [entry.field, entry.code]));

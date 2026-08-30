@@ -28,10 +28,10 @@ import { PGlite } from "@electric-sql/pglite";
 import { logger } from "@/backend/lib/logger";
 
 /** Subset of `pg`'s `QueryResultRow` we need to type-match. */
-type Row = Record<string, unknown>;
+export type Row = Record<string, unknown>;
 
 /** Mirror of `pg`'s `QueryResult` (what Drizzle + repos destructure). */
-interface QueryResultLike<T extends Row = Row> {
+export interface QueryResultLike<T extends Row = Row> {
   rows: T[];
   fields: ReadonlyArray<{ name: string; dataTypeID: number }>;
   rowCount: number;
@@ -46,7 +46,7 @@ interface QueryResultLike<T extends Row = Row> {
  * accepts `(text: string, params?: ...)` only — the shim normalizes the
  * object form back to `(text, params)`.
  */
-interface PgQueryConfig {
+export interface PgQueryConfig {
   text?: string;
   name?: string;
   rowMode?: "array";
@@ -55,16 +55,20 @@ interface PgQueryConfig {
 }
 
 /** Mirror of `pg`'s `PoolClient` (what `getClient()` returns). */
-interface PoolClientLike<T extends Row = Row> {
-  query(text: string, params?: ReadonlyArray<unknown>): Promise<QueryResultLike<T>>;
-  query(config: PgQueryConfig, params?: ReadonlyArray<unknown>): Promise<QueryResultLike<T>>;
+export interface PoolClientLike<T extends Row = Row> {
+  query(textOrConfig: string | PgQueryConfig, params?: ReadonlyArray<unknown>): Promise<QueryResultLike<T>>;
   release(): void;
 }
 
 /** Mirror of `pg`'s `Pool`. */
 export interface PglitePoolLike {
-  query<T extends Row = Row>(text: string, params?: ReadonlyArray<unknown>): Promise<QueryResultLike<T>>;
-  query<T extends Row = Row>(config: PgQueryConfig, params?: ReadonlyArray<unknown>): Promise<QueryResultLike<T>>;
+  // Single-signature query (no overloads) — accepts both the SQL-text and
+  // object-config forms. Matches the implementation in `getPglitePool()`
+  // below and the call surface Drizzle / repos actually use.
+  query<T extends Row = Row>(
+    textOrConfig: string | PgQueryConfig,
+    params?: ReadonlyArray<unknown>
+  ): Promise<QueryResultLike<T>>;
   connect(): Promise<PoolClientLike>;
   end(): Promise<void>;
   on(_event: string, _listener: (...args: unknown[]) => void): this;
@@ -142,27 +146,20 @@ export async function getPglitePool(): Promise<PglitePoolLike> {
       // When Drizzle requests `rowMode: "array"` (INSERT/UPDATE with RETURNING,
       // SELECT with fields), PGlite returns rows as arrays — Drizzle's mapper
       // expects that shape (it indexes by field position).
-      const result = await (
-        pglite as unknown as {
-          query(
-            text: string,
-            params?: unknown[],
-            options?: { rowMode?: "array" | "object" }
-          ): Promise<{
-            rows: unknown[];
-            fields: ReadonlyArray<{ name: string; dataTypeID: number }>;
-            rowCount?: number;
-            command?: string;
-          }>;
-        }
-      ).query(
+      //
+      // PGlite's native `query<T>(text, params?, options?: QueryOptions)`
+      // already accepts this exact call shape, so no `as` cast on `pglite` is
+      // required. `Results<T>.rows` is `T[]` and `fields[].dataTypeID` is
+      // already `number`, so the `as T[]` and `Number(...)` coercion that used
+      // to live here are unnecessary — the type contract is enforced by PGlite.
+      const result = await pglite.query<T>(
         text,
         resolvedParams ? [...resolvedParams] : undefined,
         rowMode === "array" ? { rowMode: "array" } : undefined
       );
       return {
-        rows: (result.rows ?? []) as T[],
-        fields: (result.fields ?? []).map(f => ({ name: f.name, dataTypeID: Number(f.dataTypeID ?? 0) })),
+        rows: result.rows ?? [],
+        fields: (result.fields ?? []).map(f => ({ name: f.name, dataTypeID: f.dataTypeID ?? 0 })),
         rowCount: typeof result.rowCount === "number" ? result.rowCount : (result.rows?.length ?? 0),
         command: typeof result.command === "string" ? result.command : "",
         oid: 0,
@@ -173,8 +170,11 @@ export async function getPglitePool(): Promise<PglitePoolLike> {
       // forwards to the singleton. `release()` is a no-op (no real pool slot
       // to return).
       return {
+        // Forward to the pool's `query` — with the single-signature
+        // `PglitePoolLike.query` interface, the union argument matches
+        // directly (no overload-resolution branch or `as` cast required).
         query: <T extends Row = Row>(textOrConfig: string | PgQueryConfig, params?: ReadonlyArray<unknown>) =>
-          pool.query(textOrConfig as string, params) as Promise<QueryResultLike<T>>,
+          pool.query<T>(textOrConfig, params),
         release: () => undefined,
       };
     },

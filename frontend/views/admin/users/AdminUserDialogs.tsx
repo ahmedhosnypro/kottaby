@@ -123,11 +123,13 @@ export function EditUserDialog({ labels, user, loading, onClose, onSubmit }: Edi
         dateOfBirth: form.dateOfBirth || undefined,
       });
     } catch (err) {
-      const errors = extractFieldErrors(err as unknown);
+      // `err` is `unknown` in a catch block (strict mode) — no `as unknown`
+      // cast needed before passing to the field-error extractor.
+      const errors = extractFieldErrors(err);
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
       } else {
-        setFormError(extractErrorMessage(err as unknown));
+        setFormError(extractErrorMessage(err));
       }
     }
   };
@@ -216,7 +218,9 @@ export function DeleteConfirmDialog({ labels, user, loading, onClose, onConfirm 
     try {
       await onConfirm();
     } catch (err) {
-      const code = extractErrorCode(err as unknown);
+      // `err` is `unknown` in a catch block (strict mode) — no `as unknown`
+      // cast needed before passing to the error-code extractor.
+      const code = extractErrorCode(err);
       if (code === "USER_SELF_DEACTIVATION_FORBIDDEN") {
         setSelfDeactivationAlert(true);
       }

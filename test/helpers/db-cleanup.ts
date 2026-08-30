@@ -87,15 +87,22 @@ async function withAuditDeleteTriggersSuspended<T>(fn: () => Promise<T>): Promis
   if (triggers.length === 0) {
     return fn();
   }
-  for (const trigger of triggers) {
-    await db.execute(sql`ALTER TABLE audit_logs DISABLE TRIGGER ${sql.identifier(trigger.name)}`);
-  }
+  // Disable all discovered triggers in parallel — `pg_trigger` rows are
+  // independent (no DDL ordering requirement between them), so `Promise.all`
+  // satisfies `eslint(no-await-in-loop)` without changing semantics.
+  await Promise.all(
+    triggers.map(trigger =>
+      db.execute(sql`ALTER TABLE audit_logs DISABLE TRIGGER ${sql.identifier(trigger.name)}`)
+    )
+  );
   try {
     return await fn();
   } finally {
-    for (const trigger of triggers) {
-      await db.execute(restoreClause(trigger));
-    }
+    // Restore each trigger's exact prior firing state — independent DDL
+    // statements, safe to run in parallel via `Promise.all` (satisfies
+    // `eslint(no-await-in-loop)`; restore order does not matter since
+    // each trigger's `tgenabled` is set to its own captured value).
+    await Promise.all(triggers.map(trigger => db.execute(restoreClause(trigger))));
   }
 }
 
@@ -124,7 +131,10 @@ export async function deleteUsersByIds(ids: readonly number[]): Promise<number> 
   const result = await db.execute<{ count: number }>(
     sql`WITH deleted AS (DELETE FROM users WHERE id IN (${list}) RETURNING 1) SELECT count(*)::int AS count FROM deleted`
   );
-  return Number(result.rows[0]?.count ?? 0);
+  // `count` is typed as `number` via the `<{ count: number }>` generic on
+  // `db.execute`; the previous `Number(...)` wrapper was redundant (flagged
+  // by `no-unnecessary-type-conversion`).
+  return result.rows[0]?.count ?? 0;
 }
 
 /** Counts how many of the given user ids still exist (post-cleanup check). */
@@ -133,5 +143,6 @@ export async function countUsersByIds(ids: readonly number[]): Promise<number> {
   const result = await db.execute<{ count: number }>(
     sql`SELECT count(*)::int AS count FROM users WHERE id IN (${idList(ids)})`
   );
-  return Number(result.rows[0]?.count ?? 0);
+  // Same as above — `count` is already typed as `number`.
+  return result.rows[0]?.count ?? 0;
 }

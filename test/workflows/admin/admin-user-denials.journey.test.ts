@@ -447,19 +447,6 @@ describe("Journey C — Anonymous & Non-Admin Denials (zero writes; zero audit r
     const auditBefore = await countAllAuditRows();
 
     for (const actor of nonAdminActors) {
-      // listDirectory — non-admin FORBIDDEN.
-      const listErr = await expectJourneyError(() =>
-        AdminUserManagementService.listDirectory({}, 1, 25, LOCALE, actor.id)
-      );
-      expect(listErr).toBeInstanceOf(ForbiddenError);
-      expect(listErr.message).toContain(tErrors.forbidden);
-
-      // getUserDetail — non-admin FORBIDDEN.
-      const detailErr = await expectJourneyError(() => AdminUserManagementService.getUserDetail(1, LOCALE, actor.id));
-      expect(detailErr).toBeInstanceOf(ForbiddenError);
-      expect(detailErr.message).toContain(tErrors.forbidden);
-
-      // createUser — non-admin FORBIDDEN.
       const createInput: AdminCreateUserSubmitInput = {
         fullName: `${PREFIX} C2 ${actor.label} Create`,
         email: `${PREFIX}-c2-${actor.label}-${randomUUID().slice(0, 8)}@journey.test`,
@@ -468,23 +455,38 @@ describe("Journey C — Anonymous & Non-Admin Denials (zero writes; zero audit r
         country: "Egypt",
         role: "student",
       };
-      const createErr = await expectJourneyError(() =>
-        AdminUserManagementService.createUser(createInput, actor.id, LOCALE)
-      );
+
+      // Each operation asserts assertActorAdmin BEFORE any DB write, so the
+      // five denials are side-effect-free and safe to evaluate together.
+      // Promise.all flattens the five sequential awaits into one (avoids
+      // eslint/no-await-in-loop without changing semantics).
+      const [listErr, detailErr, createErr, updateErr, deleteErr] = await Promise.all([
+        expectJourneyError(() => AdminUserManagementService.listDirectory({}, 1, 25, LOCALE, actor.id)),
+        expectJourneyError(() => AdminUserManagementService.getUserDetail(1, LOCALE, actor.id)),
+        expectJourneyError(() => AdminUserManagementService.createUser(createInput, actor.id, LOCALE)),
+        expectJourneyError(() =>
+          AdminUserManagementService.updateUser(1, { fullName: `${PREFIX} C2 ${actor.label} Update` }, actor.id, LOCALE)
+        ),
+        expectJourneyError(() => AdminUserManagementService.setUserDeleted(1, true, actor.id, LOCALE)),
+      ]);
+
+      // listDirectory — non-admin FORBIDDEN.
+      expect(listErr).toBeInstanceOf(ForbiddenError);
+      expect(listErr.message).toContain(tErrors.forbidden);
+
+      // getUserDetail — non-admin FORBIDDEN.
+      expect(detailErr).toBeInstanceOf(ForbiddenError);
+      expect(detailErr.message).toContain(tErrors.forbidden);
+
+      // createUser — non-admin FORBIDDEN.
       expect(createErr).toBeInstanceOf(ForbiddenError);
       expect(createErr.message).toContain(tErrors.forbidden);
 
       // updateUser — non-admin FORBIDDEN.
-      const updateErr = await expectJourneyError(() =>
-        AdminUserManagementService.updateUser(1, { fullName: `${PREFIX} C2 ${actor.label} Update` }, actor.id, LOCALE)
-      );
       expect(updateErr).toBeInstanceOf(ForbiddenError);
       expect(updateErr.message).toContain(tErrors.forbidden);
 
       // setUserDeleted — non-admin FORBIDDEN.
-      const deleteErr = await expectJourneyError(() =>
-        AdminUserManagementService.setUserDeleted(1, true, actor.id, LOCALE)
-      );
       expect(deleteErr).toBeInstanceOf(ForbiddenError);
       expect(deleteErr.message).toContain(tErrors.forbidden);
     }

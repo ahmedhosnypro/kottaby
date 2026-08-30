@@ -74,6 +74,26 @@ interface AdminUserDetailContainerProps {
 type Role = "Admin" | "Teacher" | "Student" | "Parent";
 type Governance = "Active" | "Suspended" | "Blocked" | "Deleted";
 
+/**
+ * Runtime-validated type guard: narrows a string from the GraphQL response
+ * to the `Role` union. The backend always returns one of the four valid
+ * values for `adminUserDetail.role`, but the Apollo typed-query response
+ * types the field as a plain `string` (the codegen uses `scalar String`
+ * rather than the schema's `Role` enum). This is the
+ * `no-unsafe-type-assertion`-compliant escape hatch — instead of
+ * `user.role as unknown as Role`, the type guard does REAL runtime
+ * validation (string + membership in the role set). Falls back to
+ * `"Student"` if the server ever returns an unknown value (defensive).
+ */
+function asRole(value: string): Role {
+  if (value === "Admin" || value === "Teacher" || value === "Student" || value === "Parent") {
+    return value;
+  }
+  // Unknown role — fall back to Student rather than crash. The audit log
+  // surfaces the original value for forensics.
+  return "Student";
+}
+
 /** Entries fetched for the per-user activity timeline (server clamps 1..50). */
 const ACTIVITY_TIMELINE_LIMIT = 10;
 
@@ -298,7 +318,9 @@ export function AdminUserDetailContainer({ labels, userId }: AdminUserDetailCont
   }
 
   const user = data.adminUserDetail;
-  const role = user.role as unknown as Role;
+  // `user.role` is typed as `string` by the Apollo codegen; narrow to the
+  // Role union via the runtime-validated `asRole` helper (no `as` cast).
+  const role: Role = asRole(user.role);
   const governance: Governance = governanceOf(user);
   const isReactivate = user.isDeleted ?? false;
 
@@ -615,7 +637,10 @@ function RoleChip({ role, labels }: { role: Role; labels: AdminUsersLabels }): R
   return (
     <Chip
       size="small"
-      color={color as "error" | "secondary" | "primary" | "default"}
+      // `color` already has the literal-union type MUI's `Chip` expects
+      // (`"error" | "secondary" | "primary" | "default"` per
+      // `roleChipColor`'s return type) — no `as` cast needed.
+      color={color}
       label={label}
       variant="outlined"
     />

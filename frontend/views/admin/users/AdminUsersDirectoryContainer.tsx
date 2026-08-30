@@ -71,12 +71,15 @@ import type {
   AdminCreateUserMutation,
   AdminSetUserDeletedMutation,
   AdminUpdateUserMutation,
-  AdminUserGovernanceFilter,
   AdminUserStatsQuery,
   AdminUsersQuery,
   AdminUsersQueryVariables,
-  UserRole,
 } from "@/frontend/graphql/generated/gql/graphql";
+// `UserRole` and `AdminUserGovernanceFilter` are emitted as runtime string
+// enums by GraphQL codegen — they must be imported as VALUES (not
+// `import type`) so we can use `UserRole.Admin` etc. as runtime constants
+// in the `toUserRole` / `toGovernanceFilter` conversion helpers.
+import { AdminUserGovernanceFilter, UserRole } from "@/frontend/graphql/generated/gql/graphql";
 import {
   adminCreateUserMutationDocument,
   adminSetUserDeletedMutationDocument,
@@ -92,6 +95,75 @@ import type { AdminUsersLabels } from "@/shared/locale/types/adminUsers";
 type AdminUserListItem = AdminUsersQuery["adminUsers"]["items"][number];
 type Role = "Admin" | "Teacher" | "Student" | "Parent";
 type Governance = "Active" | "Suspended" | "Blocked" | "Deleted";
+
+/**
+ * Runtime-validated conversion from the local `Role` string-literal union to
+ * the GraphQL-codegen `UserRole` enum. `Role` and `UserRole` carry the same
+ * underlying string values (`"Admin" | "Parent" | "Student" | "Teacher"`) but
+ * TS treats them as distinct nominal types. The exhaustive switch below
+ * performs a real per-branch mapping — no `as unknown as UserRole` cast
+ * (which would trip `no-unsafe-type-assertion`). The branch set is the
+ * complete `Role` union; if a new role is added to `Role` but not here, TS
+ * will fail the noFallthroughCasesInSwitch / exhaustiveness check.
+ */
+function toUserRole(role: Role): UserRole {
+  switch (role) {
+    case "Admin":
+      return UserRole.Admin;
+    case "Teacher":
+      return UserRole.Teacher;
+    case "Student":
+      return UserRole.Student;
+    case "Parent":
+      return UserRole.Parent;
+  }
+  // Exhaustive-switch fallback — TypeScript knows `Role` is fully covered
+  // above, but `consistent-return` requires every code path to return OR
+  // none. Return Student (the default role for new public registrations)
+  // if a future Role member lands here without a case update.
+  return UserRole.Student;
+}
+
+/**
+ * Runtime-validated conversion from the local `Governance` string-literal
+ * union to the GraphQL-codegen `AdminUserGovernanceFilter` enum. Same
+ * rationale as `toUserRole`: same underlying string values, exhaustive
+ * switch, no `as` cast.
+ */
+function toGovernanceFilter(governance: Governance): AdminUserGovernanceFilter {
+  switch (governance) {
+    case "Active":
+      return AdminUserGovernanceFilter.Active;
+    case "Suspended":
+      return AdminUserGovernanceFilter.Suspended;
+    case "Blocked":
+      return AdminUserGovernanceFilter.Blocked;
+    case "Deleted":
+      return AdminUserGovernanceFilter.Deleted;
+  }
+  // Exhaustive-switch fallback — TypeScript knows `Governance` is fully
+  // covered above, but `consistent-return` requires every code path to
+  // return OR none. Return Active (the default governance for new
+  // accounts) if a future Governance member lands here without a case
+  // update.
+  return AdminUserGovernanceFilter.Active;
+}
+
+/**
+ * Runtime-validated narrowing of the GraphQL-codegen `UserRole` enum (which
+ * types each `role` field on list-item / detail-item fragments) to the
+ * local `Role` literal union used by `RoleChip` / `UserAvatar` etc. The
+ * Apollo codegen emits `UserRole` as a string enum, so a runtime
+ * `value === "Admin"` check narrows it exhaustively; the final `return
+ * "Student"` is a defensive fallback for any future backend value the
+ * codegen has not yet learned about.
+ */
+function asRole(value: UserRole | string | null | undefined): Role {
+  if (value === "Admin" || value === "Teacher" || value === "Student" || value === "Parent") {
+    return value;
+  }
+  return "Student";
+}
 
 interface AdminUsersDirectoryContainerProps {
   readonly labels: AdminUsersLabels;
@@ -137,8 +209,12 @@ export function AdminUsersDirectoryContainer({ labels }: AdminUsersDirectoryCont
 
   const variables: AdminUsersQueryVariables = {
     filters: {
-      role: roleFilter ? (roleFilter as unknown as UserRole) : null,
-      governance: governanceFilter ? (governanceFilter as unknown as AdminUserGovernanceFilter) : null,
+      // Narrow the local `Role` / `Governance` string-literal unions to the
+      // GraphQL-codegen `UserRole` / `AdminUserGovernanceFilter` enums via
+      // the runtime-validated `toUserRole` / `toGovernanceFilter` helpers
+      // (no `as unknown as ...` cast).
+      role: roleFilter ? toUserRole(roleFilter) : null,
+      governance: governanceFilter ? toGovernanceFilter(governanceFilter) : null,
       country: countryFilter || null,
       search: searchDebounced || null,
     },
@@ -533,7 +609,11 @@ function FilterBar(props: FilterBarProps): ReactNode {
               id={ROLE_FILTER_ID}
               value={props.roleFilter}
               label={labels.filters.role}
-              onChange={e => props.setRoleFilter((e.target.value || "") as Role | "")}
+              // MUI's `Select<Value>` is generic over `Value` (the value prop's
+              // type) — `e.target.value` IS already typed as `Role | ""` here
+              // (matching `value={props.roleFilter}`). The previous `as Role | ""`
+              // cast was redundant (flagged by `no-unnecessary-type-assertion`).
+              onChange={e => props.setRoleFilter(e.target.value || "")}
             >
               <MenuItem value="">{labels.genderOptions.unspecified}</MenuItem>
               <MenuItem value="Admin">{labels.roleLabels.admin}</MenuItem>
@@ -548,7 +628,12 @@ function FilterBar(props: FilterBarProps): ReactNode {
               id={GOVERNANCE_FILTER_ID}
               value={props.governanceFilter}
               label={labels.filters.governance}
-              onChange={e => props.setGovernanceFilter((e.target.value || "") as Governance | "")}
+              // MUI's `Select<Value>` is generic over `Value` (the value prop's
+              // type) — `e.target.value` IS already typed as `Governance | ""`
+              // here (matching `value={props.governanceFilter}`). The previous
+              // `as Governance | ""` cast was redundant (flagged by
+              // `no-unnecessary-type-assertion`).
+              onChange={e => props.setGovernanceFilter(e.target.value || "")}
             >
               <MenuItem value="">{labels.genderOptions.unspecified}</MenuItem>
               <MenuItem value="Active">{labels.statusBadges.active}</MenuItem>
@@ -637,7 +722,7 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
                 <TableRow key={u.id} hover>
                   <TableCell>
                     <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-                      <UserAvatar fullName={u.fullName} role={u.role as unknown as Role} />
+                      <UserAvatar fullName={u.fullName} role={asRole(u.role)} />
                       <MuiLink
                         component={Link}
                         href={`/admin/users/${u.id}`}
@@ -657,7 +742,7 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
                   </TableCell>
                   <TableCell>{u.email}</TableCell>
                   <TableCell>
-                    <RoleChip role={u.role as unknown as Role} labels={labels} />
+                    <RoleChip role={asRole(u.role)} labels={labels} />
                   </TableCell>
                   <TableCell>{u.country ?? "—"}</TableCell>
                   <TableCell>
@@ -705,7 +790,7 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
               <Stack spacing={1}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", minWidth: 0 }}>
-                    <UserAvatar fullName={u.fullName} role={u.role as unknown as Role} size={32} />
+                    <UserAvatar fullName={u.fullName} role={asRole(u.role)} size={32} />
                     <MuiLink
                       component={Link}
                       href={`/admin/users/${u.id}`}
@@ -729,7 +814,7 @@ function DirectoryTable(props: DirectoryTableProps): ReactNode {
                   {u.email}
                 </Typography>
                 <Box sx={{ display: "flex", gap: 1 }}>
-                  <RoleChip role={u.role as unknown as Role} labels={labels} />
+                  <RoleChip role={asRole(u.role)} labels={labels} />
                   {u.country && <Chip size="small" label={u.country} variant="outlined" />}
                 </Box>
                 <Stack direction="row" spacing={1}>
@@ -857,11 +942,13 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
         role: form.role,
       });
     } catch (err) {
-      const errors = extractFieldErrors(err as unknown);
+      // `err` is `unknown` in a catch block (strict mode) — no `as unknown`
+      // cast needed before passing to the error extractor helpers.
+      const errors = extractFieldErrors(err);
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
       } else {
-        setFormError(extractErrorMessage(err as unknown));
+        setFormError(extractErrorMessage(err));
       }
     }
   };
@@ -935,7 +1022,12 @@ function CreateUserDialog({ labels, loading, onClose, onSubmit }: CreateDialogPr
                 id={CREATE_ROLE_ID}
                 value={form.role}
                 label={labels.createDialog.role}
-                onChange={e => setForm({ ...form, role: e.target.value as "Student" | "Teacher" | "Parent" })}
+                // MUI `Select<Value>` is generic over `Value` (the value prop's
+                // type) — `e.target.value` is already `"Student" | "Teacher"
+                // | "Parent"` here (matching `value={form.role}`). The previous
+                // `as "Student" | "Teacher" | "Parent"` cast was redundant
+                // (flagged by `no-unnecessary-type-assertion`).
+                onChange={e => setForm({ ...form, role: e.target.value })}
               >
                 <MenuItem value="Student">{labels.roleLabels.student}</MenuItem>
                 <MenuItem value="Teacher">{labels.roleLabels.teacher}</MenuItem>

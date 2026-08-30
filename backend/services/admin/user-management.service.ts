@@ -267,7 +267,11 @@ function normalizeDateOnly(value: Date | string | null | undefined): string | nu
   if (value instanceof Date) {
     return value.toISOString().slice(0, 10);
   }
-  return String(value).slice(0, 10);
+  // After the Date check, `value` is narrowed to `string` (the remaining
+  // member of `Date | string`). `String(value)` would be flagged by
+  // `no-unnecessary-type-conversion` (value is already a string) — call
+  // `.slice` directly.
+  return value.slice(0, 10);
 }
 
 /**
