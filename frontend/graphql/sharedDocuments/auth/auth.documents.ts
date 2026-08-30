@@ -8,6 +8,8 @@ import type {
   RefreshTokenMutationVariables,
   RegisterUserMutation,
   RegisterUserMutationVariables,
+  UpdateMyLocaleMutation,
+  UpdateMyLocaleMutationVariables,
 } from "@/frontend/graphql/generated/gql/graphql";
 
 /**
@@ -40,10 +42,11 @@ export const registerUserMutationDocument: TypedDocumentNode<RegisterUserMutatio
  *
  * Selection includes `id` so Apollo cache normalization writes the user
  * into the same cache entry the `login` mutation produced. The selection
- * also includes the profile-page fields (`phone`, `country`, `gender`) and
- * the read-only governance fields (`isDeleted`, `suspended`, `isBlocked`)
- * so the profile page can render full account info + status badges from a
- * single `me` query (DASHBOARD-1).
+ * also includes the profile-page fields (`phone`, `country`, `gender`,
+ * `locale`) and the read-only governance fields (`isDeleted`, `suspended`,
+ * `isBlocked`) so the profile page can render full account info + status
+ * badges + the language preference from a single `me` query (DASHBOARD-1,
+ * R2-users-locale-b).
  */
 export const meQueryDocument: TypedDocumentNode<MeQuery> = gql`
   query Me {
@@ -54,6 +57,7 @@ export const meQueryDocument: TypedDocumentNode<MeQuery> = gql`
       phone
       country
       gender
+      locale
       role
       preferredRecitation
       isDeleted
@@ -89,6 +93,7 @@ export const loginMutationDocument: TypedDocumentNode<LoginMutation, LoginMutati
         phone
         country
         gender
+        locale
         role
         preferredRecitation
         isDeleted
@@ -97,6 +102,39 @@ export const loginMutationDocument: TypedDocumentNode<LoginMutation, LoginMutati
       }
       accessToken
       refreshToken
+    }
+  }
+`;
+
+/**
+ * `updateMyLocale` mutation — persists the caller's per-user app locale
+ * (R2-users-locale backend vertical, D2).
+ *
+ * Self-scoped and authenticated-only: identity is derived server-side from
+ * the verified context, so the only variable is the target `locale` enum.
+ * Idempotent — re-sending the current value is a no-op write.
+ *
+ * NOTE on the wire value: the GraphQL `AppLocale` enum serializes as the
+ * PascalCase `Ar` / `En` (the Gender-convention), while the shared app
+ * locale union (`@/shared/locale/AppLocale`) stores lowercase `"ar"` /
+ * `"en"`. Callers MUST map between the two at the boundary —
+ * `"ar" → AppLocale.Ar`, `"en" → AppLocale.En`.
+ *
+ * Selection includes `id` FIRST so Apollo writes the returned user back
+ * into the same normalized cache entry the `me` / `login` documents
+ * produced (per `sharedDocuments/AGENTS.md` "id Field Requirement"); the
+ * persisted `locale` rides along so `useAuth().user.locale` tracks the
+ * account preference without a refetch.
+ */
+export const updateMyLocaleMutationDocument: TypedDocumentNode<
+  UpdateMyLocaleMutation,
+  UpdateMyLocaleMutationVariables
+> = gql`
+  mutation UpdateMyLocale($locale: AppLocale!) {
+    updateMyLocale(locale: $locale) {
+      id
+      email
+      locale
     }
   }
 `;

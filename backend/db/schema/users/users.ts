@@ -1,5 +1,5 @@
 import { boolean, date, integer, pgTable, timestamp, unique, varchar } from "drizzle-orm/pg-core";
-import { gender, userRole } from "@/backend/db/schema/enums";
+import { appLocale, gender, userRole } from "@/backend/db/schema/enums";
 
 /**
  * Central user table (`users`).
@@ -20,6 +20,13 @@ export const users = pgTable(
     dateOfBirth: date("date_of_birth"),
     gender: gender("gender"),
     country: varchar("country", { length: 100 }),
+    /**
+     * Per-user app locale (UI + copy preference). Nullable — unset until the
+     * user explicitly chooses one (registration leaves it null by the D2
+     * deferred decision); the notification emitters read it to localize
+     * per-recipient copy (DEV3-010 D2).
+     */
+    locale: appLocale("locale"),
     isDeleted: boolean("is_deleted").default(false),
     deletedAt: timestamp("deleted_at"),
     suspended: boolean("suspended").default(false),

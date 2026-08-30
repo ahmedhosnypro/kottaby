@@ -28,7 +28,7 @@ const sharedFoundation = (direction: "rtl" | "ltr") => ({
     return `${factor * 8}px`; // Conserve 8px scale step while retaining easy access
   },
   shape: {
-    borderRadius: 16, // Use rounded system
+    borderRadius: 8, // Rounded system base — multipliers: 1=8px, 2=16px (rounded-xl standard), 3=24px
   },
   typography,
 });

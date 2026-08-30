@@ -14,10 +14,13 @@
  * GROUND TRUTH ANCHOR (honesty pin, Section A):
  *   The quota / class-instance domains are NOT yet materialized in this tree —
  *   the live schema exposes exactly { login, logout, refreshToken,
- *   registerUser }. Test A2 pins that inventory gap so the moment those
- *   domains land, this suite fails loudly until they adopt the locked shapes
- *   (and gets updated to point Section B's reproduction directly at them).
- *   The gap is a known wiring task, owned by whichever change introduces
+ *   registerUser } plus the sanctioned notification read-latch pair
+ *   (`markNotificationRead` / `markAllNotificationsRead`, DEV3-010) and the
+ *   users-locale mutation (`updateMyLocale`, D2). Test A2 pins that inventory
+ *   gap so the moment the quota / class-instance domains land, this suite
+ *   fails loudly until they adopt the locked shapes (and gets updated to
+ *   point Section B's reproduction directly at them). The gap is a known
+ *   wiring task, owned by whichever change introduces
  *   `deleteClassInstance`.
  *
  * SECTION B mechanics (propagation semantics, deterministic):
@@ -273,13 +276,18 @@ const MUTATION_SURFACE_INVENTORY_QUERY_DOCUMENT: DocumentNode = gql`
 `;
 
 /** The exhaustive live root-mutation inventory (ground truth at lock time). */
+// Refreshed for the sanctioned additions: notification read-latch pair
+// (DEV3-010) + users-locale (D2) + billing plan-catalog CRUD (upstream #28).
 const KNOWN_LIVE_MUTATION_FIELDS = [
   "createPlan",
   "login",
   "logout",
+  "markAllNotificationsRead",
+  "markNotificationRead",
   "refreshToken",
   "registerUser",
   "setPlanActiveStatus",
+  "updateMyLocale",
   "updatePlan",
 ];
 /** Documented precedent surfaces that must ADOPT Rules #6/#7 when wired. */

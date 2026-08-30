@@ -5,6 +5,7 @@ import {
   Divider,
   Drawer,
   List,
+  ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
@@ -14,6 +15,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { focusVisibleRingSx } from "@/frontend/components/ui/focusRing";
 import { useAuth } from "@/frontend/hooks/useAuth";
 import { type DashboardNavItem, getNavItemsForRole, resolveNavItemLabel } from "@/frontend/views/dashboard/navItems";
 import { Dashboard, HandshakeCode, useAppTranslation } from "@/shared/locale";
@@ -45,6 +47,15 @@ const DRAWER_WIDTH = 264;
  * current user's role determines the visible link set (FR-1.2 role-based
  * inheritance). Active route highlighting uses Next.js's `usePathname()` +
  * MUI's `selected` prop on `ListItemButton`.
+ *
+ * Accessibility (audit R2): each nav link is wrapped in a `ListItem
+ * component="li"` so the rendered DOM is `ul > li > a` — the MUI `List`
+ * renders a `<ul>` whose DIRECT children must be `<li>` (axe `list` rule);
+ * rendering the anchors as direct `ul` children was invalid list semantics.
+ * The `ListItemButton` spreads `focusVisibleRingSx` so keyboard focus draws
+ * the app-wide 2px copper ring (MUI v9 ButtonBase ships no focus-visible
+ * styling — the previous background-only indicator was too subtle on the
+ * sidebar surface).
  *
  * MUI v9 patterns: `sx` callback only, `*Outlined` icons, theme palette
  * colors (no string-based `color` props).
@@ -149,45 +160,53 @@ function SidebarListItem({
   const isActive = pathname === item.route;
 
   return (
-    <ListItemButton
-      component={Link}
-      href={item.route}
-      onClick={onNavigate}
-      selected={isActive}
-      aria-current={isActive ? "page" : undefined}
-      sx={theme => ({
-        mx: 1,
-        my: 0.25,
-        borderRadius: 2,
-        py: 1,
-        "&.Mui-selected": {
-          bgcolor: theme.palette.primaryContainer,
-          color: theme.palette.onPrimaryContainer,
-          "& .MuiListItemIcon-root": {
-            color: theme.palette.onPrimaryContainer,
-          },
-        },
-        "&.Mui-selected:hover": {
-          bgcolor: theme.palette.primaryContainer,
-        },
-      })}
-    >
-      <ListItemIcon
+    // `component="li"` keeps the list DOM valid (ul > li > a) — the MUI
+    // `List` parent renders a `<ul>`, and anchors as its direct children
+    // violate the axe `list` rule. `disablePadding` keeps the wrapping
+    // `<li>` geometry-free so the button's own mx/my/borderRadius render
+    // pixel-identical to the pre-`<li>` layout.
+    <ListItem disablePadding component="li">
+      <ListItemButton
+        component={Link}
+        href={item.route}
+        onClick={onNavigate}
+        selected={isActive}
+        aria-current={isActive ? "page" : undefined}
         sx={theme => ({
-          minWidth: 36,
-          color: theme.palette.text.secondary,
+          ...focusVisibleRingSx,
+          mx: 1,
+          my: 0.25,
+          borderRadius: 2,
+          py: 1,
+          "&.Mui-selected": {
+            bgcolor: theme.palette.primaryContainer,
+            color: theme.palette.onPrimaryContainer,
+            "& .MuiListItemIcon-root": {
+              color: theme.palette.onPrimaryContainer,
+            },
+          },
+          "&.Mui-selected:hover": {
+            bgcolor: theme.palette.primaryContainer,
+          },
         })}
       >
-        <Icon fontSize="small" />
-      </ListItemIcon>
-      <ListItemText
-        primary={label}
-        slotProps={{
-          primary: {
-            sx: { fontWeight: 600, fontSize: 14 },
-          },
-        }}
-      />
-    </ListItemButton>
+        <ListItemIcon
+          sx={theme => ({
+            minWidth: 36,
+            color: theme.palette.text.secondary,
+          })}
+        >
+          <Icon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText
+          primary={label}
+          slotProps={{
+            primary: {
+              sx: { fontWeight: 600, fontSize: 14 },
+            },
+          }}
+        />
+      </ListItemButton>
+    </ListItem>
   );
 }

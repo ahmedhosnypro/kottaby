@@ -1,12 +1,26 @@
 "use client";
 
+import { useApolloClient, useMutation } from "@apollo/client/react";
 import { LanguageOutlined as LanguageIcon } from "@mui/icons-material";
 import { IconButton, Tooltip } from "@mui/material";
 import { useRouter } from "next/navigation";
 // audit-R4: shared keyboard-focus ring (v9 ButtonBase ships none).
 import { focusVisibleRingSx } from "@/frontend/components/ui/focusRing";
+import { AppLocale as WireAppLocale } from "@/frontend/graphql/generated/gql/graphql";
+import { meQueryDocument, updateMyLocaleMutationDocument } from "@/frontend/graphql/sharedDocuments";
+import { useAuth } from "@/frontend/hooks/useAuth";
+import { logger } from "@/frontend/lib/logger";
 import { useAppLocale } from "@/frontend/providers/localeContext";
 import { Auth, useAppTranslation } from "@/shared/locale";
+
+/**
+ * Maps a shared app locale ("ar"/"en") to its GraphQL wire enum value
+ * (`Ar`/`En` — the PascalCase Gender-convention the `AppLocale` enum
+ * serializes with; the DB + shared union store lowercase values).
+ */
+function toWireAppLocale(locale: "ar" | "en"): WireAppLocale {
+  return locale === "ar" ? WireAppLocale.Ar : WireAppLocale.En;
+}
 
 /**
  * LocaleSwitcher — toggles between English and Arabic.
@@ -14,6 +28,14 @@ import { Auth, useAppTranslation } from "@/shared/locale";
  * Uses the `next-locale` cookie (read/written by `/api/set-locale`) to persist
  * the choice. On click, calls the set-locale API then refreshes the page so
  * the server component re-renders with the new locale.
+ *
+ * Authenticated write-through (R2-users-locale-b): when a user is signed in,
+ * the switch ALSO fires the `updateMyLocale` mutation (fire-and-forget) so
+ * the per-user locale preference tracks the app switch — notification-copy
+ * emitters and future sessions read the persisted account value. A mutation
+ * rejection NEVER blocks the locale switch (silent degradation —
+ * `logger.debug` only). Unauthenticated behavior (login/register pages) is
+ * unchanged: cookie-only switch.
  *
  * Reads the active locale from LocaleContext
  * (`useAppLocale` in providers/localeContext). There is no `[locale]`
@@ -29,10 +51,36 @@ export function LocaleSwitcher() {
   const t = useAppTranslation(Auth);
   const locale = useAppLocale();
   const router = useRouter();
+  const { user } = useAuth();
+  const client = useApolloClient();
+  const [updateMyLocale] = useMutation(updateMyLocaleMutationDocument);
 
   const targetLocale = locale === "ar" ? "en" : "ar";
 
   const handleSwitch = async () => {
+    if (user) {
+      // Write-through first (fire-and-forget): persist the new locale to the
+      // account and sync the `me` query cache so the profile page's language
+      // card reflects it. Silent degradation — never blocks the switch.
+      const wireLocale = toWireAppLocale(targetLocale);
+      void (async () => {
+        try {
+          const result = await updateMyLocale({ variables: { locale: wireLocale } });
+          const persistedWireLocale = result.data?.updateMyLocale?.locale ?? wireLocale;
+          const cachedMe = client.cache.readQuery({ query: meQueryDocument });
+          if (cachedMe?.me) {
+            client.writeQuery({
+              query: meQueryDocument,
+              data: { me: { ...cachedMe.me, locale: persistedWireLocale } },
+            });
+          }
+        } catch (error: unknown) {
+          logger.debug({ caller: "LocaleSwitcher" }, "[LocaleSwitcher] updateMyLocale write-through rejected", {
+            errorName: error instanceof Error ? error.name : typeof error,
+          });
+        }
+      })();
+    }
     try {
       await fetch("/api/set-locale", {
         method: "POST",

@@ -6,23 +6,26 @@
  *    type reference (NOT a local type definition).
  *  - Backed by `gqlSchemaBuilder.objectRef<RegistrationReturnType>("User")`.
  *  - Exposes `id` (Int — Apollo cache normalization), `email`, `fullName`,
- *    `role`, plus the profile-page fields (`phone`, `country`, `gender`) and
- *    the read-only governance fields (`isDeleted`, `suspended`, `isBlocked`).
- *    The `passwordHash` field is structurally omitted from
- *    `RegistrationReturnType` so it can never leak.
+ *    `role`, plus the profile-page fields (`phone`, `country`, `gender`,
+ *    `locale`) and the read-only governance fields (`isDeleted`,
+ *    `suspended`, `isBlocked`). The `passwordHash` field is structurally
+ *    omitted from `RegistrationReturnType` so it can never leak.
  *
  * Additional fields (relationships, computed props) may be added on this same
  * object in future tickets — GraphQL's selection mechanism lets clients
  * request only what they need.
  */
+import { toAppLocale } from "@/backend/enum/users/app-locale.enum";
 import { toGender } from "@/backend/enum/users/gender.enum";
 import { toUserRole } from "@/backend/enum/users/user-role.enum";
 import { gqlSchemaBuilder } from "@/backend/graphql/pothos/builder";
 import {
+  AppLocalePothosEnum,
   GenderPothosEnum,
   RecitationReadingPothosEnum,
   UserRolePothosEnum,
 } from "@/backend/graphql/pothos/shared/enum.pothos";
+import { ValidationError } from "@/backend/lib/errors";
 import type { RegistrationReturnType } from "@/backend/types";
 
 /**
@@ -40,6 +43,25 @@ export const UserPothosObject = gqlSchemaBuilder.objectRef<RegistrationReturnTyp
     phone: t.exposeString("phone", { nullable: true }),
     // Nullable — country is optional in the schema.
     country: t.exposeString("country", { nullable: true }),
+    // Nullable — locale is optional in the schema (unset until the user
+    // explicitly picks one; registration leaves it null by the D2 deferred
+    // decision). Same shape as `gender`: a closed pgEnum surfaced through
+    // the shared Pothos enum registry + the `toAppLocale` safe mapper.
+    locale: t.field({
+      type: AppLocalePothosEnum,
+      nullable: true,
+      resolve: async (parent, _args, ctx) => {
+        if (!parent.locale) return null;
+        const locale = toAppLocale(parent.locale);
+        if (locale === null) {
+          // Fail-closed deny on a corrupt stored enum (the applicantStatusCorrupt
+          // precedent) — translated per the resolver-i18n rule via ctx.t.
+          const tErrors = await ctx.t("errorsTranslations");
+          throw new ValidationError("USER_LOCALE_CORRUPT", tErrors.userLocaleCorrupt);
+        }
+        return locale;
+      },
+    }),
     // Nullable — gender is optional in the schema.
     gender: t.field({
       type: GenderPothosEnum,

@@ -56,6 +56,12 @@ export interface ErrorsLabels {
   readonly applicantCooldownActive: string;
   /** Fail-closed deny when an applicants row status cannot be interpreted as a known ApplicantStatus. */
   readonly applicantStatusCorrupt: string;
+  /** Fail-closed deny when a stored notifications.type value is not a known NotificationType member. */
+  readonly notificationTypeCorrupt: string;
+  /** Fail-closed deny when a stored users.locale value is not a known AppLocale member. */
+  readonly userLocaleCorrupt: string;
+  /** "The notification was not found." — self-scope notification lookup miss → NotFoundError("NOTIFICATION"). */
+  readonly notificationNotFound: string;
   /** "Handshake codes look like KSB-XXXXXXXX (8 hexadecimal characters)." — malformed handshake-code reject → ValidationError (VALIDATION). */
   readonly handshakeCodeInvalid: string;
   /** "Student record not found." — caller has no students row → NotFoundError("STUDENT"). */

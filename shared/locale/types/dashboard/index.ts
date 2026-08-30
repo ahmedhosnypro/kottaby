@@ -61,6 +61,8 @@ export interface DashboardLabels {
   readonly accountInfo: string;
   /** Profile page: Preferences card title */
   readonly preferences: string;
+  /** Profile page: language preference group label (Preferences card) */
+  readonly language: string;
   /** Profile page: Recitation reading card title */
   readonly recitationReading: string;
   /** Profile page: Account status card title */
@@ -105,6 +107,12 @@ export interface DashboardLabels {
   readonly changePasswordNotice: string;
   /** Profile page: edit-profile feature-not-available notice */
   readonly editProfileNotice: string;
+  /** Profile page: language preference — saved-to-account notice (Preferences card) */
+  readonly languageNotice: string;
+  /** Profile page: language preference — caption naming the persisted account value when it differs from the active UI locale */
+  readonly languageSaved: (languageName: string) => string;
+  /** Profile page: language preference — update failure message */
+  readonly languageUpdateFailed: string;
   /** Sidebar aria-label for screen readers */
   readonly sidebarAriaLabel: string;
   /** App-bar aria-label for the mobile menu toggle */

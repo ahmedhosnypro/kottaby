@@ -33,13 +33,14 @@ function buildAdminContext(): Context {
     lastActiveAt: null,
     suspendedPeriodDays: null,
     preferredRecitation: null,
+    locale: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
 
   return {
     locale: "en",
-    t: async (ns: keyof Translations) => getServerTranslations("en")[ns],
+    t: async <K extends keyof Translations>(ns: K) => getServerTranslations("en")[ns],
     requestId: `req-chaos-${Date.now()}`,
     user: adminUser,
     safeUser: adminUser,

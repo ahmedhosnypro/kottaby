@@ -24,7 +24,7 @@ function buildContextForUser(user: UserSelectType | null): Context {
 
   return {
     locale: "en",
-    t: async (ns: keyof Translations) => getServerTranslations("en")[ns],
+    t: async <K extends keyof Translations>(ns: K) => getServerTranslations("en")[ns],
     requestId: "req-test-1234",
     user: safeUser,
     safeUser,
@@ -56,6 +56,7 @@ function mockUser(role?: UserRole, userId = 100): UserSelectType | null {
     lastActiveAt: null,
     suspendedPeriodDays: null,
     passwordHash: "hash",
+    locale: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

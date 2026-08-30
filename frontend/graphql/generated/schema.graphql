@@ -1,3 +1,8 @@
+enum AppLocale {
+  Ar
+  En
+}
+
 type ApplicantProfile {
   canPurchaseVerification: Boolean!
   cooldownActive: Boolean!
@@ -94,6 +99,16 @@ type Mutation {
   logout: LogoutPayload!
 
   """
+  Marks every unread notification of the caller read (optionally narrowed to one type) and returns the affected-row count. An empty matching set returns 0; repeat sweeps are idempotent (0).
+  """
+  markAllNotificationsRead(type: NotificationType): Int!
+
+  """
+  Marks one of the caller's own notifications read (idempotent) and returns the row. A foreign or nonexistent id is indistinguishable — NOTIFICATION_NOT_FOUND with no existence oracle.
+  """
+  markNotificationRead(id: ID!): Notification!
+
+  """
   Rotate the JWT pair from a valid refresh token. Returns fresh access + refresh tokens. The new access_token + refresh_token + session_id are also set as httpOnly cookies (rotation invalidates the prior pair).
   """
   refreshToken(refreshToken: String!): RefreshTokenPayload!
@@ -108,6 +123,11 @@ type Mutation {
     isActive: Boolean!
   ): Plan!
 
+  """
+  Persists the caller's app locale preference (UI + notification-copy language) and returns the updated user. Idempotent. Self-scoped — identity is derived from the verified context, never from arguments.
+  """
+  updateMyLocale(locale: AppLocale!): User!
+
   """Updates mutable fields on an existing subscription plan (Admin only)."""
   updatePlan(
     """ID of the subscription plan to update."""
@@ -116,6 +136,40 @@ type Mutation {
     """Updated fields for the subscription plan."""
     input: UpdatePlanInput!
   ): Plan!
+}
+
+input MyNotificationsFilterInput {
+  isRead: Boolean
+  limit: Int
+  offset: Int
+  type: NotificationType
+}
+
+type Notification {
+  body: String
+  createdAt: String!
+  id: ID!
+  isRead: Boolean!
+  relatedEntityId: Int
+  relatedEntityType: String
+  title: String!
+  type: NotificationType!
+}
+
+type NotificationListPage {
+  hasMore: Boolean!
+  items: [Notification!]!
+  totalCount: Int!
+}
+
+enum NotificationType {
+  EvaluationResult
+  ParentLinkRequest
+  PaymentConfirmation
+  SessionCancellation
+  SessionCompletion
+  SessionRequest
+  SystemBroadcast
 }
 
 """A subscription plan in the Kottaby catalog."""
@@ -169,6 +223,16 @@ type Query {
   me: User
   myApplicantProfile: ApplicantProfile
   myHandshakeCode: String!
+
+  """
+  One page of the caller's own inbox — items (newest first), totalCount, hasMore. Optional conjunctive filters (type, isRead) and page window (limit 1..50 default 20, offset default 0).
+  """
+  myNotifications(filter: MyNotificationsFilterInput): NotificationListPage!
+
+  """
+  The caller's unread notification count — the badge read (0 for an all-read or empty inbox).
+  """
+  myUnreadNotificationCount: Int!
 
   """Returns the active subscription plans catalog for authenticated users."""
   planCatalog: [Plan!]!
@@ -245,6 +309,7 @@ type User {
   id: Int!
   isBlocked: Boolean!
   isDeleted: Boolean!
+  locale: AppLocale
   phone: String
 
   """

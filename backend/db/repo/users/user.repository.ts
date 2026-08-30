@@ -12,10 +12,11 @@
  *    repository methods surface raw Drizzle errors; the service layer maps
  *    `23505` → `ConflictError` via `translateDbError`.
  */
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { queryDb } from "@/backend/db";
 import { users } from "@/backend/db/schema/users/users";
 import type { DBQueryExecutor, DBTransaction, UserInsertType, UserSelectType } from "@/backend/types";
+import type { AppLocale } from "@/shared/locale/AppLocale";
 
 /**
  * Type guard — narrows `DBQueryExecutor` to `DBTransaction`.
@@ -48,7 +49,7 @@ export namespace UserRepository {
     // Non-transactional read — raw SQL via queryDb (Neon HTTP fast path).
     const result = await queryDb<UserSelectType>(
       `SELECT id, full_name AS "fullName", email, phone, password_hash AS "passwordHash",
-              role, date_of_birth AS "dateOfBirth", gender, country,
+              role, date_of_birth AS "dateOfBirth", gender, country, locale,
               is_deleted AS "isDeleted", deleted_at AS "deletedAt",
               suspended, suspended_at AS "suspendedAt",
               suspended_period_days AS "suspendedPeriodDays",
@@ -80,7 +81,7 @@ export namespace UserRepository {
     // Non-transactional read — raw SQL via queryDb (Neon HTTP fast path).
     const result = await queryDb<UserSelectType>(
       `SELECT id, full_name AS "fullName", email, phone, password_hash AS "passwordHash",
-              role, date_of_birth AS "dateOfBirth", gender, country,
+              role, date_of_birth AS "dateOfBirth", gender, country, locale,
               is_deleted AS "isDeleted", deleted_at AS "deletedAt",
               suspended, suspended_at AS "suspendedAt",
               suspended_period_days AS "suspendedPeriodDays",
@@ -109,5 +110,78 @@ export namespace UserRepository {
       throw new Error("UserRepository.create: insert returned no rows");
     }
     return row;
+  }
+
+  /**
+   * Updates one user's app locale (UI + copy preference) — a guarded single
+   * `UPDATE … WHERE id = ? SET locale = ? RETURNING *` on the supplied
+   * transaction.
+   *
+   * The service layer validates the locale value (closed `app_locale` enum —
+   * the pgEnum rejects anything else at the database boundary as
+   * defense-in-depth). `updated_at` re-stamps automatically via the column's
+   * `$onUpdate` hook. Re-writing the same locale is idempotent (the row
+   * returns unchanged).
+   *
+   * @returns The updated row (passwordHash included — service layers must
+   *          strip it before exposure), or `null` when no user has that id
+   *          (zero rows matched — the service layer decides what that means).
+   */
+  export async function updateLocale(
+    userId: number,
+    locale: AppLocale,
+    tx: DBTransaction
+  ): Promise<UserSelectType | null> {
+    const [row] = await tx.update(users).set({ locale }).where(eq(users.id, userId)).returning();
+    return row ?? null;
+  }
+
+  /**
+   * Batch locale lookup for a set of user ids — the read the notification
+   * emitters use to localize per-recipient copy (DEV3-010 D2).
+   *
+   * Follows the repo batch-lookup convention: the returned `Map` is
+   * pre-initialized with EVERY requested id mapped to `null`, then filled
+   * from the matched rows — a missing user and a user with no locale set
+   * are both `null` (the emitter's fallback locale applies). Empty input
+   * returns an empty map without executing a statement.
+   *
+   * @returns `Map<userId, locale | null>` — exactly one entry per requested
+   *          id, present-or-not.
+   */
+  export async function findLocalesByIds(
+    userIds: readonly number[],
+    tx?: DBQueryExecutor
+  ): Promise<Map<number, AppLocale | null>> {
+    const locales = new Map<number, AppLocale | null>();
+    for (const id of userIds) {
+      locales.set(id, null);
+    }
+    if (userIds.length === 0) {
+      return locales;
+    }
+    if (tx && isDBTransaction(tx)) {
+      // Transactional read — Drizzle select on the supplied executor.
+      // `inArray` with a PLAIN array (never `sql.placeholder`) per the repo
+      // prepared-statement rule.
+      const rows = await tx
+        .select({ id: users.id, locale: users.locale })
+        .from(users)
+        .where(inArray(users.id, [...userIds]));
+      for (const row of rows) {
+        locales.set(row.id, row.locale);
+      }
+      return locales;
+    }
+    // Non-transactional read — raw SQL via queryDb (Neon HTTP fast path);
+    // `= ANY($1)` binds the id array as a single parameterized value.
+    const result = await queryDb<{ id: number; locale: AppLocale | null }>(
+      "SELECT id, locale FROM users WHERE id = ANY($1)",
+      [[...userIds]]
+    );
+    for (const row of result.rows) {
+      locales.set(row.id, row.locale);
+    }
+    return locales;
   }
 }

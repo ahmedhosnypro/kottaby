@@ -11,3 +11,13 @@ export enum NotificationType {
   PaymentConfirmation = "payment_confirmation",
   EvaluationResult = "evaluation_result",
 }
+
+/**
+ * Type guard for a runtime notification-type value (from a `notification_type`
+ * row column or a transport payload). Returns `true` only for exact member
+ * strings — the guard fails closed on any other input (wrong type, case
+ * mismatch, whitespace, foreign values) rather than throwing.
+ */
+export function isNotificationType(value: unknown): value is NotificationType {
+  return typeof value === "string" && (Object.values(NotificationType) as string[]).includes(value);
+}

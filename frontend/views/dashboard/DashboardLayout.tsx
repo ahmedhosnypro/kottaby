@@ -4,6 +4,7 @@ import { Box, Container, Stack, Typography, useMediaQuery } from "@mui/material"
 import { useTheme } from "@mui/material/styles";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
+import { NotificationRealtimeToastHost } from "@/frontend/components/ui/NotificationRealtimeToastHost";
 import { useAuth } from "@/frontend/hooks/useAuth";
 import { buildLoginHref } from "@/frontend/lib/safeRedirect";
 import { DashboardAppBar } from "@/frontend/views/dashboard/DashboardAppBar";
@@ -33,6 +34,12 @@ interface DashboardLayoutProps {
  * layout pushes the user to `/login?redirect=<currentPath>` — the
  * `?redirect=` param lets the login form navigate back here on success
  * (avoids the redirect loop where login returns here unauthenticated).
+ *
+ * Realtime notifications: the authenticated branch mounts
+ * `NotificationRealtimeToastHost` — the shell-level owner of the tab's ONE
+ * realtime socket (REQ-067). It renders only the transient arrival toasts;
+ * sign-out or auth expiry unmounts it and the socket closes
+ * deterministically with 1000.
  *
  * SSR/CSR hydration: `useMediaQuery(theme.breakpoints.up("lg"))` returns
  * `false` on the server and during the first client render (MUI's default
@@ -136,6 +143,10 @@ export function DashboardLayout({ children }: Readonly<DashboardLayoutProps>): R
           </Container>
         </Box>
       </Box>
+
+      {/* Shell-level realtime surface — anchors the tab's single
+          notification socket and its arrival toasts (REQ-067). */}
+      <NotificationRealtimeToastHost />
     </Box>
   );
 }

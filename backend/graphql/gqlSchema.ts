@@ -3,12 +3,14 @@
  *
  * Wiring order (CRITICAL):
  *  1. Import `gqlSchemaBuilder` (Pothos SchemaBuilder with plugins loaded).
- *  2. Side-effect-import the scalar + enum registries
- *     (`shared/scalar.pothos.ts`, `shared/enum.pothos.ts`) — registers every
- *     custom scalar and every TS enum as a GraphQL scalar/enum ONCE.
- *  3. Side-effect-import the mutation barrel — registers every root
- *     mutation field on the builder.
- *  4. Call `gqlSchemaBuilder.toSchema()` — finalizes the SDL.
+ *  2. Import the definitions barrel (`gqlSchema.definitions.ts`) — registers
+ *     the Pothos object barrel, the scalar + enum registries, and every root
+ *     query/mutation field on the builder via side-effect imports. The barrel
+ *     is a dedicated module so the builder can dynamically import it in
+ *     development, creating the HMR dependency edge that yields a fresh
+ *     SchemaBuilder whenever any definition changes (see hayes/pothos#49 and
+ *     `pothos-hmr.ts`).
+ *  3. Call `gqlSchemaBuilder.toSchema()` — finalizes the SDL.
  *
  * Apollo Server consumes `graphQLSchema` from `app/api/graphql/route.ts`.
  *
@@ -17,10 +19,7 @@
  *   bun codegen                  # generates frontend typed-document-node types
  */
 import { gqlSchemaBuilder } from "@/backend/graphql/pothos/builder";
-import "@/backend/graphql/pothos/shared/scalar.pothos";
-import "@/backend/graphql/pothos/shared/enum.pothos";
-import "@/backend/graphql/mutation";
-import "@/backend/graphql/query";
+import "@/backend/graphql/gqlSchema.definitions";
 
 /** The final assembled GraphQL schema — passed to `new ApolloServer({ schema })`. */
 export const graphQLSchema = gqlSchemaBuilder.toSchema();

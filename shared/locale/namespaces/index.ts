@@ -5,6 +5,7 @@ import { Dashboard } from "@/shared/locale/namespaces/dashboard";
 import { Errors } from "@/shared/locale/namespaces/errors";
 import { HandshakeCode } from "@/shared/locale/namespaces/handshakeCode";
 import { Landing } from "@/shared/locale/namespaces/landing";
+import { Notifications } from "@/shared/locale/namespaces/notifications";
 import { Plans } from "@/shared/locale/namespaces/plans";
 import { Recitation } from "@/shared/locale/namespaces/recitation";
 
@@ -16,6 +17,7 @@ export * from "./define-namespace";
 export * from "./errors";
 export * from "./handshakeCode";
 export * from "./landing";
+export * from "./notifications";
 export * from "./plans";
 export * from "./recitation";
 export * from "./translation";
@@ -28,6 +30,7 @@ export const namespaces = {
   Errors,
   HandshakeCode,
   Landing,
+  Notifications,
   Plans,
   Recitation,
 } as const;

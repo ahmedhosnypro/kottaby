@@ -16,6 +16,13 @@
  *  - `refreshToken(refreshToken, locale)` — verifies the refresh token,
  *    rotates the pair (issues a NEW refresh token + session id), returns the
  *    fresh `RefreshResult`.
+ *  - `updateMyLocale(userId, locale, requestLocale, tx?)` — persists the
+ *    caller's UI/copy locale preference on `users.locale` (DEV3-010 D2).
+ *    Validates the closed locale set (defense-in-depth — the GraphQL enum
+ *    already constrains it), writes inside a transaction, and returns the
+ *    updated user with `passwordHash` stripped. Throws `ValidationError`
+ *    (localized `invalidLocale`) for a non-locale string and
+ *    `UnauthorizedError` when the caller's row no longer exists.
  *
  * i18n: all messages resolve through `getServerTranslations(locale)` — never
  * hardcoded strings, never `console.*` (uses `logger.logDomainError` for
@@ -38,9 +45,16 @@ import { UserRepository } from "@/backend/db/repo";
 import { users } from "@/backend/db/schema/users/users";
 import { generateSessionId, signAccessToken, signRefreshToken, verifyRefreshToken } from "@/backend/lib/auth/jwt";
 import { comparePassword } from "@/backend/lib/auth/password";
-import { ForbiddenError, UnauthorizedError } from "@/backend/lib/errors";
+import { ForbiddenError, UnauthorizedError, ValidationError } from "@/backend/lib/errors";
 import { logger } from "@/backend/lib/logger";
-import type { AuthSession, RefreshResult, RegistrationReturnType, UserSelectType } from "@/backend/types";
+import type {
+  AuthSession,
+  DBTransaction,
+  RefreshResult,
+  RegistrationReturnType,
+  UserSelectType,
+} from "@/backend/types";
+import { isAppLocale } from "@/shared/locale/AppLocale";
 import { getServerTranslations } from "@/shared/locale/server-graphql";
 
 /** Truncates an email for log redaction (preserves the first 2 chars + domain). */
@@ -81,6 +95,26 @@ function assertUserActive(
   if (user.isDeleted || user.isBlocked || user.suspended) {
     throw new ForbiddenError(message);
   }
+}
+
+/**
+ * Runs `fn` inside a transaction. If `outerTx` is provided (test path), opens
+ * a SAVEPOINT on the outer transaction — failures roll back only the
+ * savepoint, leaving the outer transaction usable for further queries. If
+ * `outerTx` is undefined (production path), opens a new top-level
+ * `db.transaction`.
+ *
+ * Same shape as the `RegistrationService` / `NotificationEngine` helpers so
+ * the transaction conventions stay identical across the auth domain.
+ */
+async function withTransaction<T>(
+  outerTx: DBTransaction | undefined,
+  fn: (tx: DBTransaction) => Promise<T>
+): Promise<T> {
+  if (outerTx) {
+    return outerTx.transaction(fn);
+  }
+  return db.transaction(fn);
 }
 
 export namespace AuthService {
@@ -221,6 +255,44 @@ export namespace AuthService {
       refreshToken: refreshTokenNew,
       sessionId,
     };
+  }
+
+  /**
+   * Persists the caller's app locale preference (UI + notification-copy
+   * language) on `users.locale` — the DEV3-010 D2 column.
+   *
+   * The GraphQL `AppLocale!` argument already constrains the value at the
+   * schema layer; the `isAppLocale` check here is defense-in-depth for
+   * non-schema transports and future callers. The write runs inside a
+   * transaction (SAVEPOINT when an outer `tx` is supplied — the test path).
+   *
+   * @throws ValidationError   `locale` is not a supported locale (localized
+   *     `invalidLocale` message).
+   * @throws UnauthorizedError the caller's user row no longer exists
+   *     (deleted between access-token issuance and this call — same contract
+   *     as `getMe`; the message never discloses existence).
+   */
+  export async function updateMyLocale(
+    userId: number,
+    locale: string,
+    requestLocale: string,
+    outerTx?: DBTransaction
+  ): Promise<RegistrationReturnType> {
+    const t = getServerTranslations(requestLocale).errorsTranslations;
+
+    // Defense-in-depth closed-set gate (schema enum is the first gate).
+    if (!isAppLocale(locale)) {
+      throw new ValidationError(t.invalidLocale);
+    }
+
+    const updated = await withTransaction(outerTx, tx => UserRepository.updateLocale(userId, locale, tx));
+    if (!updated) {
+      // Zero rows matched — the verified caller vanished between the context
+      // build and the write. Mirror `getMe`: unauthenticated, no existence
+      // oracle.
+      throw new UnauthorizedError(t.unauthorized);
+    }
+    return stripPasswordHash(updated);
   }
 }
 

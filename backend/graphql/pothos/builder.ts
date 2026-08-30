@@ -45,8 +45,15 @@ import ScopeAuthPlugin from "@pothos/plugin-scope-auth";
 import WithInputPlugin from "@pothos/plugin-with-input";
 import type { UserRole } from "@/backend/enum/users/user-role.enum";
 import type { Context } from "@/backend/graphql/gqlContextFactory";
+import { enablePothosDevHmr } from "@/backend/graphql/pothos-hmr";
 import { ForbiddenError, UnauthorizedError } from "@/backend/lib/errors";
+import { logger } from "@/backend/lib/logger";
 import { getServerTranslations } from "@/shared/locale/server-graphql";
+
+// Allow Pothos plugins to re-register during Turbopack/Webpack HMR.
+if (process.env.NODE_ENV !== "production") {
+  SchemaBuilder.allowPluginReRegistration = true;
+}
 
 /**
  * The canonical Pothos SchemaBuilder for the project. All Pothos object/enum/
@@ -147,3 +154,17 @@ export const gqlSchemaBuilder = new SchemaBuilder<{
 // ref in `pothos/shared/`.
 gqlSchemaBuilder.queryType({});
 gqlSchemaBuilder.mutationType({});
+
+// Always create a fresh builder when this module evaluates. Do NOT cache on
+// globalThis — that keeps a stale ConfigStore across HMR and causes either
+// Duplicate typename errors or broken onConfig patches.
+enablePothosDevHmr(gqlSchemaBuilder);
+
+// HMR dependency edge (hayes/pothos#49): when any schema definition module
+// changes, invalidate this builder module too so type registration runs against
+// a fresh SchemaBuilder instead of throwing Duplicate typename.
+if (process.env.NODE_ENV !== "production") {
+  import("@/backend/graphql/gqlSchema.definitions").catch(error => {
+    logger.error("Failed to load GraphQL schema definitions for HMR edge", error);
+  });
+}

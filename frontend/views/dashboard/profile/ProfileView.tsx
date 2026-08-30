@@ -1,5 +1,6 @@
 "use client";
 
+import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import {
   BadgeOutlined as BadgeIcon,
   BlockOutlined as BlockIcon,
@@ -31,14 +32,21 @@ import {
   InputAdornment,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { type ReactNode, useState, useSyncExternalStore } from "react";
-import { Gender, UserRole } from "@/frontend/graphql/generated/gql/graphql";
+import { useRouter } from "next/navigation";
+import { type MouseEvent, type ReactNode, useState, useSyncExternalStore } from "react";
+// audit-R4: shared keyboard-focus ring (v9 ButtonBase ships none).
+import { focusVisibleRingSx } from "@/frontend/components/ui/focusRing";
+import { Gender, UserRole, AppLocale as WireAppLocale } from "@/frontend/graphql/generated/gql/graphql";
+import { meQueryDocument, updateMyLocaleMutationDocument } from "@/frontend/graphql/sharedDocuments";
 import { useAuth } from "@/frontend/hooks/useAuth";
 import { roleDashboardPath } from "@/frontend/lib/auth/roleDashboardRoute";
+import { logger } from "@/frontend/lib/logger";
 import { getRecitationDescription, getRecitationLabel } from "@/frontend/lib/recitation-labels";
-import { Auth, Dashboard, Recitation, useAppTranslation } from "@/shared/locale";
+import { type AppLocale, Auth, Dashboard, Recitation, useAppLocale, useAppTranslation } from "@/shared/locale";
 import type { DashboardLabels } from "@/shared/locale/types/dashboard";
 
 /**
@@ -68,8 +76,11 @@ function useMounted(): boolean {
  *    button (placeholder — editing is a future ticket).
  *  - Account Information card: full name, email, phone, role, country,
  *    gender (read from `useAuth().user`).
- *  - Recitation Reading card: current preferred recitation with description.
  *  - Account Status card: isDeleted / suspended / isBlocked status badges.
+ *  - Preferences card: language preference toggle — persists the per-user
+ *    locale to the account (`updateMyLocale`) and flips the app-wide locale
+ *    (R2-users-locale-b).
+ *  - Recitation Reading card: current preferred recitation with description.
  *  - Change Password form: current + new + confirm password fields
  *    (placeholder — wired to a "coming soon" notice since the
  *    `changePassword` mutation doesn't exist yet).
@@ -297,6 +308,9 @@ export function ProfileView(): ReactNode {
           </Stack>
         </CardContent>
       </Card>
+
+      {/* === Language preference card === */}
+      <LanguagePreferenceCard t={t} />
 
       {/* === Change password card === */}
       <ChangePasswordCard t={t} showPasswordLabel={tAuth.showPassword} hidePasswordLabel={tAuth.hidePassword} />
@@ -529,6 +543,144 @@ function ChangePasswordCard({ t, showPasswordLabel, hidePasswordLabel }: Readonl
   );
 }
 
+interface LanguagePreferenceCardProps {
+  readonly t: DashboardLabels;
+}
+
+/**
+ * Renders the language preference card — an exclusive two-option toggle
+ * ("English" / "العربية", each label written in its OWN language per the
+ * language-picker convention — deliberately NOT translated).
+ *
+ * The selection tracks the EFFECTIVE app locale (`useAppLocale` ←
+ * LocaleContext ← NEXT_LOCALE cookie). Selecting the other language:
+ *  1. disables the group with a tiny inline spinner (optimistic pending
+ *     feedback — the selection itself stays on the effective locale until
+ *     the app flips),
+ *  2. fires the `updateMyLocale` mutation with the WIRE enum value
+ *     ("Ar"/"En" — mapped from the app locale "ar"/"en"),
+ *  3. on success, writes the persisted locale back into the `me` query in
+ *     the Apollo cache (the same normalized `User` entry both write paths —
+ *     this card AND the app-bar LocaleSwitcher write-through — keep
+ *     current), then
+ *  4. applies the app-wide switch exactly like the app-bar LocaleSwitcher
+ *     (POST /api/set-locale + router.refresh()) so the cookie, `<html dir>`
+ *     and providers flip immediately.
+ * On failure the inline Alert surfaces the localized error and the group
+ * re-enables with the selection reverted to the (unchanged) effective
+ * locale.
+ *
+ * The persisted account value is observed through the `me` query in the
+ * cache — when it differs from the effective locale (e.g. the cookie was
+ * switched out-of-band), the caption names the saved account preference
+ * instead of the generic notice.
+ */
+function LanguagePreferenceCard({ t }: Readonly<LanguagePreferenceCardProps>): ReactNode {
+  const effectiveLocale = useAppLocale();
+  const client = useApolloClient();
+  const router = useRouter();
+  const [updateMyLocale, mutationState] = useMutation(updateMyLocaleMutationDocument);
+  const meQuery = useQuery(meQueryDocument);
+  const [hasFailed, setHasFailed] = useState(false);
+
+  const persistedLocale = fromWireAppLocale(meQuery.data?.me?.locale);
+  const isPending = mutationState.loading;
+  const savedDiffers = persistedLocale !== null && persistedLocale !== effectiveLocale;
+
+  const handleLocaleChange = (_event: MouseEvent<HTMLElement>, next: AppLocale | null): void => {
+    // Exclusive group: re-clicking the selected option emits `null`.
+    if (next === null || next === effectiveLocale || isPending) {
+      return;
+    }
+    setHasFailed(false);
+    void (async () => {
+      try {
+        await updateMyLocale({ variables: { locale: toWireAppLocale(next) } });
+        // Keep the `me` query (and every observer of it) in lockstep with
+        // the persisted account value.
+        const cachedMe = meQuery.data?.me ?? null;
+        if (cachedMe) {
+          client.writeQuery({
+            query: meQueryDocument,
+            data: { me: { ...cachedMe, locale: toWireAppLocale(next) } },
+          });
+        }
+        // App-wide switch — the LocaleSwitcher flow: cookie + html dir +
+        // providers flip through the server re-render.
+        const response = await fetch("/api/set-locale", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ locale: next }),
+        });
+        if (!response.ok) {
+          // 4xx/5xx must surface the failure state — refreshing anyway would
+          // re-render with the OLD active locale and mask the rejection.
+          throw new Error(`set-locale failed with status ${response.status}`);
+        }
+        router.refresh();
+      } catch (error: unknown) {
+        setHasFailed(true);
+        logger.debug({ caller: "ProfileView.LanguagePreferenceCard" }, "[Profile] updateMyLocale rejected", {
+          errorName: error instanceof Error ? error.name : typeof error,
+        });
+      }
+    })();
+  };
+
+  return (
+    <Card
+      elevation={0}
+      sx={theme => ({
+        borderRadius: 3,
+        border: "1px solid",
+        borderColor: theme.palette.outlineVariant,
+        mb: 2,
+      })}
+    >
+      <CardContent sx={{ p: 3 }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
+          <LanguageIcon fontSize="small" sx={theme => ({ color: theme.palette.primary.main })} />
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            {t.preferences}
+          </Typography>
+        </Stack>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}>
+          <ToggleButtonGroup
+            exclusive
+            disabled={isPending}
+            value={effectiveLocale}
+            onChange={handleLocaleChange}
+            aria-label={t.language}
+          >
+            <ToggleButton value="en" sx={{ ...focusVisibleRingSx, px: 3, minHeight: 44, fontWeight: 600 }}>
+              English
+            </ToggleButton>
+            <ToggleButton value="ar" sx={{ ...focusVisibleRingSx, px: 3, minHeight: 44, fontWeight: 600 }}>
+              العربية
+            </ToggleButton>
+          </ToggleButtonGroup>
+          {isPending ? <CircularProgress size={18} /> : null}
+        </Stack>
+        {hasFailed ? (
+          <Alert severity="error" variant="outlined" sx={{ mt: 2 }}>
+            {t.languageUpdateFailed}
+          </Alert>
+        ) : null}
+        <Typography
+          variant="caption"
+          sx={theme => ({
+            display: "block",
+            mt: 1.5,
+            color: theme.palette.text.secondary,
+          })}
+        >
+          {savedDiffers ? t.languageSaved(languageName(persistedLocale)) : t.languageNotice}
+        </Typography>
+      </CardContent>
+    </Card>
+  );
+}
+
 interface PasswordFieldProps {
   readonly label: string;
   readonly value: string;
@@ -584,6 +736,38 @@ function PasswordField({
 // ----------------------------------------------------------------------------
 // Helpers
 // ----------------------------------------------------------------------------
+
+/**
+ * Maps a shared app locale ("ar"/"en") to its GraphQL wire enum value
+ * (`Ar`/`En` — the PascalCase Gender-convention the `AppLocale` enum
+ * serializes with; the DB + shared union store lowercase values).
+ */
+function toWireAppLocale(locale: AppLocale): WireAppLocale {
+  return locale === "ar" ? WireAppLocale.Ar : WireAppLocale.En;
+}
+
+/**
+ * Maps a GraphQL wire `AppLocale` value back to the shared app locale
+ * union — `null` for an unset (never persisted) or unrecognized value.
+ */
+function fromWireAppLocale(wire: WireAppLocale | null | undefined): AppLocale | null {
+  if (wire === WireAppLocale.Ar) {
+    return "ar";
+  }
+  if (wire === WireAppLocale.En) {
+    return "en";
+  }
+  return null;
+}
+
+/**
+ * Display name of an app locale, written in the locale's OWN language (the
+ * language-picker convention — deliberately NOT run through the translation
+ * system so each option always reads natively).
+ */
+function languageName(locale: AppLocale): string {
+  return locale === "ar" ? "العربية" : "English";
+}
 
 /** Maps a UserRole to its translated display label (via the Auth namespace). */
 function getRoleLabel(

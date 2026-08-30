@@ -5,6 +5,7 @@ import { dashboardEn } from "@/shared/locale/en/dashboard";
 import { errorsEn } from "@/shared/locale/en/errors";
 import { handshakeCodeEn } from "@/shared/locale/en/handshakeCode";
 import { landingEn } from "@/shared/locale/en/landing";
+import { notificationsEn } from "@/shared/locale/en/notifications";
 import { plansEn } from "@/shared/locale/en/plans";
 import { recitationEn } from "@/shared/locale/en/recitation";
 import type { Translations } from "@/shared/locale/types/message";
@@ -18,5 +19,6 @@ export const enMessages: Translations = {
   landingTranslations: landingEn,
   plansTranslations: plansEn,
   applicantTranslations: applicantEn,
+  notificationsTranslations: notificationsEn,
   handshakeCodeTranslations: handshakeCodeEn,
 };

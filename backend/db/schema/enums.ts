@@ -1,7 +1,7 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 
 /**
- * pgEnum registry — single source of truth for all 15 PostgreSQL enums.
+ * pgEnum registry — single source of truth for all 16 PostgreSQL enums.
  * Values + order are canonical and mirrored in the matching
  * TypeScript enums under `backend/enum/`.
  */
@@ -9,6 +9,16 @@ import { pgEnum } from "drizzle-orm/pg-core";
 export const userRole = pgEnum("user_role", ["admin", "teacher", "student", "parent"]);
 
 export const gender = pgEnum("gender", ["male", "female", "other"]);
+
+/**
+ * App locale for per-user UI/copy preference (`users.locale`).
+ *
+ * Values mirror `shared/locale/AppLocale.ts` (`locales = ["ar","en"]`) — the
+ * shared const array stays the i18n runtime source of truth; this pgEnum is
+ * the database-side closed set, following the same convention as `gender`
+ * (a nullable, closed, user-preference enum).
+ */
+export const appLocale = pgEnum("app_locale", ["ar", "en"]);
 
 export const sessionStatus = pgEnum("session_status", ["scheduled", "started", "completed", "cancelled", "disputed"]);
 

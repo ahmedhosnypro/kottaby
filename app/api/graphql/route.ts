@@ -2,6 +2,7 @@ import { ApolloServer } from "@apollo/server";
 import { ApolloServerPluginLandingPageDisabled } from "@apollo/server/plugin/disabled";
 import { ApolloServerPluginLandingPageLocalDefault } from "@apollo/server/plugin/landingPage/default";
 import { startServerAndCreateNextHandler } from "@as-integrations/next";
+import type { GraphQLSchema } from "graphql";
 import { NextRequest, NextResponse } from "next/server";
 import { type Context, createGraphQLContext, extractLocale } from "@/backend/graphql/gqlContextFactory";
 import { graphQLSchema } from "@/backend/graphql/gqlSchema";
@@ -78,9 +79,9 @@ function transportRejectionResponse(kind: TransportErrorKind, request: NextReque
   );
 }
 
-function createApolloServer(): ApolloServer<Context> {
+function createApolloServer(schema: GraphQLSchema): ApolloServer<Context> {
   return new ApolloServer({
-    schema: graphQLSchema,
+    schema,
     plugins: [
       // THE single error-finalization registration site.
       // `finalizeGraphqlErrors` runs exactly once per execution result at
@@ -128,8 +129,6 @@ function createApolloServer(): ApolloServer<Context> {
   });
 }
 
-const server = createApolloServer();
-
 /**
  * Per-request context map. The context factory builds a `Context` (with an
  * `authCookieOut` accumulator) for every request. Mutation resolvers (`login`,
@@ -172,20 +171,34 @@ function flushAuthCookies(response: Response, engineRequest: NextRequest | null)
   return response;
 }
 
-const handler = startServerAndCreateNextHandler<NextRequest, Context>(server, {
-  context: async (req: NextRequest) => {
-    const ctx = await createGraphQLContext(req);
-    requestContextMap.set(req, ctx);
-    return ctx;
-  },
-});
+/**
+ * Handler factory binding an Apollo server to the Next.js route. Re-invoked
+ * in development when HMR produces a new Pothos schema object so the engine
+ * executes against the fresh SDL (see `getHandler` below).
+ */
+function createGraphqlHandler(apolloServer: ApolloServer<Context>) {
+  return startServerAndCreateNextHandler<NextRequest, Context>(apolloServer, {
+    context: async (req: NextRequest) => {
+      const ctx = await createGraphQLContext(req);
+      requestContextMap.set(req, ctx);
+      return ctx;
+    },
+  });
+}
+
+let activeSchema = graphQLSchema;
+let server = createApolloServer(activeSchema);
+let handler = createGraphqlHandler(server);
 
 function getHandler() {
-  // HMR schema-swap is deferred — re-creating ApolloServer on every request
-  // is wasteful, and Turbopack HMR triggers a full module re-init anyway
-  // (which re-runs this module). If the schema needs hot-swapping without a
-  // process restart, a future ticket can introduce a schema-version check +
-  // ApolloServer.dispose() dance.
+  // After Turbopack HMR rebuilds the Pothos schema, swap Apollo onto the new
+  // schema. Module scope never re-executes in production, so the swap is
+  // dev-only by construction.
+  if (!isProduction && graphQLSchema !== activeSchema) {
+    activeSchema = graphQLSchema;
+    server = createApolloServer(activeSchema);
+    handler = createGraphqlHandler(server);
+  }
   return handler;
 }
 

@@ -276,3 +276,27 @@
 All schema changes have been validated with `bun validate:dbml`.
 
 All schema changes have been validated against the Drizzle schema in `backend/db/schema/` (the sole structural ground truth).
+
+---
+
+## Implementation Addenda — Real-Time Notification Engine (DEV3-010)
+
+> Post-resolution rulings recorded when the real-time notification engine (DEV3-010) shipped. Each addendum is bound to **Decision A.4** (the `notifications` table this engine serves); none reopens the 33-decision catalog or the summary counts above.
+
+### A.4.1: WebSocket Delivery Topology — Standalone Sidecar, Not an App Router Route
+> **✅ RESOLVED**
+>
+> **Decision:** The Next.js App Router cannot host a WebSocket server, so real-time delivery for the `notifications` table (A.4) runs in a standalone sidecar process: `bun run ws` (`scripts/start-notification-ws.ts`) boots a Bun-native server (`Bun.serve`) on `WS_HOST:WS_PORT` (dev default `ws://127.0.0.1:3101` — not 3000/3001, which the dev server occupies). The sidecar is NOT an `app/api/**` surface and is exempt from `ROUTE_INVENTORY` (DEV3-010 plan §1.1); the browser connects same-host via the `NEXT_PUBLIC_NOTIFICATION_WS_URL` override or a derived `:3101` endpoint. Cross-process fan-out (Next.js server ↔ sidecar) requires the Redis pub/sub bus — the in-process adapter is valid only for tests and single-process runs.
+> **Spec impact:** None (no schema change). See `docs/notifications/realtime-engine.md` §2 (topology) and §3.5 (backplane port + both adapters).
+
+### A.4.2: Notification Emission Idempotency — Fail-Open, Unlike the Booking Surfaces
+> **✅ RESOLVED**
+>
+> **Decision:** Writing to the `notifications` table (A.4) degrades **fail-open** on an idempotency-cache outage: the emit proceeds with at most one structured warn, and the worst case is a duplicate notification row — benign, user-dismissable noise. This is a deliberate, documented deviation (DEV3-010 plan decision D5) from `docs/IDEMPOTENCY.md`'s fail-closed posture, which mandates `X-Idempotency-Key` protection with `409 Conflict` / `DUPLICATE_REQUEST` for booking-class mutations (Students, Invoices, Class Instances, Payments) — a duplicate booking or payment is money, not noise, so those surfaces fail closed while notification emission is outside that doc's mandated key set. A cache blip must not block session completion or payment confirmation.
+> **Spec impact:** None. Full rationale and claim-cache mechanics: `docs/notifications/realtime-engine.md` §3.6.
+
+### A.4.3: Notification Copy Localization — at the Emitter, Not the Engine
+> **✅ RESOLVED**
+>
+> **Decision:** Notification copy stored in the `notifications` table (A.4) is localized by the **emitter at emit time** (REQ-015/028); the engine stores `title`/`body` verbatim and never translates or templates. Emitters pass a single locale per batch; per-recipient locale routing is not yet wired through the engine.
+> **Spec impact:** Deferred item D2 is RESOLVED in DEV3-010 — `users.locale` (nullable, `AppLocale`) now exists with the `updateMyLocale` mutation. Per-recipient fan-out routing off that column remains open. See `docs/notifications/realtime-engine.md` §3.3.
