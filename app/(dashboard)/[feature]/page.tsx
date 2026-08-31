@@ -5,18 +5,20 @@ import { getLocaleFromCookie } from "@/shared/locale/server-cookies";
 
 /**
  * Catch-all page for single-segment dashboard routes that don't have a
- * dedicated `page.tsx` (e.g. `/sessions`, `/wallet`, `/plans`). Renders the
- * `ComingSoonView` placeholder with the feature segment as the contextual
- * label.
+ * dedicated `page.tsx` (e.g. `/wallet`, `/schedule`, `/children`). Renders
+ * the `ComingSoonView` placeholder with the feature segment as the
+ * contextual label.
  *
  * More specific routes take precedence over this catch-all:
  *  - `/dashboard` → `app/(dashboard)/dashboard/page.tsx`
  *  - `/profile` → `app/(dashboard)/profile/page.tsx`
  *
  * The catch-all matches any other single segment under `(dashboard)` so the
- * sidebar nav links (Sessions, Subscriptions, Homework, Schedule, Wallet,
- * Users, Teachers, Students, Plans, Audit, Children) all resolve to a
- * graceful "coming soon" page rather than a 404.
+ * sidebar nav links (Subscriptions, Homework, Schedule, Wallet, Teachers,
+ * Students, Audit, Children) all resolve to a graceful "coming soon" page
+ * rather than a 404. Links that were retargeted to role-scoped routes
+ * (e.g. `/student/sessions`, `/admin/users`) are served by their own
+ * multi-segment pages and never reach this catch-all.
  */
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocaleFromCookie();

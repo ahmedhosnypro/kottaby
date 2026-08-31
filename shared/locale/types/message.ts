@@ -1,3 +1,4 @@
+import type { AdminUsersLabels } from "@/shared/locale/types/adminUsers";
 import type { ApplicantLabels } from "@/shared/locale/types/applicant";
 import type { AuthLabels } from "@/shared/locale/types/auth";
 import type { CommonLabels } from "@/shared/locale/types/common";
@@ -18,6 +19,7 @@ export interface Translations {
   landingTranslations: LandingLabels;
   plansTranslations: PlansLabels;
   applicantTranslations: ApplicantLabels;
+  adminUsersTranslations: AdminUsersLabels;
   notificationsTranslations: NotificationsLabels;
   handshakeCodeTranslations: HandshakeCodeLabels;
 }

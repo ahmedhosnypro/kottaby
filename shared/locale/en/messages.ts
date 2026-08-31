@@ -1,3 +1,4 @@
+import { adminUsersEn } from "@/shared/locale/en/adminUsers";
 import { applicantEn } from "@/shared/locale/en/applicant";
 import { authEn } from "@/shared/locale/en/auth";
 import { commonEn } from "@/shared/locale/en/common";
@@ -19,6 +20,7 @@ export const enMessages: Translations = {
   landingTranslations: landingEn,
   plansTranslations: plansEn,
   applicantTranslations: applicantEn,
+  adminUsersTranslations: adminUsersEn,
   notificationsTranslations: notificationsEn,
   handshakeCodeTranslations: handshakeCodeEn,
 };

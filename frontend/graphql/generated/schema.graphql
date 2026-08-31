@@ -1,3 +1,135 @@
+input AdminCreateUserInput {
+  country: String!
+  email: String!
+  fullName: String!
+  gender: Gender
+  password: String!
+  phone: String!
+  role: RegisterPublicRole!
+}
+
+type AdminParentSnapshot {
+  linkedChildrenCount: Int!
+}
+
+type AdminStudentSnapshot {
+  anotherLanguage: String
+  balanceHifz: Int
+  balanceReviews: Int
+  balanceTajweed: Int
+  balanceTrial: Int
+  handshakeCode: String!
+  hasActiveSubscription: Boolean!
+  hasParentLink: Boolean!
+  parentId: Int
+  primaryLanguage: String
+  trialGrantedAt: String
+}
+
+type AdminTeacherSnapshot {
+  averageRating: String
+  isApproved: Boolean!
+  isEvaluator: Boolean!
+  isOnline: Boolean!
+}
+
+input AdminUpdateUserInput {
+  country: String
+  dateOfBirth: String
+  fullName: String
+  gender: Gender
+  phone: String
+}
+
+type AdminUserActivityEntry {
+  actionType: AuditActionType!
+  actorName: String!
+  changedFields: [String!]
+  createdAt: String!
+  id: Int!
+}
+
+type AdminUserDetail {
+  applicant: ApplicantProfile
+  blockedAt: String
+  country: String
+  createdAt: String!
+  dateOfBirth: String
+  deletedAt: String
+  email: String!
+  fullName: String!
+  gender: Gender
+  id: Int!
+  isBlocked: Boolean
+  isDeleted: Boolean
+  lastActiveAt: String
+  parent: AdminParentSnapshot
+  phone: String
+  role: UserRole!
+  student: AdminStudentSnapshot
+  suspended: Boolean
+  suspendedAt: String
+  suspendedPeriodDays: Int
+  teacher: AdminTeacherSnapshot
+  updatedAt: String!
+}
+
+input AdminUserFiltersInput {
+  country: String
+  governance: AdminUserGovernanceFilter
+  role: UserRole
+  search: String
+}
+
+enum AdminUserGovernanceFilter {
+  Active
+  Blocked
+  Deleted
+  Suspended
+}
+
+type AdminUserListItem {
+  applicantStatus: ApplicantStatus
+  country: String
+  createdAt: String!
+  dateOfBirth: String
+  email: String!
+  fullName: String!
+  gender: Gender
+  id: Int!
+  isBlocked: Boolean!
+  isDeleted: Boolean!
+  lastActiveAt: String
+  parentLinkedChildrenCount: Int
+  phone: String
+  role: UserRole!
+  studentHasActiveSubscription: Boolean
+  studentHasParentLink: Boolean
+  suspended: Boolean!
+  teacherIsApproved: Boolean
+  teacherIsEvaluator: Boolean
+}
+
+type AdminUserPage {
+  items: [AdminUserListItem!]!
+  page: Int!
+  pageSize: Int!
+  totalCount: Int!
+}
+
+type AdminUserStats {
+  activeCount: Int!
+  adminsCount: Int!
+  blockedCount: Int!
+  deletedCount: Int!
+  newThisWeekCount: Int!
+  parentsCount: Int!
+  studentsCount: Int!
+  suspendedCount: Int!
+  teachersCount: Int!
+  totalCount: Int!
+}
+
 enum AppLocale {
   Ar
   En
@@ -18,6 +150,16 @@ enum ApplicantStatus {
   InEvaluation
   Passed
   Pending
+}
+
+enum AuditActionType {
+  Adjust
+  Create
+  Delete
+  Override
+  Reactivate
+  Suspend
+  Update
 }
 
 """Input fields required to create a new subscription plan."""
@@ -82,6 +224,10 @@ type LogoutPayload {
 }
 
 type Mutation {
+  adminCreateUser(input: AdminCreateUserInput!): AdminUserDetail!
+  adminSetUserDeleted(deleted: Boolean!, id: Int!): AdminUserDetail!
+  adminUpdateUser(id: Int!, input: AdminUpdateUserInput!): AdminUserDetail!
+
   """Creates a new subscription plan in the catalog (Admin only)."""
   createPlan(
     """Input fields for the new subscription plan."""
@@ -215,6 +361,10 @@ type Query {
     """Whether to include deactivated plans in the returned list."""
     includeInactive: Boolean = true
   ): [Plan!]!
+  adminUserActivity(id: Int!, limit: Int): [AdminUserActivityEntry!]!
+  adminUserDetail(id: Int!): AdminUserDetail!
+  adminUserStats: AdminUserStats!
+  adminUsers(filters: AdminUserFiltersInput, page: Int, pageSize: Int): AdminUserPage!
   findStudentByHandshakeCode(code: String!): HandshakeCodeLookup
 
   """

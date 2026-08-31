@@ -145,3 +145,20 @@ db/app.sqlite
 skills/
 /.zscripts
 /agent-ctx
+
+# PGlite in-process Postgres data dirs (binary, runtime-mutated)
+db/pglite
+db/pglite-test
+
+
+sandbox.*.sh
+
+/skills/
+/agent-ctx/
+.zscripts/
+.browser-auth/
+scripts/build/
+.z-ai-config
+.z-ai-config.bak
+.z-ai-config.project
+/db/

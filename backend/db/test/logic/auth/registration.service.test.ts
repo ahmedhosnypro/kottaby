@@ -45,6 +45,7 @@ import { comparePassword } from "@/backend/lib/auth/password";
 import { ConflictError, ValidationError } from "@/backend/lib/errors";
 import { RegistrationService } from "@/backend/services/auth/registration.service";
 import type { DBTransaction, RegistrationSubmitInput, UserInsertType } from "@/backend/types";
+import { getServerTranslations } from "@/shared/locale/server-graphql";
 
 /** PostgreSQL unique-violation SQLSTATE hunted through Drizzle cause chains. */
 const UNIQUE_VIOLATION_PG_CODE = "23505";
@@ -259,7 +260,17 @@ describe("RegistrationService.registerUser", () => {
       expect(userRow.blockedAt).toBeNull();
       expect(userRow.lastActiveAt).not.toBeNull();
       if (!userRow.lastActiveAt) throw new Error("expected lastActiveAt");
-      expect(userRow.lastActiveAt.getTime()).toBeGreaterThanOrEqual(before);
+      // `lastActiveAt` is stamped server-side via `new Date()` at
+      // registration.service.ts:312. A strict wall-clock lower bound
+      // (`>= before`) is off-by-milliseconds nondeterministic — same root
+      // cause as the database-defaults NOTE below (PostgreSQL resolves
+      // `defaultNow()` to transaction-start time, AND the PGlite WASM
+      // backend round-trips `timestamp` columns at second precision, so
+      // the persisted value can land up to 999 ms below `before`).
+      // Assert freshness with a 1-second tolerance instead; the contract
+      // under test is "the column is SET, to roughly now" — not bit-exact
+      // epoch equality.
+      expect(userRow.lastActiveAt.getTime()).toBeGreaterThanOrEqual(before - 1000);
     });
   });
 
@@ -306,6 +317,71 @@ describe("RegistrationService.registerUser", () => {
       const input = makeValidInput({ country: "" });
       const error = await expectRepoError(() => RegistrationService.registerUser(input, LOCALE, tx));
       expect(error).toBeInstanceOf(ValidationError);
+    });
+  });
+
+  // ─── Field-payload projection (VALIDATION extensions.fields) ────────
+
+  test("multi-field failure → ValidationError carries a fields payload naming every offending field", async () => {
+    await runInRollback(async tx => {
+      const input = makeValidInput({ fullName: "   ", email: "not-an-email", password: "short", country: "" });
+      const error = await expectRepoError(() => RegistrationService.registerUser(input, LOCALE, tx));
+      expect(error).toBeInstanceOf(ValidationError);
+      if (!(error instanceof ValidationError)) throw new Error("expected a ValidationError instance");
+
+      const fields = error.fields ?? [];
+      const byField = new Map(fields.map(entry => [entry.field, entry.code]));
+      expect(byField.get("fullName")).toBe("NAME_REQUIRED");
+      expect(byField.get("email")).toBe("EMAIL_INVALID");
+      expect(byField.get("password")).toBe("PASSWORD_TOO_SHORT");
+      expect(byField.get("country")).toBe("COUNTRY_REQUIRED");
+      // The top-level message stays the FIRST entry's message (backwards-
+      // compatible with the throw-on-first-failure contract).
+      expect(error.message).toBe(fields[0]?.message);
+      // phone/role were valid — they never appear in the payload.
+      expect(fields.map(entry => entry.field)).not.toContain("phone");
+      expect(fields.map(entry => entry.field)).not.toContain("role");
+    });
+  });
+
+  test("single-field failure → fields payload has exactly one entry mirroring the top-level message", async () => {
+    await runInRollback(async tx => {
+      const input = makeValidInput({ phone: "" });
+      const error = await expectRepoError(() => RegistrationService.registerUser(input, LOCALE, tx));
+      expect(error).toBeInstanceOf(ValidationError);
+      if (!(error instanceof ValidationError)) throw new Error("expected a ValidationError instance");
+
+      expect(error.fields).toHaveLength(1);
+      expect(error.fields?.[0]).toMatchObject({ field: "phone", code: "PHONE_REQUIRED" });
+      expect(error.fields?.[0]?.message).toBe(error.message);
+    });
+  });
+
+  test("invalid gender → GENDER_INVALID entry with the generic validation message (not the email copy-paste)", async () => {
+    await runInRollback(async tx => {
+      // Transport-tamper shape: the GraphQL enum layer rejects this before
+      // the resolver, but the service guard defends in depth.
+      //
+      // Pattern matches the BOPLA test below: construct a base
+      // `RegistrationSubmitInput` (so the static type stays honest —
+      // `gender` is `Gender | undefined`), then `Object.assign` a runtime
+      // string value to simulate a hostile client bypassing the GraphQL
+      // enum layer. The runtime field read inside the service sees the
+      // string "unknown" and emits `GENDER_INVALID`. No `as unknown as`
+      // cast (avoids `typescript/no-unsafe-type-assertion`).
+      const input: RegistrationSubmitInput = { ...makeValidInput({}) };
+      Object.assign(input, { gender: "unknown" });
+      const error = await expectRepoError(() => RegistrationService.registerUser(input, LOCALE, tx));
+      expect(error).toBeInstanceOf(ValidationError);
+      if (!(error instanceof ValidationError)) throw new Error("expected a ValidationError instance");
+
+      expect(error.fields).toHaveLength(1);
+      expect(error.fields?.[0]).toMatchObject({ field: "gender", code: "GENDER_INVALID" });
+      // Regression lock: this branch historically threw the EMAIL_INVALID
+      // message (copy-paste bug) — the entry now carries the generic
+      // localized validation message instead.
+      expect(error.fields?.[0]?.message).toBe(getServerTranslations(LOCALE).errorsTranslations.validation);
+      expect(error.fields?.[0]?.message).not.toBe(getServerTranslations(LOCALE).authTranslations.emailInvalid);
     });
   });
 

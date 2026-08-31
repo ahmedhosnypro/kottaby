@@ -16,14 +16,17 @@
  *  - `Gender`
  *  - `RegisterPublicRole` (public subset — student/teacher/parent — BFLA)
  *  - `RecitationReading`, `ApplicantStatus`
+ *  - `AdminUserGovernanceFilter` (active|suspended|blocked|deleted — admin directory filter)
  *  - `NotificationType` (the seven notification kinds)
  *  - `AppLocale` (the per-user UI/copy preference — "ar" | "en")
  *
  * After registering a new enum here, run `bun run generate:gqlSchema` and
  * `bun codegen` to refresh the SDL + frontend codegen.
  */
+import { AuditActionType } from "@/backend/enum/audit/audit-action-type.enum";
 import { NotificationType } from "@/backend/enum/notifications/notification-type.enum";
 import { ApplicantStatus } from "@/backend/enum/teachers/applicant-status.enum";
+import { AdminUserGovernanceFilter } from "@/backend/enum/users/admin-user-governance-filter.enum";
 import { AppLocale } from "@/backend/enum/users/app-locale.enum";
 import { Gender } from "@/backend/enum/users/gender.enum";
 import { RegisterPublicRole } from "@/backend/enum/users/register-public-role.enum";
@@ -83,6 +86,31 @@ export const RecitationReadingPothosEnum = gqlSchemaBuilder.enumType(RecitationR
  */
 export const ApplicantStatusPothosEnum = gqlSchemaBuilder.enumType(ApplicantStatus, {
   name: "ApplicantStatus",
+});
+
+/**
+ * GraphQL `AdminUserGovernanceFilter` enum (active|suspended|blocked|deleted).
+ *
+ * Backs the admin user directory `governance` filter. Unknown transport values
+ * fail GraphQL input validation before any resolver runs; absent or `null`
+ * drops out at the service layer (the directory falls back to the unfiltered
+ * listing rather than erroring).
+ */
+export const AdminUserGovernanceFilterPothosEnum = gqlSchemaBuilder.enumType(AdminUserGovernanceFilter, {
+  name: "AdminUserGovernanceFilter",
+});
+
+/**
+ * GraphQL `AuditActionType` enum (create|update|delete|override|adjust|
+ * suspend|reactivate).
+ *
+ * Registered ONCE from the canonical TS enum that mirrors the
+ * `audit_action_type` pgEnum. Backs the per-user activity timeline on the
+ * admin user detail surface (scoped `audit_logs` read-back); the global
+ * audit-trail browsing surface remains owned by DEV3-020.
+ */
+export const AuditActionTypePothosEnum = gqlSchemaBuilder.enumType(AuditActionType, {
+  name: "AuditActionType",
 });
 
 /**

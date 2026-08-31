@@ -47,7 +47,7 @@
  * wrapper-agnostic.
  */
 
-import { describe, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { CombinedGraphQLErrors, gql } from "@apollo/client";
 import {
   type DocumentNode,
@@ -63,7 +63,7 @@ import {
   GraphQLString,
 } from "graphql";
 import { logoutMutationDocument } from "@/frontend/graphql/sharedDocuments/auth/auth.documents";
-import { expectMutationError, setupTestServerLifecycle, testClient } from "@/test/helpers";
+import { describeGraphqlSuite, expectMutationError, setupTestServerLifecycle, testClient } from "@/test/helpers";
 
 // ─── Surfaced-literal fixtures (SEC: literal-pinned ⇒ PII/secret-free) ──────
 
@@ -275,10 +275,24 @@ const MUTATION_SURFACE_INVENTORY_QUERY_DOCUMENT: DocumentNode = gql`
   }
 `;
 
-/** The exhaustive live root-mutation inventory (ground truth at lock time). */
-// Refreshed for the sanctioned additions: notification read-latch pair
-// (DEV3-010) + users-locale (D2) + billing plan-catalog CRUD (upstream #28).
+/**
+ * The exhaustive live root-mutation inventory (ground truth at lock time).
+ *
+ * Updated when DEV3-016 (Admin User CRUD) landed the three admin mutations
+ * `adminCreateUser`, `adminUpdateUser`, `adminSetUserDeleted` — they are
+ * warning-incapable (return the canonical `AdminUserDetail` payload, never
+ * a partial-success wrapper), so they do not exercise Rules #6/#7. They
+ * still belong on this drift-guard list because the contract is "every
+ * deployed Mutation root field is enumerated" — otherwise any new
+ * mutation ships without an explicit decision about warning propagation.
+ *
+ * Refreshed for the sanctioned additions: notification read-latch pair
+ * (DEV3-010) + users-locale (D2) + billing plan-catalog CRUD (upstream #28).
+ */
 const KNOWN_LIVE_MUTATION_FIELDS = [
+  "adminCreateUser",
+  "adminSetUserDeleted",
+  "adminUpdateUser",
   "createPlan",
   "login",
   "logout",
@@ -293,7 +307,7 @@ const KNOWN_LIVE_MUTATION_FIELDS = [
 /** Documented precedent surfaces that must ADOPT Rules #6/#7 when wired. */
 const DOCUMENTED_WARNING_SURFACES_PENDING = ["releaseQuotaIfDeducted", "deleteClassInstance"];
 
-describe("Warning-surfacing contract lock — Section A: live GraphQL surface (wire)", () => {
+describeGraphqlSuite("Warning-surfacing contract lock — Section A: live GraphQL surface (wire)", () => {
   setupTestServerLifecycle();
 
   test("A1. deployed Mutation root exposes exactly the documented inventory set", async () => {
@@ -338,7 +352,7 @@ describe("Warning-surfacing contract lock — Section A: live GraphQL surface (w
   });
 });
 
-describe("Warning-surfacing contract lock — Section B: documented propagation semantics", () => {
+describeGraphqlSuite("Warning-surfacing contract lock — Section B: documented propagation semantics", () => {
   test("B1. deleteClassInstance-shaped partial success surfaces warnings INSIDE payload data", async () => {
     const result = await runWarningScenario(DELETE_CLASS_INSTANCE_WARNING_DOCUMENT, "success");
     expect(result.errors).toBeUndefined();

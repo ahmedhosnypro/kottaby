@@ -156,11 +156,11 @@ const eslintConfig = defineConfig([
       ...(process.env.ESLINT_TYPE_AWARE === "true"
         ? {
             "@typescript-eslint/await-thenable": "error",
-            "@typescript-eslint/no-unnecessary-type-assertion": "warn",
-            "@typescript-eslint/no-base-to-string": "warn",
+            "@typescript-eslint/no-unnecessary-type-assertion": "error",
+            "@typescript-eslint/no-base-to-string": "error",
             "@typescript-eslint/prefer-optional-chain": "error",
             "@typescript-eslint/prefer-nullish-coalescing": "error",
-            "sonarjs/deprecation": "warn",
+            "sonarjs/deprecation": "error",
           }
         : {}),
 

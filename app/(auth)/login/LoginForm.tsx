@@ -105,22 +105,27 @@ export function LoginForm() {
             autoComplete="current-password"
           />
 
-          <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
+          <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", minHeight: 44 }}>
             <FormControlLabel
               control={
                 <Checkbox
                   checked={remember}
                   onChange={e => setRemember(e.target.checked)}
-                  size="small"
+                  size="medium"
                   color="secondary"
+                  sx={{ padding: 0.5 }}
                 />
               }
               label={t.rememberMe}
               labelPlacement="end"
               sx={{
+                minHeight: 44,
+                "& .MuiCheckbox-root": { padding: 0.5 },
                 "& .MuiFormControlLabel-label": {
                   fontSize: 14,
+                  fontWeight: 500,
                   color: "var(--mui-palette-text-secondary)",
+                  lineHeight: 1.4,
                 },
               }}
             />
@@ -130,8 +135,17 @@ export function LoginForm() {
               sx={{
                 fontSize: 13,
                 fontWeight: 600,
+                minHeight: 44,
+                display: "inline-flex",
+                alignItems: "center",
                 color: "var(--mui-palette-secondary-main)",
+                textDecoration: "none",
                 "&:hover": { textDecoration: "underline" },
+                "&:focus-visible": {
+                  outline: "2px solid var(--mui-palette-secondary-main)",
+                  outlineOffset: 2,
+                  borderRadius: 1,
+                },
               }}
             >
               {t.forgotPassword}

@@ -21,3 +21,4 @@ import "./plan-catalog.query";
 import "./recitation.query";
 import "./students";
 import "./teachers";
+import "./admin";

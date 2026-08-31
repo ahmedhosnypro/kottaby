@@ -1,6 +1,9 @@
 /**
  * GraphQL Gateway Integration Matrix.
  *
+ * Covers the post-merge surface: auth mutations, the admin user-management
+ * mutations (DEV3-016), and the plans/notifications operations from main.
+ *
  * Exercises the FULL gateway pipeline through real HTTP requests against a
  * live Next.js dev server — no mocked internals, no backend imports
  * (frontend/graphql/test/AGENTS.md rule 10: strict interface layer separation).
@@ -29,7 +32,7 @@
  *    injection mechanism as (g).
  */
 
-import { describe, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { gql } from "@apollo/client";
 import { RegisterPublicRole } from "@/frontend/graphql/generated/gql/graphql";
 import {
@@ -38,7 +41,13 @@ import {
   registerUserMutationDocument,
 } from "@/frontend/graphql/sharedDocuments/auth/auth.documents";
 import { createPlanMutationDocument } from "@/frontend/graphql/sharedDocuments/billing/plan-catalog.documents";
-import { extractErrorCode, setupTestServerLifecycle, TEST_PORT, testClient } from "@/test/helpers";
+import {
+  describeGraphqlSuite,
+  extractErrorCode,
+  setupTestServerLifecycle,
+  TEST_PORT,
+  testClient,
+} from "@/test/helpers";
 
 // ─── Transport-level helpers ──────────────────────────────────────────────
 
@@ -105,7 +114,7 @@ function parseHealthEnvelopeBody(raw: unknown): HealthEnvelopeBody {
 
 // ─── Test Suite ───────────────────────────────────────────────────────────
 
-describe("Gateway integration matrix", () => {
+describeGraphqlSuite("Gateway integration matrix", () => {
   setupTestServerLifecycle();
 
   // ── (a) healthCheck unauthenticated → transport-200 + full payload ─────

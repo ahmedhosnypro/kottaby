@@ -20,6 +20,7 @@
  * and `gateway` (health-check / gateway-context contracts).
  */
 
+export * from "./admin";
 export * from "./audit";
 export * from "./auth";
 export * from "./billing";

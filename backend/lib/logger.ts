@@ -9,7 +9,27 @@
  * @see backend/AGENTS.md — "Use `logger.logDomainError(msg, ctx)` when handling
  *      business rejections, 4xx equivalents, `NotFoundError`, or `ValidationError`."
  */
-import { env } from "node:process";
+// Read `process.env` via the global `process` (polyfilled by Next.js for
+// the browser bundle). Avoids `import { env } from "node:process"` —
+// webpack's non-Turbopack path can't resolve `node:` URIs and the GraphQL
+// route compiles backend modules into the server bundle, where this
+// import triggered an ERR_INVALID_ARG_TYPE on `fs.readFile(new URL(...))`
+// when the bundler silently swapped to a polyfilled shim.
+// When `process` is genuinely absent (rare edge-case; webpack polyfills
+// `process.env` so the fallback is rarely reached in practice), supply an
+// explicit `NODE_ENV: "development"` fallback. Next.js's
+// `node_modules/next/types/global.d.ts` augments `NodeJS.ProcessEnv` to make
+// `NODE_ENV` REQUIRED, so a bare `{}` literal is not assignable to the type —
+// and `{} as NodeJS.ProcessEnv` would trip `oxlint(no-unsafe-type-assertion)`.
+// Declaring the fallback as an explicitly-typed const makes the ternary
+// resolve to `ProcessEnv | ProcessEnv` (collapses to `ProcessEnv`) — no `as`
+// cast, no type error. The fallback value `"development"` preserves the
+// original runtime behaviour: `env.NODE_ENV === "test"` is false (was
+// `undefined === "test"` = false) and `env.NODE_ENV === "production"` is
+// false (was `undefined === "production"` = false), so `isTestMode` /
+// `isProduction` both stay false in the fallback case.
+const EMPTY_ENV: NodeJS.ProcessEnv = { NODE_ENV: "development" };
+const env: NodeJS.ProcessEnv = typeof process !== "undefined" && process.env ? process.env : EMPTY_ENV;
 
 const isTestMode = env.TEST_SERVER === "1" || env.NODE_ENV === "test";
 

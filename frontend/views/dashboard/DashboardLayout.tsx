@@ -138,7 +138,7 @@ export function DashboardLayout({ children }: Readonly<DashboardLayoutProps>): R
             color: theme.palette.text.primary,
           })}
         >
-          <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
+          <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
             {children}
           </Container>
         </Box>

@@ -63,13 +63,43 @@ function routeEmittedErrorsKeys(): string[] {
   return [...seen].toSorted((a, b) => a.localeCompare(b));
 }
 
-/** Reads one non-empty-string value slot off a locale map — throws otherwise. */
+/**
+ * Reads one non-empty-string value slot off a locale map — throws otherwise.
+ * Reserved for transport emitter rows that always resolve to top-level leaf
+ * strings (the route gateway never emits a grouped sub-block handle).
+ */
 function nonEmptyLabelOf(localeMap: ErrorsLabels, key: string, localeName: string): string {
   const value: unknown = Reflect.get(localeMap, key);
   if (typeof value !== "string" || value.length === 0) {
     throw new Error(`errors.${localeName}.${key} must be a non-empty localized string`);
   }
   return value;
+}
+
+/**
+ * Walks a locale map depth-first and throws on the first violation: any leaf
+ * that is not a non-empty string. Grouped sub-blocks (object-valued slots)
+ * keep the same zero-dead-key discipline as top-level string slots — every
+ * nested leaf must be a non-empty localized string. Cross-map leaf-key drift
+ * is caught by the compile-time `ErrorsLabels` typing (the primary gate)
+ * together with the top-level key-set assertion in the suite below.
+ */
+function assertEveryLeafNonEmpty(localeMap: object, localeName: string, pathPrefix = `errors.${localeName}`): void {
+  for (const key of Object.keys(localeMap)) {
+    const value: unknown = Reflect.get(localeMap, key);
+    const path = `${pathPrefix}.${key}`;
+    if (typeof value === "string") {
+      if (value.length === 0) {
+        throw new Error(`${path} must be a non-empty localized string`);
+      }
+      continue;
+    }
+    if (value !== null && typeof value === "object") {
+      assertEveryLeafNonEmpty(value, localeName, path);
+      continue;
+    }
+    throw new Error(`${path} must be a non-empty localized string or a grouped labels block`);
+  }
 }
 
 // ===========================================================================
@@ -82,15 +112,9 @@ describe("compile-time parity mirror — ar/en key sets agree", () => {
     expect(enKeys).toEqual(arKeys);
   });
 
-  test("every value on BOTH maps is a non-empty localized string (zero dead keys)", () => {
-    for (const key of Object.keys(errorsAr)) {
-      expect(nonEmptyLabelOf(errorsAr, key, "ar").length).toBeGreaterThan(0);
-      expect(nonEmptyLabelOf(errorsEn, key, "en").length).toBeGreaterThan(0);
-    }
-    // Symmetric sweep — guards an en-only key that ar lost via future drift.
-    for (const key of Object.keys(errorsEn)) {
-      expect(nonEmptyLabelOf(errorsAr, key, "ar").length).toBeGreaterThan(0);
-    }
+  test("every leaf value on BOTH maps is a non-empty localized string (zero dead keys)", () => {
+    expect(() => assertEveryLeafNonEmpty(errorsAr, "ar")).not.toThrow();
+    expect(() => assertEveryLeafNonEmpty(errorsEn, "en")).not.toThrow();
   });
 });
 

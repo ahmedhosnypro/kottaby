@@ -164,6 +164,12 @@ export interface GraphQLErrorAction {
   /**
    * Translation HANDLE into the `errors.errors` namespace. Consumers render
    * `useAppTranslation(Errors)[messageKey]` — never the server `message`.
+   *
+   * The handle is restricted to the leaf-string keys of {@link ErrorsLabels}.
+   * Grouped sub-blocks (e.g. the `adminUsers` nesting) carry their own
+   * property paths and are surfaced through dedicated consumer surfaces,
+   * never through this transport mapper, so they are excluded from the
+   * renderable handle union.
    */
   readonly messageKey: ErrorMessageKey;
   readonly tone: GraphQLErrorActionTone;

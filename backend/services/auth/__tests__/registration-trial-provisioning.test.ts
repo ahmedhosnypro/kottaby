@@ -31,7 +31,6 @@
 
 import { describe, expect, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
-import type { PgTable } from "drizzle-orm/pg-core";
 import { parents } from "@/backend/db/schema/parents/parents";
 import { students } from "@/backend/db/schema/students/students";
 import { applicants } from "@/backend/db/schema/teachers/applicants";
@@ -89,10 +88,17 @@ function makeValidInput(overrides: Partial<RegistrationSubmitInput> = {}): Regis
   };
 }
 
-/** Counts rows in a Drizzle table within the supplied transaction. */
-async function countRows(tx: DBTransaction, table: PgTable): Promise<number> {
-  const result = await tx.select({ count: sql<number>`count(*)::int` }).from(table);
-  return result[0]?.count ?? 0;
+/**
+ * Counts `users` rows matching a specific email within the transaction.
+ * Identity-scoped: sibling test files run in PARALLEL workers against the
+ * SAME CI database (the chaos suite commits fixture users mid-run and
+ * hard-deletes them in `afterAll`), so global table counts are NOT stable
+ * mid-test. All residual-absence assertions below scope to the attempt's
+ * email / user id instead of the whole table.
+ */
+async function countUsersByEmail(tx: DBTransaction, email: string): Promise<number> {
+  const [row] = await tx.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.email, email));
+  return row?.count ?? 0;
 }
 
 describe("RegistrationService trial provisioning", () => {
@@ -220,27 +226,34 @@ describe("RegistrationService trial provisioning", () => {
       const existing = await createTestUser(tx, { email: "dup-trial@test.local" });
       const input = makeValidInput({ email: existing.email, role: "student" });
 
-      const initialStudentCount = await countRows(tx, students);
-      const initialGrants = await tx
+      // Identity-scoped baselines (see `countUsersByEmail` rationale — the
+      // shared CI database is mutated by parallel test workers, so global
+      // table counts are not stable mid-test).
+      const initialUsersWithEmail = await countUsersByEmail(tx, existing.email);
+      const initialStudentRowsForUser = await tx.select().from(students).where(eq(students.id, existing.id));
+      const [initialGrantsForUser] = await tx
         .select({ count: sql<number>`count(*)::int` })
         .from(students)
-        .where(sql`${students.trialGrantedAt} IS NOT NULL`);
+        .where(sql`${students.id} = ${existing.id} AND ${students.trialGrantedAt} IS NOT NULL`);
 
       const error = await expectRepoError(() => RegistrationService.registerUser(input, LOCALE, tx));
       expect(error).toBeInstanceOf(ConflictError);
       if (!(error instanceof ConflictError)) throw new Error("expected ConflictError");
       expect(error.code).toBe("CONFLICT");
 
-      // No student row was created for the duplicate attempt.
-      expect(await countRows(tx, students)).toBe(initialStudentCount);
+      // The duplicate attempt added NOTHING: still the same number of rows
+      // with that email, the pre-existing user's student-row set is
+      // unchanged, and no new trial grant landed for that user.
+      expect(await countUsersByEmail(tx, existing.email)).toBe(initialUsersWithEmail);
 
-      // No new trial grant was applied — the count of granted students is
-      // unchanged from the pre-attempt baseline.
-      const finalGrants = await tx
+      const finalStudentRowsForUser = await tx.select().from(students).where(eq(students.id, existing.id));
+      expect(finalStudentRowsForUser).toHaveLength(initialStudentRowsForUser.length);
+
+      const [finalGrantsForUser] = await tx
         .select({ count: sql<number>`count(*)::int` })
         .from(students)
-        .where(sql`${students.trialGrantedAt} IS NOT NULL`);
-      expect(finalGrants[0]?.count).toBe(initialGrants[0]?.count);
+        .where(sql`${students.id} = ${existing.id} AND ${students.trialGrantedAt} IS NOT NULL`);
+      expect(finalGrantsForUser?.count).toBe(initialGrantsForUser?.count);
     });
   });
 
@@ -248,12 +261,7 @@ describe("RegistrationService trial provisioning", () => {
 
   test("forced post-grant failure: registration transaction rolls back, leaving zero residual users + zero residual students rows and no grant persisting", async () => {
     await runInRollback(async tx => {
-      const initialUserCount = await countRows(tx, users);
-      const initialStudentCount = await countRows(tx, students);
-      const initialGrants = await tx
-        .select({ count: sql<number>`count(*)::int` })
-        .from(students)
-        .where(sql`${students.trialGrantedAt} IS NOT NULL`);
+      const input = makeValidInput({ role: "student" });
 
       // Inject a spy on the repository grant method that FIRST calls the
       // original implementation (so the conditional UPDATE actually executes
@@ -266,12 +274,19 @@ describe("RegistrationService trial provisioning", () => {
       const repoModule = await import("@/backend/db/repo/students/student.repository");
       const originalGrant = repoModule.StudentRepository.grantFreeTrialOnce;
       let grantCallCount = 0;
+      // Captured so the residual-absence assertions below scope to THE ids
+      // this attempt created (the `students` PK IS the `users.id` — shared
+      // "one user, four role children" primary key). Global table counts
+      // are not stable mid-test because parallel workers commit/hard-delete
+      // fixture users against the shared CI database.
+      let grantedUserId: number | null = null;
       repoModule.StudentRepository.grantFreeTrialOnce = async (
         studentId: number,
         trialCount: number,
         txArg?: DBTransaction
       ): Promise<boolean> => {
         grantCallCount += 1;
+        grantedUserId = studentId;
         // Run the real grant — the UPDATE executes, the marker is set in
         // the transaction.
         await originalGrant.call(repoModule.StudentRepository, studentId, trialCount, txArg);
@@ -282,8 +297,6 @@ describe("RegistrationService trial provisioning", () => {
       };
 
       try {
-        const input = makeValidInput({ role: "student" });
-
         const error = await expectRepoError(() => RegistrationService.registerUser(input, LOCALE, tx));
 
         // The injected failure surfaced through the production error path
@@ -291,21 +304,23 @@ describe("RegistrationService trial provisioning", () => {
         // translates 23505 to ConflictError; a plain Error passes through.
         expect(error.message).toContain(FORCED_POST_GRANT_FAILURE_MESSAGE);
         expect(grantCallCount).toBe(1);
+        if (grantedUserId === null) throw new Error("expected the grant spy to capture the user id");
 
         // ZERO residual rows in BOTH tables — the SAVEPOINT-aware rollback
         // of the nested transaction erased the users insert, the students
         // insert, AND the grant UPDATE that ran inside the same transaction.
-        expect(await countRows(tx, users)).toBe(initialUserCount);
-        expect(await countRows(tx, students)).toBe(initialStudentCount);
+        // Assertions are scoped to the id THIS attempt created (stable
+        // under parallel CI workers; see the capture comment above).
+        expect(await tx.select().from(users).where(eq(users.id, grantedUserId))).toHaveLength(0);
+        expect(await tx.select().from(students).where(eq(students.id, grantedUserId))).toHaveLength(0);
 
-        // NO trial grant persists: the count of granted students is
-        // unchanged from the pre-attempt baseline, proving the grant that
-        // ran inside the (now-rolled-back) transaction left no trace.
-        const finalGrants = await tx
+        // NO trial grant persists for that id — the rollback erased the
+        // UPDATE's marker too.
+        const [residualGrants] = await tx
           .select({ count: sql<number>`count(*)::int` })
           .from(students)
-          .where(sql`${students.trialGrantedAt} IS NOT NULL`);
-        expect(finalGrants[0]?.count).toBe(initialGrants[0]?.count);
+          .where(sql`${students.id} = ${grantedUserId} AND ${students.trialGrantedAt} IS NOT NULL`);
+        expect(residualGrants?.count).toBe(0);
       } finally {
         // Restore the original method to prevent cross-test pollution.
         repoModule.StudentRepository.grantFreeTrialOnce = originalGrant;

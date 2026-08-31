@@ -1,3 +1,4 @@
+export { countUsersByIds, deleteUsersByIds } from "./db-cleanup";
 export * from "./expect-mutation-error";
 export { extractErrorCode, TEST_PORT, testClient } from "./graphql-test-helpers";
 export {
@@ -6,4 +7,5 @@ export {
   PROTECTED_APP_PORTS,
   TEST_SERVER_PORT,
 } from "./port-helpers";
+export { describeGraphqlSuite, isPgliteProvider } from "./skip-when-pglite";
 export { setupTestServerLifecycle } from "./test-lifecycle";

@@ -63,11 +63,16 @@ export async function requireRoleForPage(
 
   if (!ctx.user || !ctx.role || !ctx.userId) {
     // Anonymous — redirect to /login with the return path.
-    const loginUrl = new URL(
-      redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login",
-      process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"
-    );
-    redirect(loginUrl.toString());
+    //
+    // Use a RELATIVE path here (see `withPageAuth` for the full rationale):
+    // building `new URL(path, "http://localhost:3000")` produces an absolute
+    // `Location: http://localhost:3000/login?redirect=...` header, which
+    // Chrome's Private Network Access (PNA) feature blocks when the page is
+    // served via the public HTTPS preview gateway. `redirect()` resolves a
+    // relative path against the actual request origin (respecting
+    // `X-Forwarded-Host` / `X-Forwarded-Proto`).
+    const loginPath = redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login";
+    redirect(loginPath);
   }
 
   // Role check — OR semantics over the supplied role set.

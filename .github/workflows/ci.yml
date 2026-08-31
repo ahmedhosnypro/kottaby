@@ -263,6 +263,9 @@ jobs:
       - name: Run database migrations
         run: bun run db migrate
 
+      - name: Seed database for service tests
+        run: bun run db seed
+
       - name: Run backend service tests
         run: bun run test:services
 
@@ -327,6 +330,9 @@ jobs:
 
       - name: Run database migrations
         run: bun run db migrate
+
+      - name: Seed database for GraphQL tests
+        run: bun run db seed
 
       - name: Run GraphQL integration tests
         run: bun run test:graphql
