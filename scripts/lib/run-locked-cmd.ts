@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { isTimeoutExempt, withProcessLock } from "@/scripts/lib/process-lock";
+import { isTimeoutExempt, withProcessLock } from "@/scripts/lib";
 
 function getErrorCode(e: Error): string | undefined {
   const desc = Object.getOwnPropertyDescriptor(e, "code");

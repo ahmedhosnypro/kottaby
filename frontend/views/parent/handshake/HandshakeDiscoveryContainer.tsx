@@ -1,15 +1,14 @@
 "use client";
 
 import { skipToken, useQuery } from "@apollo/client/react";
-import { SearchOffOutlined as SearchOffIcon } from "@mui/icons-material";
-import { Alert, Box, Card, CardContent, Skeleton, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 import { type ReactNode, useState } from "react";
 import { PermissionDeniedFallback } from "@/frontend/components/ui/PermissionDeniedFallback";
-import type { FindStudentByHandshakeCodeQuery_findStudentByHandshakeCode } from "@/frontend/graphql/generated/gql/graphql";
 import { findStudentByHandshakeCodeQueryDocument } from "@/frontend/graphql/sharedDocuments";
 import { extractErrorCode } from "@/frontend/lib/graphql-error-utils";
-import { HandshakeCodeResultCard } from "@/frontend/views/parent/handshake/HandshakeCodeResultCard";
+import { deriveHandshakeResultState } from "@/frontend/views/parent/handshake/deriveHandshakeResultState";
 import { HandshakeCodeSearchForm } from "@/frontend/views/parent/handshake/HandshakeCodeSearchForm";
+import { HandshakeResultRegion } from "@/frontend/views/parent/handshake/HandshakeResultRegion";
 import { isHandshakeCode, normalizeHandshakeCode } from "@/shared/constants";
 import { Errors, HandshakeCode, useAppTranslation } from "@/shared/locale";
 
@@ -123,8 +122,8 @@ export function HandshakeDiscoveryContainer(props: Readonly<HandshakeDiscoveryCo
         onCodeInputChange={handleCodeInputChange}
         onSubmit={handleSubmit}
       />
-      <ResultRegion
-        state={deriveResultState({ validatedCode, loading, error, data })}
+      <HandshakeResultRegion
+        state={deriveHandshakeResultState({ validatedCode, loading, error, data })}
         genericErrorCopy={te.internalServerError}
         notFoundTitle={t.notFoundTitle}
         notFoundDescription={t.notFoundDescription}
@@ -141,46 +140,6 @@ interface HandshakeDiscoveryContainerProps {
   readonly pageDescription: string;
 }
 
-/** The derived outcome of the gated query — exactly one kind per render. */
-type HandshakeResultState =
-  | { readonly kind: "idle" }
-  | { readonly kind: "validation" }
-  | { readonly kind: "generic-error" }
-  | { readonly kind: "searching" }
-  | { readonly kind: "not-found" }
-  | { readonly kind: "found"; readonly maskedName: string; readonly linkable: boolean };
-
-interface DeriveResultStateInputs {
-  readonly validatedCode: string | null;
-  readonly loading: boolean;
-  readonly error: unknown;
-  readonly data:
-    | { readonly findStudentByHandshakeCode: FindStudentByHandshakeCodeQuery_findStudentByHandshakeCode | null }
-    | undefined;
-}
-
-/**
- * Pure derivation of the outcome state — error states outrank data states,
- * and every settled miss (unknown code, governance-excluded student) lands
- * on the SAME not-found channel.
- */
-function deriveResultState(inputs: Readonly<DeriveResultStateInputs>): HandshakeResultState {
-  if (inputs.validatedCode === null) {
-    return { kind: "idle" };
-  }
-  if (inputs.error !== undefined) {
-    return extractErrorCode(inputs.error) === "VALIDATION" ? { kind: "validation" } : { kind: "generic-error" };
-  }
-  if (inputs.loading) {
-    return { kind: "searching" };
-  }
-  const lookup = inputs.data?.findStudentByHandshakeCode;
-  if (lookup == null) {
-    return { kind: "not-found" };
-  }
-  return { kind: "found", maskedName: lookup.maskedName, linkable: lookup.linkable };
-}
-
 /**
  * Canonical client gate: normalize first (trim + uppercase), then validate
  * against the shared shape guard. Returns the normalized code, or `null`
@@ -189,98 +148,4 @@ function deriveResultState(inputs: Readonly<DeriveResultStateInputs>): Handshake
 function normalizeAndValidate(raw: string): string | null {
   const normalized = normalizeHandshakeCode(raw);
   return isHandshakeCode(normalized) ? normalized : null;
-}
-
-interface ResultRegionProps {
-  readonly state: HandshakeResultState;
-  /** Localized generic failure copy (`errors.internalServerError`). */
-  readonly genericErrorCopy: string;
-  /** Localized neutral not-found heading. */
-  readonly notFoundTitle: string;
-  /** Localized neutral not-found body. */
-  readonly notFoundDescription: string;
-}
-
-/**
- * The result region below the form — renders exactly one outcome state per
- * the state machine (nothing at all while idle, and nothing beyond the field
- * error while the server re-judges the format).
- */
-function ResultRegion(props: Readonly<ResultRegionProps>): ReactNode {
-  switch (props.state.kind) {
-    case "found":
-      return <HandshakeCodeResultCard maskedName={props.state.maskedName} linkable={props.state.linkable} />;
-    case "searching":
-      return <SearchingSkeleton />;
-    case "not-found":
-      return <NotFoundState title={props.notFoundTitle} description={props.notFoundDescription} />;
-    case "generic-error":
-      return (
-        <Alert severity="error" variant="outlined">
-          {props.genericErrorCopy}
-        </Alert>
-      );
-    default:
-      return null;
-  }
-}
-
-/** Searching state — result-region skeleton (mirrors the card skeleton rhythm). */
-function SearchingSkeleton(): ReactNode {
-  return (
-    <Card
-      elevation={0}
-      aria-busy="true"
-      data-testid="handshake-discovery-searching"
-      sx={theme => ({
-        borderRadius: 3,
-        border: "1px solid",
-        borderColor: theme.palette.outlineVariant,
-        bgcolor: theme.palette.surfaceContainerLow,
-      })}
-    >
-      <CardContent sx={{ p: { xs: 3, sm: 4 }, display: "grid", gap: 2 }}>
-        <Skeleton variant="text" sx={{ fontSize: "1.5rem", maxWidth: 260 }} />
-        <Skeleton variant="rounded" sx={{ height: 48, maxWidth: 220, borderRadius: 2 }} />
-        <Skeleton variant="text" sx={{ maxWidth: 380 }} />
-      </CardContent>
-    </Card>
-  );
-}
-
-interface NotFoundStateProps {
-  readonly title: string;
-  readonly description: string;
-}
-
-/**
- * Not-found state — a NEUTRAL inline surface (a discovery miss is a
- * first-class UI state, not a failure): NO `Alert`, no error palette, no
- * alert semantics — palette-neutral card tokens with secondary text.
- */
-function NotFoundState({ title, description }: Readonly<NotFoundStateProps>): ReactNode {
-  return (
-    <Card
-      elevation={0}
-      data-testid="handshake-discovery-not-found"
-      sx={theme => ({
-        borderRadius: 3,
-        border: "1px solid",
-        borderColor: theme.palette.outlineVariant,
-        bgcolor: theme.palette.surfaceContainerLow,
-      })}
-    >
-      <CardContent sx={{ p: { xs: 3, sm: 4 }, display: "grid", gap: 1 }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-          <SearchOffIcon fontSize="small" sx={theme => ({ color: theme.palette.text.secondary })} />
-          <Typography variant="h6" component="h3" sx={{ fontWeight: 700 }}>
-            {title}
-          </Typography>
-        </Stack>
-        <Typography variant="body2" sx={theme => ({ color: theme.palette.text.secondary })}>
-          {description}
-        </Typography>
-      </CardContent>
-    </Card>
-  );
 }

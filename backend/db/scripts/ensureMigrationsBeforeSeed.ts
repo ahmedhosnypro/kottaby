@@ -1,6 +1,6 @@
 import { runMigrations } from "@/backend/db/scripts/migrate";
 import { logger } from "@/backend/lib/logger";
-import { baselineDrizzleMigrations } from "@/scripts/baseline-drizzle-migrations";
+import { baselineDrizzleMigrations } from "@/scripts";
 
 /**
  * Ensures drizzle migrations (permissions, groups, RLS, custom functions) are

@@ -4,7 +4,7 @@ import ws from "ws";
 import { runMigrations } from "@/backend/db/scripts/migrate";
 import { getEnv, requireEnv } from "@/backend/lib/env";
 import { logger } from "@/backend/lib/logger";
-import { assertDestructiveDbCommandAllowed } from "@/scripts/lib/destructiveDbGuard";
+import { assertDestructiveDbCommandAllowed } from "@/scripts/lib";
 
 type ResetPool = Pool | NeonPool;
 

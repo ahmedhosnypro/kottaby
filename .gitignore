@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-/node_modules
+# Dependencies & Package Managers
+/node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -10,155 +10,103 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-
-# next.js
+# Next.js, Build & Output Directories
 /.next/
+/.next-dev/
+/.next-test/
+/.next-test-*
+/.next-locale-snapshots-version
 /out/
-
-# production
-/build
+/dist/
+/build/
 !/scripts/build/
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-!.env.example
-# committed CI test-env template (Task 1.2, plan dev3-001) — no secrets inside
-!.env.test.ci
-
-# vercel
-.vercel
-# Generated at build time by scripts/build/generate-vercel-config.ts
 /vercel.json
+.vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-.eslintcache
-.scannerwork/
-
-/logs/
-
-.mcp.json
-
-*.sql_ignore
-*.log
-
-scratch/
-
-**/unRefactored_tests/
-
-node_modules/
-!/scripts/build/
-# build/
-dist/
-coverage/
-.DS_Store
-
-.next
-.next-dev
-tsconfig.tsbuildinfo
-.quality-gate-state.json
-.quality-gate-lock/
-
-eslint-results.json
+# Testing & Storybook
+/coverage/
+.playwright-cli/
+.playwright-mcp/
+storybook-static/
 *storybook.log
-storybook-static
-
-.playwright-mcp
-
-.next-test
-.next-test-*
 .graphql-test-ports
-
-.idea/*
-!.idea/kottaby.iml
-!.idea/modules.xml
-
-# Stakpak session files
-.stakpak/session*
-.stakpak
-
-# local uploads only (not backend/storage or backend/services/storage)
-/storage/
-/storage
-.aider*
-ai/.archive
-prompt/
-.gitwandrc
-*.txt
-.playwright-cli
-
-# Browser login artifacts from scripts/browser-login.ts (contain session cookies)
-.browser-auth/
-
-skills-lock.json
-.agent-canvas
-
+.graphql-test-heartbeats/
+**/unRefactored_tests/
 scripts/run-test/feedback/feedback*.md
 
-.graphql-test-heartbeats/dump.rdb
-.graphql-test-heartbeats/
-
+# TypeScript, Linters & Caches
+*.tsbuildinfo
+next-env.d.ts
+.eslintcache
 .eslintcache-type-aware
-.oxlint-baseline.json
+eslint-results.json
 .oxlint/
+.oxlint-baseline.json
+.scannerwork/
+.quality-gate-state.json
+.quality-gate-lock/
 .unused/
-nohup.out
-report/jscpd-report.json
 
-report/jscpd-report.html
+# Reports & Duplication Scans
+/report/
 jscpd-admin
 jscpd-intra
 jscpd-output
 jscpd-all
 
-# locale JS transpiled artifacts
-shared/locale/**/*.js
-.openhands/agent-canvas/logs
-.next-locale-snapshots-version
+# Environment & Secrets (can opt-in for committing if needed)
+.env*
+!.env.example
+!.env.test.ci
+*.pem
+.mcp.json
+.browser-auth/
 
-# QA-only artifacts (local sandbox testing — not for production)
+# Debug, Logs & Process Artifacts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+/logs/
+*.log
+*.sql_ignore
+nohup.out
+
+# IDE & OS Metadata
+.DS_Store
+.idea/*
+!.idea/kottaby.iml
+!.idea/modules.xml
+
+# Local Storage & Database Runtime Artifacts (not backend/db or backend/storage)
+/storage/
+/db/
+db/app.sqlite
+db/pglite/
+db/pglite-test/
+
+# Local Skills, Sandbox & AI Tool Artifacts
+/skills/
+skills-lock.json
+/agent-ctx/
+.agent-canvas/
+.openhands/agent-canvas/logs/
+.aider*
+.gitwandrc
+.stakpak/
+/prompt/
+/scratch/
 /download/
 /worklog.md
-__pycache__
-# scripts/run_spec_plan_kimi.py
-# QA screenshots & analysis scripts (ephemeral)
-qa-shots/
-# Plan-task throwaway probe outputs (5.5-outcome.md: "throwaway; gitignored scratch")
-tool-results/
-
-# Sandbox runtime SQLite artifact (DB_FILE_NAME)
-db/app.sqlite
-skills/
-/.zscripts
-/agent-ctx
-
-# PGlite in-process Postgres data dirs (binary, runtime-mutated)
-db/pglite
-db/pglite-test
-
-
-sandbox.*.sh
-
-/skills/
-/agent-ctx/
+/qa-shots/
+/tool-results/
 .zscripts/
-.browser-auth/
-scripts/build/
-.z-ai-config
-.z-ai-config.bak
-.z-ai-config.project
-/db/
+.z-ai-config*
+sandbox.*.sh
+ai/.archive/
+
+# Locale JS transpiled artifacts
+shared/locale/**/*.js
+
+# Python cache
+__pycache__/

@@ -1,6 +1,5 @@
 import { spawnSync } from "bun";
-import { restoreCanonicalNextEnvDts } from "@/scripts/lib/restore-next-env-dts";
-import { getTestProductionEnv } from "@/scripts/lib/test-build-env";
+import { getTestProductionEnv, restoreCanonicalNextEnvDts } from "@/scripts/lib";
 
 const result = spawnSync(["bun", "run", "next", "build", "--experimental-build-mode", "compile"], {
   env: getTestProductionEnv(),

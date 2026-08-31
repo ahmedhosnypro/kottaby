@@ -31,6 +31,11 @@ export default defineConfig({
     // Intentional dialog/field focus is valid a11y; this rule fights modal UX.
     "jsx-a11y/no-autofocus": "off",
     "no-console": "error",
+    // Line-count standards (see docs/quality/linting-rules.md). Tiered limits in
+    // `overrides` below: 150 lines for app/+frontend/views files, 100 for TSX
+    // functions (JSX inflation). Never add oxlint-disable comments — fix root cause.
+    "max-lines": ["error", { max: 300, skipBlankLines: true, skipComments: true }],
+    "max-lines-per-function": ["error", { max: 75, skipBlankLines: true, skipComments: true, IIFEs: false }],
     "@typescript-eslint/no-non-null-assertion": "error",
     "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/no-namespace": "off",
@@ -60,6 +65,44 @@ export default defineConfig({
     ],
   },
   overrides: [
+    {
+      // Frontend views & app routes: 150-line file convention (see root AGENTS.md).
+      files: ["app/**/*.{ts,tsx}", "frontend/views/**/*.{ts,tsx}"],
+      rules: {
+        "max-lines": ["error", { max: 150, skipBlankLines: true, skipComments: true }],
+      },
+    },
+    {
+      // JSX layout inflates line counts; components get a looser function cap.
+      files: ["**/*.tsx"],
+      rules: {
+        "max-lines-per-function": ["error", { max: 100, skipBlankLines: true, skipComments: true, IIFEs: false }],
+      },
+    },
+    {
+      // Test/story files: long describe blocks are idiomatic; size rules add no value.
+      files: [
+        "**/*.test.{ts,tsx}",
+        "**/*.spec.{ts,tsx}",
+        "**/*.test-d.{ts,tsx}",
+        "test/**",
+        "**/stories/**",
+        "**/__tests__/**",
+        "backend/db/test/**",
+        "backend/services/**/test/**",
+      ],
+      rules: {
+        "max-lines": "off",
+        "max-lines-per-function": "off",
+      },
+    },
+    {
+      // Translation dictionaries & generated timezone constants scale with data size.
+      files: ["shared/locale/**", "shared/constants/iana-timezone*.ts", "shared/constants/iana-timezones.ts"],
+      rules: {
+        "max-lines": "off",
+      },
+    },
     {
       files: [
         "frontend/lib/logger.ts",
@@ -134,6 +177,20 @@ export default defineConfig({
     "frontend/graphql/generated/**",
     "**/unRefactored_tests/**",
     "*storybook.log",
+    // Gitignored local/sandbox artifacts not covered by the dot-dir rule.
+    "coverage/**",
+    "prompt/**",
+    "qa-shots/**",
+    "tool-results/**",
+    "download/**",
+    "report/**",
+    "jscpd-admin/**",
+    "jscpd-intra/**",
+    "jscpd-output/**",
+    "jscpd-all/**",
+    "agent-ctx/**",
+    // Transpiled locale artifacts (gitignored, generated at dev time).
+    "shared/locale/**/*.js",
   ],
   env: {
     builtin: true,

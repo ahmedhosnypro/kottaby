@@ -5,8 +5,7 @@
 import { availableParallelism } from "node:os";
 import { Glob, type Subprocess } from "bun";
 import { isTestCi } from "@/backend/lib/test-ci-env";
-import { withProcessLock } from "@/scripts/lib/process-lock";
-import { TEST_ENV_FILE } from "@/scripts/lib/test-build-env";
+import { TEST_ENV_FILE, withProcessLock } from "@/scripts/lib";
 import { deduplicateLines, renderProgressBar, stripAnsiCodes } from "@/test/scripts/runner-helpers";
 
 const DEFAULT_TIMEOUT_MS = 60_000;

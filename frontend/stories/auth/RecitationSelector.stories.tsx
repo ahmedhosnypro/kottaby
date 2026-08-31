@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { RecitationSelector } from "@/app/(auth)/register/RecitationSelector";
 import { RecitationReading } from "@/frontend/graphql/generated/gql/graphql";
+import { RecitationSelector } from "@/frontend/views/auth/register";
 import { recitationAr } from "@/shared/locale/ar/recitation";
 import { recitationEn } from "@/shared/locale/en/recitation";
 

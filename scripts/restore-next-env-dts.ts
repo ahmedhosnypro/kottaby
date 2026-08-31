@@ -1,4 +1,4 @@
-import { restoreCanonicalNextEnvDts } from "@/scripts/lib/restore-next-env-dts";
+import { restoreCanonicalNextEnvDts } from "@/scripts/lib";
 
 const restored = await restoreCanonicalNextEnvDts();
 if (restored) {

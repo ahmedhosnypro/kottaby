@@ -1,4 +1,4 @@
-import { assessDestructiveDbCommandSafety, formatDestructiveDbBlockMessage } from "@/scripts/lib/destructiveDbGuard";
+import { assessDestructiveDbCommandSafety, formatDestructiveDbBlockMessage } from "@/scripts/lib";
 
 /**
  * Actions that are permanently disabled for this repo regardless of environment.

@@ -1,5 +1,5 @@
 import { UserRole } from "@/backend/enum/users/user-role.enum";
-import { createRoleDashboardPage, roleDashboardMetadata } from "@/frontend/views/dashboard/RoleDashboardPage";
+import { createRoleDashboardPage, roleDashboardMetadata } from "@/frontend/views/dashboard/home";
 
 export const metadata = roleDashboardMetadata();
 

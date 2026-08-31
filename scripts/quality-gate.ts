@@ -9,7 +9,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { withProcessLock } from "@/scripts/lib/process-lock";
+import { withProcessLock } from "@/scripts/lib";
 
 const STATE_FILE = join(process.cwd(), ".quality-gate-state.json");
 

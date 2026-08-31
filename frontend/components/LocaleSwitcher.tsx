@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { focusVisibleRingSx } from "@/frontend/components/ui/focusRing";
 import { AppLocale as WireAppLocale } from "@/frontend/graphql/generated/gql/graphql";
 import { meQueryDocument, updateMyLocaleMutationDocument } from "@/frontend/graphql/sharedDocuments";
-import { useAuth } from "@/frontend/hooks/useAuth";
+import { useAuth } from "@/frontend/hooks/auth";
 import { logger } from "@/frontend/lib/logger";
 import { useAppLocale } from "@/frontend/providers/localeContext";
 import { Auth, useAppTranslation } from "@/shared/locale";

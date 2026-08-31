@@ -1,16 +1,11 @@
-/**
- * DB Actions CLI entrypoint.
- *
- * Bootstraps env for non-interactive commands, then loads the interactive CLI.
- * Database destructive-action guards are enforced later in `actions.ts`.
- */
-import { bootstrapDbCliEnv } from "@/scripts/dbActions/bootstrapEnv";
-
-bootstrapDbCliEnv();
-
-const { main } = await import("@/scripts/dbActions/cli");
-
-main().catch((err: unknown) => {
-  globalThis.console.error("Fatal:", err);
-  process.exit(1);
-});
+export * from "./actions";
+export * from "./baseline-drizzle-migrations";
+export * from "./bootstrapEnv";
+export * from "./cleanGenerate";
+export * from "./cli";
+export * from "./destructive";
+export * from "./dialect";
+export * from "./ensureExtensions";
+export * from "./envFile";
+export * from "./runCommand";
+export * from "./sqlBreakpoints";

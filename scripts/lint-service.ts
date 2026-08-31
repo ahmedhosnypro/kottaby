@@ -5,6 +5,10 @@
  * lint-queue-client.ts, lint-queue-config.ts) into a single purely-typed TypeScript
  * service with both a CLI and programmatic API.
  *
+ * Structure (extracted for size):
+ *   - lint-service-config.ts  Types, constants, adaptive heap/concurrency sizing
+ *   - lint-service-cli.ts     CLI argument parsing and output rendering
+ *
  * Architecture:
  *   - In-process FIFO queue for serialized ESLint execution within one Bun process
  *   - CLI for shell invocation (supports --files, --fix, --json, --verbose)
@@ -39,7 +43,7 @@
  *                              derived from CPU count and memory budget; "auto" allowed)
  *   - LINT_QUEUE_TIMEOUT_MS     Override per-request timeout in ms (default: 300000 files, 1200000 full-repo)
  *   - LINT_MAX_OLD_SPACE_MB    Override the eslint child --max-old-space-size heap cap in MB
- *                              (default: adaptive — see MAX_OLD_SPACE_MB below)
+ *                              (default: adaptive — see MAX_OLD_SPACE_MB in lint-service-config.ts)
  *
  * CLI Usage:
  *   bun run scripts/lint-service.ts                             # Full-repo lint
@@ -60,168 +64,23 @@
  */
 
 import { exec } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { availableParallelism, totalmem } from "node:os";
-import { parseArgs } from "node:util";
-import { withProcessLock } from "@/scripts/lib/process-lock";
+import { withProcessLock } from "@/scripts/lib";
+import { runLintCli } from "@/scripts/lint-service-cli";
+import {
+  CONCURRENCY,
+  DEFAULT_TIMEOUT_FILES_MS,
+  DEFAULT_TIMEOUT_FULL_REPO_MS,
+  ESLINT_BIN,
+  ESLINT_PATCH,
+  type LintExecutionResult,
+  type LintOptions,
+  type LintResult,
+  MAX_OLD_SPACE_MB,
+  signalDeathNotice,
+} from "@/scripts/lint-service-config";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-export type LintResult = { success: boolean; output: string; exitCode: number };
-
-export interface LintOptions {
-  fix?: boolean;
-  json?: boolean;
-  verbose?: boolean;
-  typeAware?: boolean;
-  /** ESLint --max-warnings (e.g. 0 to fail on any warning). */
-  maxWarnings?: number;
-}
-
-export interface LintMetrics {
-  id: string;
-  scope: "full-repo" | "files";
-  fileCount: number;
-  durationMs: number;
-  enqueuedAt: number;
-  startedAt: number;
-  finishedAt: number;
-  queueDepthAtEnqueue: number;
-}
-
-export interface LintExecutionResult extends LintResult {
-  metrics: LintMetrics;
-}
-
-// ─── Constants ──────────────────────────────────────────────────────────────
-
-/** ESLint binary invocation via Bun (resolved from PATH, not hardcoded). */
-const ESLINT_BIN = process.env.BUN_EXEC ?? "bun";
-
-/** NODE_OPTIONS fragment for TypeScript 6 patch (swaps typescript → @typescript/typescript6) */
-const ESLINT_PATCH = "-r ./scripts/ts6-eslint-patch.cjs";
-
-/** Default per-request timeout for file-scoped lint runs (5 minutes) */
-const DEFAULT_TIMEOUT_FILES_MS = Number(process.env.LINT_QUEUE_TIMEOUT_MS ?? 300000);
-
-/** Default per-request timeout for full-repo lint runs (5 minutes) */
-const DEFAULT_TIMEOUT_FULL_REPO_MS = Number(process.env.LINT_QUEUE_TIMEOUT_MS ?? 1200000);
-
-/** Default ESLint child heap cap (MB) — only used when the machine can afford it. */
-const DEFAULT_MAX_OLD_SPACE_MB = 8192;
-
-/**
- * Preferred ESLint child heap floor (MB) — applied only when the detected
- * memory budget can afford it; never raised above the budget itself.
- */
-const MIN_MAX_OLD_SPACE_MB = 2048;
-
-/** Fraction of total memory the ESLint child heap may use when clamping. */
-const HEAP_FRACTION_OF_TOTAL = 0.7;
-
-/**
- * Read the cgroup memory limit in bytes, or null when unavailable/unlimited.
- * Checks cgroup v2 (memory.max) then v1 (memory/memory.limit_in_bytes); a v2
- * value of "max" means unlimited. os.totalmem() reports host RAM rather than
- * the cgroup limit on Linux, so the caller uses the smaller of the two.
- */
-function readCgroupMemoryLimitBytes(): number | null {
-  for (const path of ["/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"]) {
-    let raw: string;
-    try {
-      raw = readFileSync(path, "utf8").trim();
-    } catch {
-      continue; // File absent (non-Linux or different cgroup version) — try next.
-    }
-    if (raw === "max") return null; // Unlimited → fall back to os.totalmem()
-    const bytes = Number.parseInt(raw, 10);
-    if (Number.isFinite(bytes) && bytes > 0) return bytes;
-  }
-  return null;
-}
-
-/**
- * Adaptive Node heap cap (MB) for the ESLint child process.
- *
- * The previous hardcoded 8192 assumed ~7GB CI runners; on smaller hosts (e.g.
- * a 4 GiB cgroup with no swap) the child was OOM-killed (SIGKILL/exit 137 →
- * silent exit-1 with no output). Resolution order:
- *   1. LINT_MAX_OLD_SPACE_MB env var — explicit override, wins outright
- *   2. min(8192, floor(totalMemMB * 0.7)), where totalMemMB is the smaller of
- *      the cgroup limit and os.totalmem()
- *   3. Floored at 2048 MB — but the floor never exceeds the detected budget
- *      (a floor above the budget would cap the heap above what the host can
- *      afford and re-introduce the OOM-kill this sizing exists to prevent)
- */
-const MAX_OLD_SPACE_MB: number = (() => {
-  const override = Number.parseInt(process.env.LINT_MAX_OLD_SPACE_MB ?? "", 10);
-  if (override > 0) return override;
-
-  const cgroupBytes = readCgroupMemoryLimitBytes();
-  const totalBytes = cgroupBytes === null ? totalmem() : Math.min(cgroupBytes, totalmem());
-  const totalMb = Math.floor(totalBytes / (1024 * 1024));
-  const budgetMb = Math.floor(totalMb * HEAP_FRACTION_OF_TOTAL);
-
-  // The 2048 MB floor is clamped to the detected budget: the returned heap
-  // must NEVER exceed what the host can actually afford. On hosts below
-  // ~2.9 GiB (budget < 2048 MB), min(MIN, budget) collapses to the budget, so
-  // the floor degrades to a no-op instead of restoring 2048 MB over a smaller
-  // cgroup (e.g. a 2 GiB cgroup: budget = 1433, not 2048 = the whole cgroup)
-  // — which would OOM-kill the ESLint child exactly like the old hardcoded
-  // 8192 did.
-  return Math.min(DEFAULT_MAX_OLD_SPACE_MB, Math.max(Math.min(MIN_MAX_OLD_SPACE_MB, budgetMb), budgetMb));
-})();
-
-/** Upper bound for adaptive concurrency — the historical flat default. */
-const MAX_CONCURRENCY = 4;
-
-/**
- * Peak RSS a single ESLint isolate (main thread or one --concurrency worker) needs
- * for a cold full-repo run, rounded up from the ~1.7 GiB measured on this repo.
- * Used to derive how many concurrent isolates the memory budget can afford.
- */
-const PER_ISOLATE_MB = 2048;
-
-/**
- * Adaptive ESLint worker concurrency.
- *
- * `--concurrency=N` (N > 1) makes ESLint lint files in N worker-thread isolates
- * alongside the main-thread isolate, and every isolate gets its own V8 heap
- * capped by --max-old-space-size. The adaptive heap therefore bounds a single
- * isolate, not the (N + 1) × heap worst case: on a 4 GiB cgroup (no swap),
- * --concurrency=4 got the whole eslint process OOM-killed (SIGKILL → silent
- * exit-1 with empty output) on every cold-cache full-repo run.
- *
- * Resolution order:
- *   1. LINT_QUEUE_CONCURRENCY env var — explicit override, wins outright ("auto" allowed)
- *   2. min(4, cpuWorkers, memWorkers), floored at 1, where:
- *        cpuWorkers = availableParallelism() >> 1  (mirrors ESLint's own "auto" heuristic)
- *        memWorkers = floor(heapBudget / PER_ISOLATE_MB) - 1  (reserve one isolate for the
- *                     main thread; a value of 1 keeps eslint single-threaded)
- */
-const CONCURRENCY: string = (() => {
-  const override = process.env.LINT_QUEUE_CONCURRENCY;
-  if (override !== undefined && override !== "") return override;
-
-  const cpuWorkers = Math.max(1, availableParallelism() >> 1);
-  const memWorkers = Math.max(1, Math.floor(MAX_OLD_SPACE_MB / PER_ISOLATE_MB) - 1);
-  return String(Math.max(1, Math.min(MAX_CONCURRENCY, cpuWorkers, memWorkers)));
-})();
-
-/**
- * Human-readable notice appended to the eslint output when the child process is
- * killed by a signal instead of exiting (e.g. kernel OOM-killer SIGKILL on
- * memory-constrained hosts, or the exec timeout SIGTERM). Without this, signal
- * deaths surface as a silent exit-1 with empty output, which is undebuggable
- * from CI logs.
- */
-function signalDeathNotice(signal: string): string {
-  const oomHint =
-    signal === "SIGKILL"
-      ? " (likely the kernel OOM-killer — lower LINT_QUEUE_CONCURRENCY or LINT_MAX_OLD_SPACE_MB)"
-      : "";
-  return `\n[lint-service] eslint was terminated by signal ${signal} instead of exiting${oomHint}.`;
-}
+// Types stay importable from this module's original path for existing consumers.
+export type { LintExecutionResult, LintMetrics, LintOptions, LintResult } from "@/scripts/lint-service-config";
 
 // ─── LintService (In-Process Queue + ESLint Executor) ──────────────────────
 
@@ -450,121 +309,7 @@ export async function requestLintWithMetrics(
 
 // ─── CLI Entrypoint ─────────────────────────────────────────────────────────
 
-function getUnknownErrorCode(err: unknown): string | undefined {
-  if (typeof err !== "object" || err === null || !("code" in err)) {
-    return undefined;
-  }
-  const code = Reflect.get(err, "code");
-  return typeof code === "string" ? code : undefined;
-}
-
-function printHelp(): void {
-  console.log(`
-Lint Service — Unified In-Process ESLint CLI
-
-Usage:
-  bun run scripts/lint-service.ts [options]
-
-Options:
-  -f, --files <path>     File to lint (repo-relative). Repeat for multiple files.
-                         Omit for full-repo lint via eslint.config.js.
-  -i, --id <string>      Caller identifier (default: "cli")
-  --fix                  Apply ESLint auto-fixes
-  --json                 Output result as JSON (includes metrics)
-  --type-aware           Enable type-aware mode (implies --max-warnings=0)
-  --max-warnings <num>   Fail if warnings exceed this count (default: 0, or -1 to disable)
-  -v, --verbose          Log queue state and timing to stderr
-  -h, --help             Show this help
-
-Exit codes:
-  0 = ESLint passed (no errors)
-  1 = ESLint reported problems
-  2 = Invalid arguments or service fault
-
-Examples:
-  bun run scripts/lint-service.ts                         # Full-repo lint (--max-warnings=0)
-  bun run scripts/lint-service.ts -f src/foo.ts          # Single file
-  bun run scripts/lint-service.ts -f a.ts -f b.ts        # Multiple files
-  bun run scripts/lint-service.ts --fix                  # Full-repo with auto-fix
-  bun run scripts/lint-service.ts -f file.ts --json      # JSON output
-`);
-}
-
-function writeLintResult(result: LintExecutionResult, json: boolean, verbose: boolean): void {
-  if (json) {
-    console.log(JSON.stringify(result, null, 2));
-    return;
-  }
-
-  process.stdout.write(result.output || "");
-  if (verbose) {
-    console.error(`\n[lint-service] Duration: ${result.metrics.durationMs}ms`);
-    console.error(`[lint-service] Queue depth at enqueue: ${result.metrics.queueDepthAtEnqueue}`);
-  }
-}
-
-function handleCliError(err: unknown): never {
-  if (getUnknownErrorCode(err) === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
-    console.error("Error: Invalid arguments\n");
-    printHelp();
-    process.exit(2);
-  }
-  const message = err instanceof Error ? err.message : String(err);
-  console.error(`Error: ${message}`);
-  if (process.argv.includes("--verbose") || process.argv.includes("-v")) {
-    const stack = err instanceof Error ? err.stack : undefined;
-    if (stack) console.error(stack);
-  }
-  process.exit(2);
-}
-
-async function main(): Promise<void> {
-  try {
-    const args = parseArgs({
-      options: {
-        files: { type: "string", short: "f", multiple: true },
-        id: { type: "string", short: "i", default: "cli" },
-        fix: { type: "boolean", default: false },
-        json: { type: "boolean", default: false },
-        "type-aware": { type: "boolean", default: false },
-        "max-warnings": { type: "string", default: undefined },
-        verbose: { type: "boolean", short: "v", default: false },
-        help: { type: "boolean", short: "h", default: false },
-      },
-      allowPositionals: false,
-      strict: true,
-    });
-
-    if (args.values.help) {
-      printHelp();
-      process.exit(0);
-    }
-
-    const files = args.values.files ?? [];
-    const id = args.values.id ?? "cli";
-    const fix = args.values.fix ?? false;
-    const json = args.values.json ?? false;
-    const typeAware = args.values["type-aware"] ?? false;
-    const verbose = args.values.verbose ?? false;
-
-    // Resolve maxWarnings: CLI flag takes precedence; otherwise default to 0 (fail on any warning).
-    // Use -1 to explicitly allow unlimited warnings.
-    let maxWarnings: number | undefined;
-    if (args.values["max-warnings"] !== undefined) {
-      maxWarnings = Number.parseInt(args.values["max-warnings"], 10);
-    } else {
-      maxWarnings = 0;
-    }
-
-    const result = await requestLintWithMetrics(id, files, { fix, json, verbose, typeAware, maxWarnings });
-    writeLintResult(result, json, verbose);
-    process.exit(result.exitCode);
-  } catch (err: unknown) {
-    handleCliError(err);
-  }
-}
-
 // Run CLI if this file is the main module
 if (import.meta.main) {
-  void main();
+  void runLintCli(requestLintWithMetrics);
 }

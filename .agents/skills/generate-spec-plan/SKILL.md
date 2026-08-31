@@ -15,7 +15,7 @@ allowed-tools: Read Write Edit Glob Grep
 
 # Generate Spec Plan
 
-Automates the generation of complete, production-grade Implementation Plans for tickets from [docs/planning/TICKETS.md](file:///home/ahmed/Projects/Kottaby_academy/docs/planning/TICKETS.md) using Repomix context bundling, the [spec-driven-development](file:///home/ahmed/Projects/Kottaby_academy/.agents/skills/spec-driven-development/SKILL.md) framework, and the Python orchestrator script [scripts/run_spec_plan_kimi.py](file:///home/ahmed/Projects/Kottaby_academy/scripts/run_spec_plan_kimi.py).
+Automates the generation of complete, production-grade Implementation Plans for tickets from [docs/planning/TICKETS.md](file:///home/ahmed/Projects/kottaby_kottaby/docs/planning/TICKETS.md) using Repomix context bundling, the [spec-driven-development](file:///home/ahmed/Projects/kottaby_kottaby/.agents/skills/spec-driven-development/SKILL.md) framework, and the Python orchestrator script [scripts/python/run_spec_plan.py](file:///home/ahmed/Projects/kottaby_kottaby/scripts/python/run_spec_plan.py).
 
 ## Overview
 
@@ -36,7 +36,7 @@ Follow this process when asked to generate a plan for a ticket or feature:
 - [ ] **Step 1: Identify or Select the Target Ticket**
   - **Interactive Mode (Recommended)**: Run without `--ticket` to launch the interactive autocomplete filter UI:
     ```bash
-    python3 scripts/run_spec_plan_kimi.py
+    python3 scripts/python/run_spec_plan.py
     ```
     - Type any keywords (e.g. `registration`, `teacher`, `DEV2`) to filter in real-time.
     - Use `↑` / `↓` arrow keys to highlight the desired ticket and press `Enter` to select.
@@ -46,20 +46,20 @@ Follow this process when asked to generate a plan for a ticket or feature:
 - [ ] **Step 2: Dry Run & Token Budget Verification**
   - Execute the script with `--dry-run` to verify Repomix bundling and token counts:
     ```bash
-    python3 scripts/run_spec_plan_kimi.py --ticket DEV1-002 --dry-run
+    python3 scripts/python/run_spec_plan.py --ticket DEV1-002 --dry-run
     ```
 
 - [ ] **Step 3: Execute Plan Generation**
   - Run the orchestrator against the local router or direct NVIDIA API:
     ```bash
     # Via local router (default):
-    python3 scripts/run_spec_plan_kimi.py --ticket DEV1-002
+    python3 scripts/python/run_spec_plan.py --ticket DEV1-002
 
     # Via direct NVIDIA API key:
-    python3 scripts/run_spec_plan_kimi.py --ticket DEV1-002 --direct-nvidia
+    python3 scripts/python/run_spec_plan.py --ticket DEV1-002 --direct-nvidia
 
     # For a custom prompt / feature query:
-    python3 scripts/run_spec_plan_kimi.py --query "Implement teacher onboarding flow"
+    python3 scripts/python/run_spec_plan.py --query "Implement teacher onboarding flow"
     ```
 
 - [ ] **Step 4: Review and Validate the Generated Plan**

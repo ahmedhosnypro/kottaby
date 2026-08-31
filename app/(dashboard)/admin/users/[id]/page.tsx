@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { UserRole } from "@/backend/enum/users/user-role.enum";
 import { withPageAuth } from "@/frontend/lib/auth/withPageAuth";
-import { AdminUserDetailContainer } from "@/frontend/views/admin/users/AdminUserDetailContainer";
+import { AdminUserDetailContainer } from "@/frontend/views/admin/users/detail";
 import { getTranslations } from "@/shared/locale/server";
 import { getLocaleFromCookie } from "@/shared/locale/server-cookies";
 

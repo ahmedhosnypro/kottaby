@@ -45,6 +45,20 @@ const eslintConfig = defineConfig([
     "Kottaby/**",
     "storybook-static/**",
     "docs/**",
+    // Gitignored local/sandbox artifacts not covered by the dot-dir rule.
+    "coverage/**",
+    "prompt/**",
+    "qa-shots/**",
+    "tool-results/**",
+    "download/**",
+    "report/**",
+    "jscpd-admin/**",
+    "jscpd-intra/**",
+    "jscpd-output/**",
+    "jscpd-all/**",
+    "agent-ctx/**",
+    // Transpiled locale artifacts (gitignored, generated at dev time).
+    "shared/locale/**/*.js",
     // File patterns
     "**/*.d.ts",
     "next-env.d.ts",

@@ -67,18 +67,25 @@ When asked to "create a prototype for a plan" (e.g. `.ai/plans/<feature>/specs.m
 1. **Read the plan** (`view`; use `view_range` for large files). Extract:
    - Every distinct **screen/page** the plan describes (lists, forms, detail views, dialogs, per-role views, mobile variants).
    - UI details worth prompting: filters, columns, status badges, autocomplete, auto-fill behavior, per-audience differences.
-2. **Auth probe**: call `list_projects` first. A 401 means the token is expired — ask the user to re-authenticate before generating anything.
-3. **Always create a NEW project**: `create_project` with a title like `"Kottaby — <Feature> Prototypes"`. Record the numeric `projectId`. Never reuse an existing plan-prototype project for a different plan — one project per plan keeps screens organized.
-4. **Design system** (optional consistency step): call `list_design_systems` on a previous prototype project (or globally) to find a matching system; pass its `designSystem` ID (`assets/...`) to `generate_screen_from_text` for visual consistency across plan prototypes. Fall back to defaults if none fit.
-5. **Generate one screen per identified page**, sequential calls with a detailed, self-contained prompt per screen (layout, sidebar, fields, states, badges, data examples from the plan). Use `GEMINI_3_FLASH` for wireframe-speed, `GEMINI_3_1_PRO` for polish. Match `deviceType` to the view (DESKTOP for admin dashboards, MOBILE for self-service/student views).
-6. **After each generation, immediately capture** the new screen's `name`/`id`/title from the response (grep the temp output file if needed — see Ground Rules). Do **not** rely on `list_screens` for fresh screens.
-7. **Save artifacts locally** under `<plan-dir>/prototype/`:
+2. **Ground the prompt in the actual codebase — never prompt from the plan alone.** Before writing any generation prompt, inspect the real surfaces the screen will live in and mirror them:
+   - **Existing components**: find the components that render the screen's core elements (e.g. list rows, cards, dialogs, nav, app bars) and copy their *structure* into the prompt (element order, what an item looks like, which states tint/bold, which actions exist).
+   - **Theme**: read the project's theme/palette source and give the generator the real color roles (background, primary, secondary, success/warning/error) and typography direction — never invent a palette. If the project forbids hardcoded colors in code, still spell the real hex values out in the prompt: the generator cannot see the theme system.
+   - **Copy**: pull real strings from the project's locale/i18n files (titles, labels, button text) instead of inventing placeholder copy; match the UI language and direction (RTL/LTR) per audience.
+   - **Layout shell**: check whether the product is desktop-dashboard, mobile app, or hybrid, and which chrome exists (sidebar position, top bar contents) — describe that shell explicitly.
+   - If the plan is backend-only, prototype the *observable surfaces* the plan's acceptance criteria reference, grounded in the components that already render those surfaces.
+3. **Auth probe**: call `list_projects` first. A 401 means the token is expired — ask the user to re-authenticate before generating anything.
+4. **Always create a NEW project**: `create_project` with a title like `"Kottaby — <Feature> Prototypes"`. Record the numeric `projectId`. Never reuse an existing plan-prototype project for a different plan — one project per plan keeps screens organized.
+5. **Design system** (optional consistency step): call `list_design_systems` on a previous prototype project (or globally) to find a matching system; pass its `designSystem` ID (`assets/...`) to `generate_screen_from_text` for visual consistency across plan prototypes. Fall back to defaults if none fit.
+6. **Generate one screen per identified page**, sequential calls with a detailed, self-contained prompt per screen (layout, sidebar, fields, states, badges, data examples from the plan, real palette + real copy per step 2). Use `GEMINI_3_1_PRO` for plan prototypes (quality matters more than speed here); drop to `GEMINI_3_FLASH` only for throwaway wireframes. Match `deviceType` to the real product surface (DESKTOP for admin/back-office dashboards, MOBILE only if the product actually has mobile surfaces).
+7. **After each generation, immediately capture** the new screen's `name`/`id`/title from the response (grep the temp output file if needed — see Ground Rules). Do **not** rely on `list_screens` for fresh screens.
+8. **Validate the generated content itself, not just the file**: a generation can "succeed" yet return a useless render (e.g. just a logo/wordmark, a blank hero, wrong layout). Before moving on, check the response metadata for degenerate-output signals — generic titles unrelated to the requested page (e.g. "<Brand> Wordmark"), square 1024×1024 dimensions for a DESKTOP request, or an empty `htmlCode`. Any of these means REGENERATE the screen with a clarified prompt (explicitly demand "a full page screenshot, not a logo/wordmark"); don't download and report it as a successful artifact.
+9. **Save artifacts locally** under `<plan-dir>/prototype/`:
    - `mkdir -p <plan-dir>/prototype`
    - Per screen: `curl -sL -o <kebab-case-name>.png "<screenshot.downloadUrl>=s0"` (note the `=s0`).
    - **Do NOT download HTML by default.** Only fetch `.html` files (`curl -sL -o <kebab-case-name>.html "<htmlCode.downloadUrl>"`) when the user explicitly asks for HTML artifacts/code. PNG screenshots are the default deliverable.
    - Re-fetch URLs with `get_screen` for any screen not in a fresh `list_screens` result.
-   - Verify: `file *.png` → PNG, sizes >1KB, PNG dimensions match the render (2560×2048 desktop). If HTML was requested, also verify `file *.html` → HTML.
-8. **Report**: list saved files + the Stitch project resource name so the user can iterate via `edit_screens` / `generate_variants`.
+   - Verify: `file *.png` → PNG (a `JPEG` result for a `.png` path is a red flag — inspect dimensions; square 1024×1024 usually means the degenerate case from step 8), sizes >1KB, dimensions match the render (2560×2048 desktop). If HTML was requested, also verify `file *.html` → HTML.
+10. **Report**: list saved files + the Stitch project resource name so the user can iterate via `edit_screens` / `generate_variants`.
 
 ---
 
@@ -151,6 +158,8 @@ Responses are huge (40–410KB) and the saved `/tmp/…-copilot-tool-output-*.tx
 - **ALWAYS** use numeric/alphanumeric IDs (without `projects/` or `screens/` prefix) for `generate_screen_from_text`, `edit_screens`, `get_screen`, `generate_variants`, and `apply_design_system`.
 - **ALWAYS** pass only `id` and `sourceScreen` in `selectedScreenInstances` for `apply_design_system` (omit coordinates and dimensions).
 - **ALWAYS** record screen IDs and title→ID mapping from generation responses; never rely solely on `list_screens` for recently generated screens.
+- **ALWAYS** ground prototype prompts in the actual codebase before generating: read the real components, theme/palette source, and locale files that the screen will imitate; never invent palettes, layouts, or copy from the plan text alone.
+- **ALWAYS** sanity-check generated screens for degenerate output (logo/wordmark instead of a page, blank hero, wrong device dimensions like square 1024×1024 for DESKTOP) and regenerate with a sharper prompt instead of downloading the failure.
 - **ALWAYS** verify downloaded files exist, have non-trivial size, and are valid PNG (or HTML, if HTML was requested) before declaring success.
 - **ALWAYS** save artifacts with meaningful, kebab-case names derived from the screen title (e.g. `add-payment-form.png`), not raw IDs.
 - **NEVER** download HTML files by default — PNG screenshots are the default artifact. Only download `.html` files when the user explicitly asks for HTML output/code.

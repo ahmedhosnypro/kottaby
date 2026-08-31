@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { isDestructiveActionBlocked, isPermanentlyDisabled } from "@/scripts/dbActions/destructive";
 import { applyEnvFile } from "@/scripts/dbActions/envFile";
-import { assessDestructiveDbCommandSafety } from "@/scripts/lib/destructiveDbGuard";
+import { assessDestructiveDbCommandSafety } from "@/scripts/lib";
 
 const LOCAL_ENV = `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/kottaby
 DB_PROVIDER=postgres

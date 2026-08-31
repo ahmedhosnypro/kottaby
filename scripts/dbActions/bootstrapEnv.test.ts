@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { bootstrapDbCliEnv } from "@/scripts/dbActions/bootstrapEnv";
 import { clearSelectedEnvFileForTests, DEFAULT_ENV_FILE, getSelectedEnvFile } from "@/scripts/dbActions/envFile";
-import { restoreProcessEnv, unsetProcessEnvVars } from "@/scripts/lib/test-process-env";
+import { restoreProcessEnv, unsetProcessEnvVars } from "@/scripts/lib";
 
 const LOCAL_ENV = `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/kottaby
 DATABASE_ENCRYPTION_KEY=bootstrap-test-key

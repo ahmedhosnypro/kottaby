@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, relative, sep } from "node:path";
-import { withProcessLock } from "@/scripts/lib/process-lock";
+import { withProcessLock } from "@/scripts/lib";
 
 const BUN_BIN = join(homedir(), ".bun", "bin", "bun");
 const PROJECT_ROOT = process.cwd();

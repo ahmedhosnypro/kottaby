@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LoginForm } from "@/app/(auth)/login/LoginForm";
+import { LoginForm } from "@/frontend/views/auth/login";
 import { getTranslations } from "@/shared/locale/server";
 import { getLocaleFromCookie } from "@/shared/locale/server-cookies";
 

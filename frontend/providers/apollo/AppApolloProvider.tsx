@@ -8,7 +8,7 @@ import { ApolloProvider } from "@apollo/client/react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NetworkConnectivityContext } from "@/frontend/context/NetworkConnectivityContext";
-import { useApolloConnectivity } from "@/frontend/hooks/useApolloConnectivity";
+import { useApolloConnectivity } from "@/frontend/hooks/connectivity";
 import { InitializingUI } from "@/frontend/providers/apollo/AppApolloProviderHelpers";
 import { createApolloCache } from "@/frontend/providers/apollo/apolloCache";
 import { useAuthRecoveryRegistration } from "@/frontend/providers/apollo/useAuthRecoveryRegistration";

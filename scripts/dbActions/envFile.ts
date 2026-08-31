@@ -5,7 +5,7 @@ import { config } from "dotenv";
 import { resetEnvironmentCache } from "@/backend/lib/env";
 import { sanitizeUrlCredentials } from "@/backend/lib/utils/url";
 import { type DbDialect, readDbFileNameFromEnvFile, readDialectFromEnvFile } from "@/scripts/dbActions/dialect";
-import { clearDestructiveGuardEnvVars } from "@/scripts/lib/destructiveDbGuard";
+import { clearDestructiveGuardEnvVars } from "@/scripts/lib";
 
 /** Default env file for non-interactive `bun db` commands when `--env-file` is omitted. */
 export const DEFAULT_ENV_FILE = ".env";

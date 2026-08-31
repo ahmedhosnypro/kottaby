@@ -62,7 +62,7 @@
 
 ### Error surfaces & Apollo error mapping
 
-- **Single code→behavior map**: GraphQL error behavior MUST come from `frontend/providers/apollo/error-link.map.ts` (`mapGraphQLErrorByCode`) and its dispatcher seam (`utils.ts`) — branch on `extensions.code` ONLY, never HTTP status. The authoritative REQ-061 table (incl. `DUPLICATE_REQUEST`-as-success-equivalent UX, counter-free rate-limit copy) lives in `docs/graphql/error-handling-contract.md` §Client mapping.
+- **Single code→behavior map**: GraphQL error behavior MUST come from `frontend/providers/apollo/error-link.map.ts` (`mapGraphQLErrorByCode`) and its dispatcher seam (`utils/`) — branch on `extensions.code` ONLY, never HTTP status. The authoritative REQ-061 table (incl. `DUPLICATE_REQUEST`-as-success-equivalent UX, counter-free rate-limit copy) lives in `docs/graphql/error-handling-contract.md` §Client mapping.
 - **Component seams** (`frontend/components/ui/`): `PermissionDeniedFallback` for query/section FORBIDDEN renders (never bare `null`), `RetryableNotice` for `RATE_LIMITED`/`SERVICE_UNAVAILABLE` (retry disabled while pending), `fieldError.ts` + `frontend/lib/mutationFieldErrors.ts` to project `extensions.fields[]` into RHF `setError`. Styling follows the sx/theme-palette rules at the top of this file.
 - **Surface host ownership**: `frontend/components/ui/GraphQLErrorSurfaceHost.tsx` (mounted once in `AppClientProviders`) is the ONLY `registerGraphQLErrorActionListener` consumer — it renders toast/notice stacks, query-denial banner, and duplicate-as-info rows per `docs/graphql/error-handling-contract.md` §Client mapping › Surface host. Page-level forms must NOT register their own listener; they surface VALIDATION pairs locally via `mutationFieldErrors.ts`.
 

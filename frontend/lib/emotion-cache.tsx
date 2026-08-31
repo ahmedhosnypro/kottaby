@@ -45,7 +45,7 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { type ReactNode, useMemo } from "react";
 import { prefixer } from "stylis";
 import rtlPlugin from "stylis-plugin-rtl";
-import { useAppLocale } from "@/frontend/hooks/useAppLocale";
+import { useAppLocale } from "@/frontend/hooks/locale";
 
 interface EmotionCacheProviderProps {
   readonly children: ReactNode;

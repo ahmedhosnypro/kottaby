@@ -30,320 +30,48 @@
  *    and re-open the wildcard-injection surface; the contract is one
  *    canonical escape point (the service) + one canonical binding point
  *    (the repo's `ilike`).
+ *
+ * File layout (size-budget split, zero behavior change):
+ *  - `./admin-user-row-types` — raw DB row shapes + normalized filter type.
+ *  - `./admin-user-query-helpers` — safe-column projection shape, WHERE-chain
+ *    builder, and the two scalar subselects.
  */
-import { and, asc, desc, eq, ilike, isNull, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/backend/db";
+import {
+  buildFilterChain,
+  parentLinkedChildrenCountSubquery,
+  SAFE_USER_SELECT,
+  studentHasActiveSubscriptionSubquery,
+} from "@/backend/db/repo/admin/admin-user-query-helpers";
+import type {
+  AdminUserActivityRow,
+  AdminUserDetailRow,
+  AdminUserDirectoryRow,
+  AdminUserStatsRow,
+  NormalizedAdminUserFilters,
+} from "@/backend/db/repo/admin/admin-user-row-types";
 import { auditLogs } from "@/backend/db/schema/audit/audit-logs";
-import { subscriptions } from "@/backend/db/schema/billing/subscriptions";
 import { parents } from "@/backend/db/schema/parents/parents";
 import { students } from "@/backend/db/schema/students/students";
 import { applicants } from "@/backend/db/schema/teachers/applicants";
 import { teacher } from "@/backend/db/schema/teachers/teacher";
 import { users } from "@/backend/db/schema/users/users";
-import { AdminUserGovernanceFilter } from "@/backend/enum/users/admin-user-governance-filter.enum";
-import type { AdminUserSafeSelect, AdminUserUpdateDbPatch, DBTransaction, UserSelectType } from "@/backend/types";
+import type { AdminUserSafeSelect, AdminUserUpdateDbPatch, DBTransaction } from "@/backend/types";
 
 /**
- * Explicit safe-column selection over `users` — `passwordHash` is
- * structurally absent from every projection that uses this shape. The
- * shape mirrors `AdminUserSafeSelect` (`Omit<UserSelectType,
- * "passwordHash">`) at the Drizzle column-pick layer; the structural
- * absence is enforced by the projection itself, not by a runtime
- * post-filter. Drizzle's `.returning(SAFE_USER_SELECT)` infers a return
- * shape that is structurally identical to `AdminUserSafeSelect`, so the
- * service consumes it directly.
+ * Row-type re-exports keep the deep import path
+ * `@/backend/db/repo/admin/admin-user.repository` stable for existing
+ * consumers (the service layer) after the row shapes moved to
+ * `./admin-user-row-types`. Type-only forwarding — no runtime surface.
  */
-const SAFE_USER_SELECT = {
-  id: users.id,
-  fullName: users.fullName,
-  email: users.email,
-  phone: users.phone,
-  role: users.role,
-  dateOfBirth: users.dateOfBirth,
-  gender: users.gender,
-  country: users.country,
-  isDeleted: users.isDeleted,
-  deletedAt: users.deletedAt,
-  suspended: users.suspended,
-  suspendedAt: users.suspendedAt,
-  suspendedPeriodDays: users.suspendedPeriodDays,
-  isBlocked: users.isBlocked,
-  blockedAt: users.blockedAt,
-  lastActiveAt: users.lastActiveAt,
-  locale: users.locale,
-  createdAt: users.createdAt,
-  updatedAt: users.updatedAt,
-} as const;
-
-/**
- * The raw pgEnum string union mirrored from `UserSelectType["role"]`. The
- * TS `UserRole` enum is a nominal type that the Drizzle-inferred row
- * (string-union) is not assignable to; the repo-internal row carries the
- * raw string union so the inferred Drizzle return type is structurally
- * assignable to the row interface without an `as` cast. The service layer
- * maps this raw string to the canonical `UserRole` enum via `toUserRole`
- * at projection time.
- */
-type RawUserRole = UserSelectType["role"];
-
-/**
- * The raw pgEnum string union mirrored from `UserSelectType["gender"]`.
- * Same nominal-vs-structural rationale as `RawUserRole`.
- */
-type RawGender = UserSelectType["gender"];
-
-/**
- * `NormalizedAdminUserFilters` — repo-internal filter shape.
- *
- * The service layer normalizes a transport-shape `AdminUserFiltersSubmitInput`
- * into this structure before calling the repo:
- *  - `role` / `governance` / `country` are passed through unchanged (the
- *    service has already rejected malformed enum members at the input
- *    boundary; absent members drop out per the forgiving read rule).
- *  - `searchPattern` is the search substring AFTER `escapeLikeWildcards`
- *    has been applied AND after the result has been wrapped as `%…%`.
- *    The repo binds this directly to its `ilike(column, pattern)`
- *    predicate — never re-escaping or re-wrapping. The structural
- *    contract (one canonical escape point at the service, one binding
- *    point at the repo) eliminates the wildcard-injection surface.
- *
- * Empty/absent members are skipped by the WHERE-chain builder (the
- * directory falls back to the unfiltered listing rather than erroring).
- */
-export interface NormalizedAdminUserFilters {
-  readonly role?: RawUserRole | null;
-  readonly governance?: AdminUserGovernanceFilter | null;
-  readonly country?: string | null;
-  readonly searchPattern?: string | null;
-}
-
-/**
- * `AdminUserDirectoryRow` — raw DB row shape returned by `listDirectory`.
- *
- * The role-child headline columns are nullable per role: only the columns
- * applicable to a given `role` carry non-null values; the others remain
- * `null` so a single row shape serves all four roles without per-role
- * variant unions. The service layer maps this raw row to
- * `AdminUserListItemReturnType` (null-coalescing governance booleans,
- * guard-validating stored applicant status, mapping raw role string to
- * `UserRole` via `toUserRole`).
- *
- * The governance booleans (`isDeleted`, `suspended`, `isBlocked`) preserve
- * the nullable-with-default schema shape — `$inferSelect` yields
- * `boolean | null` because the columns lack `notNull()`. The service
- * null-coalesces them to `false` when projecting to the directory shape.
- */
-export interface AdminUserDirectoryRow {
-  readonly id: number;
-  readonly fullName: string;
-  readonly email: string;
-  readonly phone: string | null;
-  readonly role: RawUserRole;
-  readonly gender: RawGender | null;
-  readonly dateOfBirth: string | null;
-  readonly country: string | null;
-  readonly isDeleted: boolean | null;
-  readonly suspended: boolean | null;
-  readonly isBlocked: boolean | null;
-  readonly lastActiveAt: Date | null;
-  readonly createdAt: Date;
-  readonly applicantStatus: string | null;
-  readonly teacherIsApproved: boolean | null;
-  readonly teacherIsEvaluator: boolean | null;
-  readonly studentHasParentLink: boolean | null;
-  readonly studentHasActiveSubscription: boolean | null;
-  readonly parentLinkedChildrenCount: number | null;
-}
-
-/**
- * `AdminUserDetailRow` — raw DB row shape returned by `findDetailById`.
- *
- * Flat single-row projection that includes every safe `users` column plus
- * the full role-child columns (nullable per absent role-child row) plus
- * the two scalar subselects (`parentLinkedChildrenCount`,
- * `studentHasActiveSubscription`). The service layer assembles the
- * role-child snapshot objects (`AdminTeacherSnapshotReturnType`,
- * `AdminStudentSnapshotReturnType`, `AdminParentSnapshotReturnType`,
- * `ApplicantProfileReturnType`) from this flat row — the repo shape stays
- * flat so the query is single-round-trip and trivially EXPLAIN-able.
- *
- * `passwordHash` is structurally absent (the `SAFE_USER_SELECT` shape
- * omits it).
- */
-export interface AdminUserDetailRow {
-  readonly id: number;
-  readonly fullName: string;
-  readonly email: string;
-  readonly phone: string | null;
-  readonly role: RawUserRole;
-  readonly dateOfBirth: string | null;
-  readonly gender: RawGender;
-  readonly country: string | null;
-  readonly isDeleted: boolean | null;
-  readonly deletedAt: Date | null;
-  readonly suspended: boolean | null;
-  readonly suspendedAt: Date | null;
-  readonly suspendedPeriodDays: number | null;
-  readonly isBlocked: boolean | null;
-  readonly blockedAt: Date | null;
-  readonly lastActiveAt: Date | null;
-  readonly locale: UserSelectType["locale"];
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
-  readonly applicantStatus: string | null;
-  readonly applicantVerificationAttempts: number | null;
-  readonly applicantLastAttemptAt: Date | null;
-  readonly applicantCooldownUntil: Date | null;
-  readonly teacherIsApproved: boolean | null;
-  readonly teacherIsEvaluator: boolean | null;
-  readonly teacherIsOnline: boolean | null;
-  readonly teacherAverageRating: string | null;
-  readonly studentHandshakeCode: string | null;
-  readonly studentParentId: number | null;
-  readonly studentPrimaryLanguage: string | null;
-  readonly studentAnotherLanguage: string | null;
-  readonly studentBalanceHifz: number | null;
-  readonly studentBalanceTajweed: number | null;
-  readonly studentBalanceReviews: number | null;
-  readonly parentRowExists: boolean | null;
-  readonly parentLinkedChildrenCount: number | null;
-  readonly studentHasActiveSubscription: boolean | null;
-}
-
-/**
- * `AdminUserStatsRow` — raw aggregate row shape returned by `getStats`.
- * Every member is a filtered count produced by a single aggregate query
- * over `users` (no JOINs, no scalar subselects). The service layer maps
- * this row to `AdminUserStatsReturnType` verbatim (all members are
- * already plain numbers — null-coalescing to `0` guards the impossible
- * empty-aggregate case).
- */
-export interface AdminUserStatsRow {
-  readonly totalCount: number;
-  readonly activeCount: number;
-  readonly suspendedCount: number;
-  readonly blockedCount: number;
-  readonly deletedCount: number;
-  readonly adminsCount: number;
-  readonly teachersCount: number;
-  readonly studentsCount: number;
-  readonly parentsCount: number;
-  readonly newThisWeekCount: number;
-}
-
-/**
- * `AdminUserActivityRow` — raw row shape returned by `getActivity`. The
- * `actionType` member carries the raw pgEnum string union (mirrors the
- * `RawUserRole` discipline above — the service maps it to the canonical
- * `AuditActionType` TS enum at projection time). `actorName` is resolved
- * via the INNER JOIN on `users.id = audit_logs.actor_id` (NOT NULL FK —
- * never null in practice; typed nullable for Drizzle inference parity).
- * `details` is the raw `varchar(2000)` JSON string, parsed defensively by
- * the service.
- */
-export interface AdminUserActivityRow {
-  readonly id: number;
-  readonly actionType: string;
-  readonly actorName: string | null;
-  readonly details: string | null;
-  readonly createdAt: Date;
-}
-
-/**
- * Builds the ANDed WHERE chain from normalized filters.
- *
- * Filters are independent ANDed predicates; absent or null members are
- * skipped (the directory falls back to the unfiltered listing rather
- * than erroring). The `searchPattern` is bound directly to two `ilike`
- * predicates — one over `fullName`, one over `email` — joined by `OR`
- * so a single search term matches either column. No string
- * interpolation; the pattern is Drizzle-parameterized.
- *
- * Governance filter resolution (null-safe under three-valued SQL logic):
- *  - `Active`    → user is not deleted, not suspended, not blocked
- *                  (NULL-state columns coalesce to "not set" — reads as
- *                  active for legacy rows that pre-date the notNull()
- *                  tightening).
- *  - `Suspended` → `suspended = true`.
- *  - `Blocked`   → `is_blocked = true`.
- *  - `Deleted`   → `is_deleted = true` (NULL-state rows are excluded —
- *                  a legacy NULL row reads as "active", not "deleted",
- *                  per the null-safe read discipline).
- */
-function buildFilterChain(filters: NormalizedAdminUserFilters): SQL | undefined {
-  const conditions: SQL[] = [];
-  if (filters.role) {
-    conditions.push(eq(users.role, filters.role));
-  }
-  if (filters.governance) {
-    switch (filters.governance) {
-      case AdminUserGovernanceFilter.Active:
-        conditions.push(or(eq(users.isDeleted, false), isNull(users.isDeleted)) ?? sql`false`);
-        conditions.push(or(eq(users.suspended, false), isNull(users.suspended)) ?? sql`false`);
-        conditions.push(or(eq(users.isBlocked, false), isNull(users.isBlocked)) ?? sql`false`);
-        break;
-      case AdminUserGovernanceFilter.Suspended:
-        conditions.push(eq(users.suspended, true));
-        break;
-      case AdminUserGovernanceFilter.Blocked:
-        conditions.push(eq(users.isBlocked, true));
-        break;
-      case AdminUserGovernanceFilter.Deleted:
-        conditions.push(eq(users.isDeleted, true));
-        break;
-    }
-  }
-  if (filters.country) {
-    conditions.push(eq(users.country, filters.country));
-  }
-  if (filters.searchPattern) {
-    conditions.push(
-      or(ilike(users.fullName, filters.searchPattern), ilike(users.email, filters.searchPattern)) ?? sql`false`
-    );
-  }
-  if (conditions.length === 0) {
-    return undefined;
-  }
-  if (conditions.length === 1) {
-    return conditions[0];
-  }
-  return and(...conditions) ?? sql`true`;
-}
-
-/**
- * Scalar subselect — count of `students` rows whose `parent_id` points
- * at the current `users.id`. Used as the parent-role headline in the
- * directory list and detail projections (never a JOIN — a JOIN would
- * fan out the parent row into N student rows; the scalar subselect
- * keeps the row count at one per user).
- */
-function parentLinkedChildrenCountSubquery(): SQL.Aliased<number> {
-  return sql<number>`(
-    SELECT count(*)::int
-    FROM ${students}
-    WHERE ${students.parentId} = ${users.id}
-  )`.as("parent_linked_children_count");
-}
-
-/**
- * Scalar subselect — true iff a row exists in `subscriptions` for the
- * current `users.id` whose `status` is `'active'` AND whose
- * `start_date`/`end_date` window covers `now()` (or is open-ended in
- * either direction). Used as the student-role subscription headline —
- * never a JOIN, never a balance touch (the student's balance columns
- * are read-only at this surface and surfaced separately in the detail
- * projection).
- */
-function studentHasActiveSubscriptionSubquery(): SQL.Aliased<boolean> {
-  return sql<boolean>`EXISTS(
-    SELECT 1
-    FROM ${subscriptions}
-    WHERE ${subscriptions.userId} = ${users.id}
-      AND ${subscriptions.status} = 'active'
-      AND now() >= coalesce(${subscriptions.startDate}, now())
-      AND (${subscriptions.endDate} IS NULL OR now() < ${subscriptions.endDate})
-  )`.as("student_has_active_subscription");
-}
+export type {
+  AdminUserActivityRow,
+  AdminUserDetailRow,
+  AdminUserDirectoryRow,
+  AdminUserStatsRow,
+  NormalizedAdminUserFilters,
+} from "@/backend/db/repo/admin/admin-user-row-types";
 
 export namespace AdminUserRepository {
   /**
