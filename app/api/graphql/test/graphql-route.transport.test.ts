@@ -22,6 +22,9 @@
  *    envelope (docs/graphql/error-handling-contract.md §exemption register);
  *  - localization rides the compile-time i18n `errors` namespace (en + ar
  *    parity rows);
+ *  - CORS origin validation (OPTIONS preflight + headers) → accepts valid
+ *    `*.space-z.ai` subdomains and `space-z.ai`, rejects malicious spoof/bypass
+ *    origins (e.g. `https://attacker.com#.space-z.ai`);
  *  - zero-leak + constant-unification source pins: the deleted inline
  *    `GRAPHQL_MAX_BODY_BYTES` copy appears NOWHERE in the route, the body
  *    limit is owned exclusively by `@/backend/lib/gateway`, cookie merging
@@ -40,7 +43,8 @@ import { join } from "node:path";
 // Value import (NOT type-only): NextRequest is CONSTRUCTED below (type-only
 // form detonates at runtime).
 import { NextRequest } from "next/server";
-import { DELETE, GET, PATCH, POST, PUT } from "@/app/api/graphql/route";
+import { DELETE, GET, OPTIONS, PATCH, POST, PUT } from "@/app/api/graphql/route";
+import { applySpaceZCorsHeaders, isSpaceZOrigin } from "@/app/api/graphql/space-z-cors";
 import { getServerTranslations } from "@/shared/locale/server-graphql";
 
 const BASE_URL = "http://localhost:3066/api/graphql";
@@ -282,6 +286,55 @@ describe("rejection-envelope shape and disclosure pins", () => {
     expect(serialized.includes("stack")).toBe(false);
     expect(serialized.includes("/srv")).toBe(false);
     expect(serialized.includes("SQL")).toBe(false);
+  });
+});
+
+// ─── CORS origin validation tests ─────────────────────────────────────────────
+
+describe("CORS origin validation (space-z-cors)", () => {
+  test("isSpaceZOrigin allows valid space-z.ai domains and subdomains", () => {
+    expect(isSpaceZOrigin("https://space-z.ai")).toBe(true);
+    expect(isSpaceZOrigin("https://preview.space-z.ai")).toBe(true);
+    expect(isSpaceZOrigin("https://app.preview.space-z.ai")).toBe(true);
+  });
+
+  test("isSpaceZOrigin rejects spoofed or malformed origins", () => {
+    expect(isSpaceZOrigin("https://attacker.com#.space-z.ai")).toBe(false);
+    expect(isSpaceZOrigin("https://attacker.com?.space-z.ai")).toBe(false);
+    expect(isSpaceZOrigin("https://notspace-z.ai")).toBe(false);
+    expect(isSpaceZOrigin("https://space-z.ai.attacker.com")).toBe(false);
+    expect(isSpaceZOrigin("https://attacker.com")).toBe(false);
+    expect(isSpaceZOrigin("invalid-url")).toBe(false);
+    expect(isSpaceZOrigin(null)).toBe(false);
+  });
+
+  test("OPTIONS preflight returns 204 with CORS headers for valid origin and 403 for malicious origin", async () => {
+    const validReq = new NextRequest(BASE_URL, {
+      method: "OPTIONS",
+      headers: { origin: "https://preview.space-z.ai" },
+    });
+    const validRes = await OPTIONS(validReq);
+    expect(validRes.status).toBe(204);
+    expect(validRes.headers.get("access-control-allow-origin")).toBe("https://preview.space-z.ai");
+    expect(validRes.headers.get("access-control-allow-credentials")).toBe("true");
+
+    const spoofedReq = new NextRequest(BASE_URL, {
+      method: "OPTIONS",
+      headers: { origin: "https://attacker.com#.space-z.ai" },
+    });
+    const spoofedRes = await OPTIONS(spoofedReq);
+    expect(spoofedRes.status).toBe(403);
+    expect(spoofedRes.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  test("applySpaceZCorsHeaders applies CORS headers only for valid origins", () => {
+    const headers = new Headers();
+    applySpaceZCorsHeaders(headers, "https://preview.space-z.ai");
+    expect(headers.get("access-control-allow-origin")).toBe("https://preview.space-z.ai");
+
+    const spoofedHeaders = new Headers();
+    applySpaceZCorsHeaders(spoofedHeaders, "https://attacker.com#.space-z.ai");
+    expect(spoofedHeaders.get("access-control-allow-origin")).toBeNull();
   });
 });
 
