@@ -105,13 +105,19 @@ function withLocaleCookie<T extends Response>(response: T, locale: AppLocale): T
 
 /** Only allow same-origin relative paths (block open redirects). */
 function safeRedirectPath(raw: string | null, fallback = "/"): string {
-  // Backslash anywhere → foreign-origin escape when WHATWG URL parsing folds
-  // "\" into "/" ("/\\evil.com" ≡ "//evil.com" ⇒ protocol-relative). Fail
-  // closed; legitimate relative paths never contain a raw backslash.
-  if (!raw?.startsWith("/") || raw.startsWith("//") || raw.includes("://") || raw.includes("\\")) {
+  if (!raw?.startsWith("/")) {
     return fallback;
   }
-  return raw;
+  try {
+    const dummyOrigin = "http://localhost:3000";
+    const parsed = new URL(raw, dummyOrigin);
+    if (parsed.origin !== dummyOrigin) {
+      return fallback;
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return fallback;
+  }
 }
 
 function isAllowedOrigin(request: NextRequest): boolean {

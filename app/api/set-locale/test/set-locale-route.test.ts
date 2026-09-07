@@ -313,6 +313,10 @@ describe("set-locale route envelope adoption", () => {
       // MUST fall back to root exactly like its forward-slash twin.
       await expectHostileRedirectFallsBackToRoot("/\\evil.example/x");
       await expectHostileRedirectFallsBackToRoot("/\\/evil.example/x");
+      // Control character open redirect bypass attempts
+      await expectHostileRedirectFallsBackToRoot("/\n/evil.example/x");
+      await expectHostileRedirectFallsBackToRoot("/\r/evil.example/x");
+      await expectHostileRedirectFallsBackToRoot("/\t/evil.example/x");
     });
 
     test("invalid locale query → 400 BAD_REQUEST envelope with requestId echo", async () => {
