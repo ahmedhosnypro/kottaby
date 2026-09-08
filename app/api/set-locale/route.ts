@@ -103,12 +103,34 @@ function withLocaleCookie<T extends Response>(response: T, locale: AppLocale): T
   return response;
 }
 
+/**
+ * Returns true if a string contains ASCII control characters (0x00-0x1F or 0x7F).
+ * Checked without regex to satisfy oxlint/eslint no-control-regex rules.
+ */
+function hasControlChar(value: string): boolean {
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if ((code >= 0 && code <= 31) || code === 127) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** Only allow same-origin relative paths (block open redirects). */
 function safeRedirectPath(raw: string | null, fallback = "/"): string {
   // Backslash anywhere → foreign-origin escape when WHATWG URL parsing folds
-  // "\" into "/" ("/\\evil.com" ≡ "//evil.com" ⇒ protocol-relative). Fail
-  // closed; legitimate relative paths never contain a raw backslash.
-  if (!raw?.startsWith("/") || raw.startsWith("//") || raw.includes("://") || raw.includes("\\")) {
+  // "\" into "/" ("/\\evil.com" ≡ "//evil.com" ⇒ protocol-relative). Also reject
+  // control characters (ASCII 0-31 and 127, e.g. \t, \n, \r) which WHATWG URL
+  // parser strips/ignores, enabling protocol-relative escapes like "/\t/evil.com".
+  // Fail closed; legitimate relative paths never contain backslashes or control chars.
+  if (
+    !raw?.startsWith("/") ||
+    raw.startsWith("//") ||
+    raw.includes("://") ||
+    raw.includes("\\") ||
+    hasControlChar(raw)
+  ) {
     return fallback;
   }
   return raw;

@@ -313,6 +313,13 @@ describe("set-locale route envelope adoption", () => {
       // MUST fall back to root exactly like its forward-slash twin.
       await expectHostileRedirectFallsBackToRoot("/\\evil.example/x");
       await expectHostileRedirectFallsBackToRoot("/\\/evil.example/x");
+      // Control character sanitization: WHATWG URL parser strips/ignores ASCII control
+      // characters (e.g. \t, \n, \r), which turns "/\t/evil.example" into "//evil.example".
+      // Verify that control characters in redirect path fall back to root.
+      await expectHostileRedirectFallsBackToRoot("/\t/evil.example/x");
+      await expectHostileRedirectFallsBackToRoot("/\n/evil.example/x");
+      await expectHostileRedirectFallsBackToRoot("/\r/evil.example/x");
+      await expectHostileRedirectFallsBackToRoot("/\u0000/evil.example/x");
     });
 
     test("invalid locale query → 400 BAD_REQUEST envelope with requestId echo", async () => {
