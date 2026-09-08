@@ -106,9 +106,18 @@ function withLocaleCookie<T extends Response>(response: T, locale: AppLocale): T
 /** Only allow same-origin relative paths (block open redirects). */
 function safeRedirectPath(raw: string | null, fallback = "/"): string {
   // Backslash anywhere → foreign-origin escape when WHATWG URL parsing folds
-  // "\" into "/" ("/\\evil.com" ≡ "//evil.com" ⇒ protocol-relative). Fail
-  // closed; legitimate relative paths never contain a raw backslash.
-  if (!raw?.startsWith("/") || raw.startsWith("//") || raw.includes("://") || raw.includes("\\")) {
+  // "\" into "/" ("/\\evil.com" ≡ "//evil.com" ⇒ protocol-relative). Also reject
+  // control characters (ASCII 0-31 and 127, e.g. \t, \n, \r) which WHATWG URL
+  // parser strips/ignores, enabling protocol-relative escapes like "/\t/evil.com".
+  // Fail closed; legitimate relative paths never contain backslashes or control chars.
+  if (
+    !raw?.startsWith("/") ||
+    raw.startsWith("//") ||
+    raw.includes("://") ||
+    raw.includes("\\") ||
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional control-character validation for open-redirect defense
+    /[\x00-\x1F\x7F]/.test(raw)
+  ) {
     return fallback;
   }
   return raw;
