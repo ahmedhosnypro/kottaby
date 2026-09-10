@@ -128,6 +128,23 @@ function isAllowedOrigin(request: NextRequest): boolean {
 }
 
 /**
+ * Validates candidate host/proto header origin against allowed origins before redirecting.
+ * Falls back to request.nextUrl.origin if the candidate origin is untrusted (Host header injection defense).
+ */
+function resolveSafeOrigin(request: NextRequest): string {
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const protoHeader = request.headers.get("x-forwarded-proto");
+  const proto = protoHeader ?? request.nextUrl.protocol.replace(":", "");
+  if (host) {
+    const candidate = `${proto}://${host}`;
+    if (candidate === request.nextUrl.origin || ALLOWED_ORIGINS.has(candidate)) {
+      return candidate;
+    }
+  }
+  return request.nextUrl.origin;
+}
+
+/**
  * Full-navigation locale switch: sets NEXT_LOCALE then redirects.
  * Prefer this over fetch + location.reload() so the cookie is applied on the
  * same response that loads the next document.
@@ -151,12 +168,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     }
 
     const redirectPath = safeRedirectPath(request.nextUrl.searchParams.get("redirect"));
-    // Prefer Host / X-Forwarded-* so we don't redirect to 0.0.0.0 when the
-    // server listens on all interfaces but the user browsed via localhost.
-    const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-    const protoHeader = request.headers.get("x-forwarded-proto");
-    const proto = protoHeader ?? request.nextUrl.protocol.replace(":", "");
-    const origin = host ? `${proto}://${host}` : request.nextUrl.origin;
+    const origin = resolveSafeOrigin(request);
     const response = NextResponse.redirect(new URL(redirectPath, origin));
     return withLocaleCookie(response, localeParam);
   } catch (error) {
