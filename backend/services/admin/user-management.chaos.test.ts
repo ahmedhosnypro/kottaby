@@ -184,11 +184,6 @@ async function countAuditForEntity(actorId: number, actionType: AuditActionType,
   return row?.count ?? 0;
 }
 
-/** Counts `users` rows (directory-count assertion helper). */
-async function countUsers(): Promise<number> {
-  const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(users);
-  return row?.count ?? 0;
-}
 
 /**
  * Outcome-bucket helper — sorts `Promise.allSettled` results into
