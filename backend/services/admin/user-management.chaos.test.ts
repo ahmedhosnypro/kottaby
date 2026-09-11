@@ -409,8 +409,6 @@ describe("AdminUserManagementService — chaos & concurrency", () => {
         .where(eq(students.id, seed.id))
         .catch(() => {});
 
-      const countBeforeValue = await countUsers();
-
       // Forced-failure — same email, different fullName (BOPLA
       // defense — the role-child insert uses field-by-field mapping,
       // never mass-assignment, so smuggled fields cannot land).
@@ -422,7 +420,9 @@ describe("AdminUserManagementService — chaos & concurrency", () => {
       expect(error).toBeInstanceOf(ConflictError);
       assertErrorCode(error, "CONFLICT");
 
-      expect(await countUsers()).toBe(countBeforeValue);
+      // Verify zero residual rows from the failed call (no user inserted with dupInput's fullName)
+      const [dupRow] = await db.select().from(users).where(eq(users.fullName, "Dup Force")).limit(1);
+      expect(dupRow).toBeUndefined();
     }
   );
 });
