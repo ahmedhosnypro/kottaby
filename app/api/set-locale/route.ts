@@ -151,12 +151,17 @@ export async function GET(request: NextRequest): Promise<Response> {
     }
 
     const redirectPath = safeRedirectPath(request.nextUrl.searchParams.get("redirect"));
-    // Prefer Host / X-Forwarded-* so we don't redirect to 0.0.0.0 when the
-    // server listens on all interfaces but the user browsed via localhost.
+    // Prefer Host / X-Forwarded-* when validated against allowed origins to prevent Host Header Injection.
     const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
     const protoHeader = request.headers.get("x-forwarded-proto");
     const proto = protoHeader ?? request.nextUrl.protocol.replace(":", "");
-    const origin = host ? `${proto}://${host}` : request.nextUrl.origin;
+    const candidateOrigin = host ? `${proto}://${host}` : null;
+    // Security defense against Host Header Injection / Open Redirect:
+    // Only accept candidateOrigin if it matches request.nextUrl.origin or is in ALLOWED_ORIGINS.
+    const origin =
+      candidateOrigin && (candidateOrigin === request.nextUrl.origin || ALLOWED_ORIGINS.has(candidateOrigin))
+        ? candidateOrigin
+        : request.nextUrl.origin;
     const response = NextResponse.redirect(new URL(redirectPath, origin));
     return withLocaleCookie(response, localeParam);
   } catch (error) {
